@@ -1,0 +1,9 @@
+max_width = 150
+# wrap_comments = true  #nightly
+
+# imports_granularity = "Crate" #nightly
+reorder_imports = true
+
+# format_code_in_doc_comments = true #nightly
+
+# space_after_colon = true #nightly

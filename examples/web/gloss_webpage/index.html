@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gloss</title>
+
+
+    <style>
+        #viewer-div {
+            margin: 0px;
+            padding: 0px;
+            /* modify only these! */
+            /* never set these values to auto because that will try to resize the viewer-div to have the size of viewer-canvas and that will trigger resize of viewer-canvas inside rust and cause a feedback loop. Therefore always set the height and width of the viewer-div to some aboslute values and never relatve to the child canvas */
+            width: 100%;
+            /* height: 100%; */
+            height: 700px;
+            /*without the overflow: hidden, resizing the width to be smaller when the width is fixed to 700px (or any fixed value) will cause it to jitter */
+            overflow: hidden;  
+        }
+        /* viewer canvas needs to fill the whole space of the containing viewer-div. Therefore it should always be of height and width 100% */
+        /* if you want to modify the size of the canvas, modify the viewer-div size because rust will listen to resizes of viewer-div and apply them to viewer-canvas */
+        #viewer-canvas {
+            width: 100%;
+            height: 100%;
+        }
+      
+
+        /* make everything fullscreen */
+        html {
+            height: 100%;
+        }
+        body {
+            margin: 0;
+            height: 100vh 
+        }
+       
+    </style>
+</head>
+
+
+
+<body>
+    <div id="viewer-div">
+        <canvas id="viewer-canvas", oncontextmenu="return false;">
+            <script type="module">
+                import init from "../pkg/gloss_web.js";
+                init().then(() => {
+                    console.log("WASM Loaded");
+                });
+            </script>
+        </canvas>
+    </div>
+</body>
+
+</html>

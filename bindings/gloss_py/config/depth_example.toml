@@ -1,0 +1,6 @@
+[core]
+auto_add_floor = false
+
+[render]
+bg_color = [0.0, 0.0, 0.0, 0.0]
+msaa_nr_samples = 1 # Need to do this, since MSAA_nr_samples > 1 is not supported for depths 

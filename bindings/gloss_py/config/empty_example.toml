@@ -1,0 +1,15 @@
+[core]
+floor_origin = "auto"
+
+
+[scene.cam]
+position = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+lookat = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+fovy = 0.7 #radians
+near =  "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+far =  "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+limit_max_dist = "auto"
+limit_max_vertical_angle = "auto"
+limit_min_vertical_angle = "auto"
+
+

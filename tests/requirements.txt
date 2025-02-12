@@ -1,0 +1,5 @@
+numpy
+opencv-python
+rich
+pytest
+pytest-timeout

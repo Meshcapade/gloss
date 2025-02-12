@@ -1,0 +1,10 @@
+[core]
+floor_type= "grid"
+floor_scale = 30
+floor_origin = [0,0,0]
+auto_create_logger=false
+log_level = "off"
+
+[render]
+msaa_nr_samples = 4
+

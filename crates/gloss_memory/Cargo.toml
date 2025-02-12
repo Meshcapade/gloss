@@ -1,0 +1,71 @@
+[package]
+name = "gloss-memory"
+authors.workspace = true
+description = "The Gloss memory profiling tools"
+edition.workspace = true
+# homepage.workspace = true
+# license.workspace = true
+publish = false
+# repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+# include = [
+#   "../../LICENSE-APACHE",
+#   "../../LICENSE-MIT",
+#   "**/*.rs",
+#   "Cargo.toml",
+#   "data/*",
+# ]
+# default-run = "gloss_view_mesh"
+
+# [package.metadata.docs.rs]
+# all-features = true
+# targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+
+[lib]
+# name = "gloss_renderer_lib"
+# crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
+
+
+[features]
+
+
+
+
+
+[dependencies]
+#local to package
+
+#workspace internal gloss
+utils-rs.workspace=true
+
+#workspace third-party
+smallvec.workspace=true
+parking_lot.workspace=true
+once_cell.workspace=true
+log.workspace=true
+ahash.workspace=true
+nohash-hasher.workspace=true
+itertools.workspace=true
+# atomic.workspace=true
+
+
+
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+backtrace.workspace = true
+memory-stats = { workspace = true, features = ["always_use_statm"] }
+sysinfo = { workspace = true, default-features = false }
+
+# web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
+
+
+
+
+[lints]
+workspace = true

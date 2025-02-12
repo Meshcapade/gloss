@@ -1,0 +1,7 @@
+[core]
+auto_add_floor = false
+auto_create_logger = false # To avoid multiple inits crash
+
+[render]
+bg_color = [0.0, 0.0, 0.0, 0.0]
+msaa_nr_samples = 1 # Need to do this, since the randomness of MSAA wont be reproducable for the reference renders

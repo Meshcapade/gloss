@@ -1,0 +1,74 @@
+#name of the wheel (and therefore the name in pypi)
+# # [project]
+# # name = "gloss"
+
+# [build-system]
+# requires = ["maturin>=1.0,<2.0"]
+# build-backend = "maturin"
+
+# [tool.maturin]
+# name = "gloss"
+# # "extension-module" tells pyo3 we want to build an extension module (skips linking against libpython.so)
+# features = ["pyo3/extension-module"]
+
+
+
+
+# Workaround to bootstrap maturin on non-manylinux platforms
+# [build-system]
+# requires = ["setuptools", "wheel>=0.36.2", "tomli>=1.1.0 ; python_version<'3.11'", "setuptools-rust>=1.4.0"]
+# build-backend = "setuptools.build_meta"
+
+[project]
+#name of the wheel (and therefore the name in pypi)
+name = "gloss"
+requires-python = ">=3.8"
+dynamic = [
+    "authors",
+    "description",
+    "license",
+    "readme",
+    "version"
+]
+# [project.optional-dependencies]
+# zig = [
+#     "ziglang~=0.10.0",
+# ]
+# patchelf = [
+#     "patchelf",
+# ]
+
+# [project.urls]
+# "Source Code" = "https://github.com/PyO3/maturin"
+# Issues = "https://github.com/PyO3/maturin/issues"
+# Documentation = "https://maturin.rs"
+# Changelog = "https://maturin.rs/changelog.html"
+
+# [tool.maturin]
+# bindings = "bin"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+# "extension-module" tells pyo3 we want to build an extension module (skips linking against libpython.so)
+features = ["pyo3/extension-module"]
+
+
+# [tool.black]
+# target_version = ['py37']
+# extend-exclude = '''
+# # Ignore cargo-generate templates
+# ^/src/templates
+# '''
+
+# [tool.ruff]
+# line-length = 120
+# target-version = "py37"
+
+# [tool.mypy]
+# disallow_untyped_defs = true
+# disallow_incomplete_defs = true
+# warn_no_return = true
+# ignore_missing_imports = true

@@ -1,0 +1,60 @@
+[package]
+name = "gloss_py"             # name of the rust crate
+edition.workspace = true
+publish = false
+rust-version.workspace = true
+version.workspace = true
+
+#name of the wheel (and therefore the name in pypi)
+# [package.metadata.maturin]
+# name = "gloss"
+
+[lib]
+# crate-type = ["cdylib", "rlib"] #cdylib is needed for pyo3 and rlib is needed so that is can be linked with other libs https://stackoverflow.com/a/49762980
+crate-type = ["cdylib"] #cdylib is needed for pyo3 and rlib is needed so that is can be linked with other libs https://stackoverflow.com/a/49762980
+#NO reason to link it with another lib because you can't share pyclasses anyway because of this https://github.com/PyO3/pyo3/issues/1444
+#this is the name we use to in python for the import
+name = "gloss" # name of the .so library that the Python module will import
+doc = false
+
+[features]
+# default = ["extension-module"]
+# default = ["with-gui"]
+# with-gui=["easy-wgpu/with-gui", "gloss-renderer/with-gui"]
+
+## The features we turn on when building the `rerun-sdk` PyPi package
+## for <https://pypi.org/project/rerun-sdk/>.
+# pypi = ["extension-module"]
+
+## We need to enable the `pyo3/extension-module` when building the SDK,
+## but we cannot enable it when building tests and benchmarks, so we
+## must make it an opt-in feature.
+## * <https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror>
+## * <https://pyo3.rs/latest/building_and_distribution.html#building-python-extension-modules>
+extension-module = ["pyo3/extension-module"]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# local to package
+pyo3 = { version = "0.22", features = ["macros", "multiple-pymethods", "abi3-py38", "extension-module", "gil-refs"] }
+numpy = { version = "0.22", features = ["nalgebra"] }
+nalgebra.workspace=true
+log.workspace=true
+gloss_py_macros = { path = "macros"}
+
+#workspace internal gloss
+gloss-renderer.workspace=true
+easy-wgpu.workspace=true
+utils-rs.workspace=true
+gloss-img.workspace=true
+
+# workspace third-party
+pollster.workspace=true
+wgpu.workspace=true
+ndarray.workspace=true
+gloss-hecs.workspace=true
+num-traits.workspace=true
+image.workspace=true
+ctrlc = "3.4"
+
+[lints]
+workspace = true

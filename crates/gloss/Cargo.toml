@@ -1,0 +1,26 @@
+[package]
+name = "gloss"
+authors.workspace = true
+description = "Gloss top-level crate"
+edition.workspace = true
+publish = false
+readme.workspace = true
+rust-version.workspace = true
+# repository = ... TODO: fill
+version.workspace = true
+
+[package.metadata.docs.rs]
+targets = ["lib"]
+
+[dependencies]
+easy-wgpu.workspace = true
+gloss-img.workspace = true
+gloss-memory.workspace = true
+gloss-renderer.workspace = true
+utils-rs.workspace = true
+
+[lib]
+crate-type = ["rlib"]
+
+[lints]
+workspace = true

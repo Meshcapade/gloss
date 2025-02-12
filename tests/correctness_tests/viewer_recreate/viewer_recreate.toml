@@ -1,0 +1,7 @@
+[core]
+auto_add_floor = false
+auto_create_logger = false # To avoid multiple inits crash
+log_level = "off"
+
+[render]
+bg_color = [0.0, 0.0, 0.0, 0.0]

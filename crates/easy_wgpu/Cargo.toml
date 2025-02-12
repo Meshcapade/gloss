@@ -1,0 +1,46 @@
+[package]
+name = "easy-wgpu"
+authors.workspace = true
+description = "Small wrapper around wgpu with convenience functions"
+edition.workspace = true
+publish = false
+rust-version.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["with-gui"]
+with-gui=["dep:epaint"]
+
+[dependencies]
+#local to package
+type-map = "0.5.0" #needed for egui_renderer
+# wgpu-mipmap = "0.1"
+# enum-map-derive = "0.12"
+thiserror = "1.0"
+easy_wgpu_macros = { path = "macros"}
+
+
+#workspace internal gloss
+utils-rs.workspace=true
+gloss-img.workspace=true
+
+#workspace third-party
+#miniz_oxide.workspace=true
+log.workspace=true
+wgpu.workspace=true
+image.workspace=true
+bytemuck.workspace=true
+futures.workspace=true
+futures-intrusive.workspace=true
+epaint={ workspace = true, optional = true }
+enum-map.workspace=true
+smallvec.workspace=true
+encase.workspace=true
+pollster.workspace=true
+# wgpu-mipmap.workspace=true
+# wgpu-profiler.workspace=true
+
+[lints]
+workspace = true

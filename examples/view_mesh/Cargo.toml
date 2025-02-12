@@ -1,0 +1,20 @@
+[package]
+name = "gloss_view_mesh"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.69"
+publish = false
+doc = false
+
+[dependencies]
+gloss-renderer = { path = "../../../gloss/crates/gloss_renderer", default-features = false }
+
+# Third Party
+pollster.workspace=true
+nalgebra.workspace=true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+targets = []  # Do not generate documentation for examples

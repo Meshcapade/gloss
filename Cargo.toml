@@ -1,0 +1,152 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/*",
+  "examples/*",
+  "bindings/gloss_py",
+  "tests",
+]
+
+# =====================================================================
+[workspace.package]
+authors = ["Radu Alexandru Rosu <alex@meshcapade.com>", "Aman Shenoy <aman@meshcapade.com>"]
+edition = "2021"
+rust-version = "1.69"
+version = "0.5.0"
+
+[workspace.metadata.docs.rs]
+targets = ["lib"]
+features = ["doc"]
+
+# =====================================================================
+[workspace.dependencies]
+gloss-renderer = { path = "crates/gloss_renderer", version = "=0.5.0" }
+gloss = { path = "crates/gloss", version = "=0.5.0"}
+easy-wgpu = { path = "crates/easy_wgpu", version = "=0.5.0"}
+utils-rs = { path = "crates/utils_rs", version = "=0.5.0"}
+gloss-memory = { path = "crates/gloss_memory", version = "=0.5.0"}
+gloss-img = { path = "crates/gloss_img", version = "=0.5.0"}
+gloss-hecs = { path = "crates/gloss_hecs", version = "0.5.0", features = ["macros"]}
+
+# =====================================================================
+# Third-Party crates
+# =====================================================================
+cfg-if = "1"
+anyhow = "1.0"
+bytemuck = { version = "1.12", features = [ "derive" ] }
+env_logger = "0.10"
+log = "0.4"
+pollster = "0.3"
+ash = "0.37"
+libc = "0.2"
+lazy_static = "1.4.0"
+softbuffer = "0.3.0" #for winit run_return
+winit = { version = "0.30.5", default-features = false, features = ["rwh_06", "x11"] } 
+wgpu       = { version = "22.1.0",  default-features = false, features = ["wgsl", "spirv", "webgl", "metal"] } 
+num-traits     = { version = "0.2", default-features = false }
+image = { version= "=0.25.5", default-features = false, features=["jpeg", "png", "tiff"] } #TODO maybe replace it with zune-image
+image-webp = "=0.2.0"
+nalgebra = {version = "0.32", default-features = false, features = ["std", "serde-serialize-no-std"]} #TODO: Update when numpy updates dependency
+nalgebra-glm = "0.18"
+parking_lot = "0.12"
+derive_more = { version = "0.99", default-features = false, features = ["deref", "deref_mut", "iterator"]}
+tobj = { version = "4.0", features=["async"]}
+obj-exporter = "0.2"
+relative-path = "1.8"
+futures = "0.3"
+futures-intrusive = "0.5"
+time = { version = "0.3", features = ["wasm-bindgen"]}
+burn = { version = "0.14", default-features = false, features=["ndarray", "wgpu", "candle", "autotune"]}
+async-trait = "0.1"
+png = "0.17.14" # Pinned to this because otherwise image crate pull png=0.17.13 which makes png pull miniz_oxide=0.8.0 which causes duplicate
+flate2=  "1.0.34" # Pinned to this because otherwise image crate pull flate2=1.0.33 which makes png pull miniz_oxide=0.8.0 which causes duplicate
+egui = {version = "0.29", default-features = false, features= ["default_fonts"]}
+egui-wgpu = {version = "0.29.1", default-features = false}
+egui-winit = {version = "0.29", default-features = false, features = ["x11"] } #disabled arboard feature because it doesn't work on wasm
+epaint = {version = "0.29", default-features = false, features =["bytemuck"]}
+transform-gizmo = { version = "0.4.0", default-features = false}
+tuple-conv = "1.0.1"
+enum-map = "2.6.0"
+smallvec = "1.11"
+encase = { version = "0.9", features = ["nalgebra"] }
+profiling = { version = "1" , features = ["procmacros"]}
+wasm-timer = "0.2"
+negative-impl = "0.1"
+include-wgsl-oil = "0.2.8"
+ktx2 = "0.3"
+config = { version = "0.14.0", default-features = false, features = ["toml"]} 
+serde = { version = "1.0", features = ["derive"] }
+toml = { version = "0.8" }
+indexmap = "2.1"
+ndarray = { version = "0.16"  }
+ply-rs = "0.1.3"
+atomic = "0.6"
+once_cell = "1.19"
+backtrace = "0.3.74" # Anything above and including 0.3.74 uses miniz_oxide=0.8.0 which causes a duplicate with miniz_oxide=0.7.4
+memory-stats = "1.1"
+itertools = "0.12"
+ahash = "0.8"
+nohash-hasher = "0.2"
+sysinfo = { version = "0.30.1", default-features = false }
+peak_alloc = "0.2.0"
+getrandom = { version = "0.2", features = ["js"] } # used by ahash/egui
+static_assertions = "1.1.0"
+abi_stable = "0.11.3"
+
+# =====================================================================
+# Dependencies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
+# =====================================================================
+console_error_panic_hook = "0.1.6"
+console_log = "1.0"
+wasm-bindgen = "=0.2.96"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Request",
+    "RequestInit",
+    "RequestMode",
+    "Response",
+    "Document",
+    "Window",
+    "Element",
+]}
+js-sys = "0.3"
+
+# =====================================================================
+[profile.dev]
+opt-level = 1   # Make debug builds run faster
+panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+
+# =====================================================================
+# Optimize all dependencies even in debug builds (does not affect workspace packages):
+# =====================================================================
+[profile.dev.package."*"]
+opt-level = 3
+
+# =====================================================================
+[profile.release]
+# debug = true # good for profilers
+# TODO need more profiling but if we enable the following line the code seems slower
+# panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+lto = true
+
+# =====================================================================
+[profile.bench]
+debug = true
+
+# =====================================================================
+# We set priority lower so that these lints can overwriteen by other ones with higher priority like the ones we do allow
+# =====================================================================
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+# All the things we do allow. We set higher priority so we overwrite the "all" and "pedantic"
+module_name_repetitions = "allow"  
+must_use_candidate = "allow"
+missing_panics_doc = "allow"
+unused_self = "allow"
+explicit_iter_loop = "allow" #messes with hecs query.iter() and makes them super ugly
+
+# =====================================================================
+[build]
+rustc-args = ["-Vv"]

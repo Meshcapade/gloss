@@ -1,0 +1,112 @@
+[package]
+name = "gloss-renderer"
+authors.workspace = true
+description = "The Gloss viewer"
+edition.workspace = true
+publish = false
+readme = "README.md"
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+crate-type = ["rlib"]
+
+
+[features]
+default = ["with-gui"]
+# with-gui=["dep:egui", "dep:egui-winit", "dep:egui-gizmo", "easy-wgpu/with-gui"]
+with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "dep:transform-gizmo", "easy-wgpu/with-gui"]
+
+[dependencies]
+gloss_renderer_macros = { path = "macros"}
+
+# workspace internal gloss
+easy-wgpu.workspace=true
+utils-rs.workspace=true
+gloss-memory.workspace=true
+gloss-img.workspace=true
+gloss-hecs.workspace=true
+
+# workspace third-party
+cfg-if.workspace=true
+bytemuck.workspace=true
+env_logger.workspace=true
+log.workspace=true
+pollster.workspace=true
+num-traits.workspace=true
+burn.workspace=true
+winit.workspace=true
+wgpu.workspace=true
+nalgebra.workspace=true
+nalgebra-glm.workspace=true
+image.workspace=true
+tobj.workspace=true
+obj-exporter.workspace=true
+time.workspace=true
+
+# gui stuff
+egui = { workspace = true, optional = true }
+epaint={ workspace = true, optional = true }
+egui-winit = { workspace = true, optional = true }
+egui-wgpu = { workspace = true, optional = true }
+# egui-gizmo = { workspace = true, optional = true }
+transform-gizmo = { workspace = true, optional = true }
+# gui stuff finish
+
+enum-map.workspace=true
+encase.workspace=true
+wasm-timer.workspace=true
+include-wgsl-oil.workspace=true
+ktx2.workspace=true
+config.workspace=true
+serde.workspace=true
+toml.workspace=true
+indexmap.workspace=true
+smallvec.workspace=true
+# abi_stable.workspace=true
+ply-rs.workspace=true
+# peak_alloc={ workspace = true, optional = true }
+# talc={ workspace = true, optional = true }
+# mimalloc= { workspace = true, optional = true }
+# spin.workspace=true
+static_assertions.workspace=true
+itertools.workspace=true
+
+[target.'cfg(any(target_os = "windows"))'.dependencies]
+winapi = "0.3.9"
+
+# [target.'cfg(not(target_env = "msvc"))'.dependencies]
+# tikv-jemallocator ={ workspace = true, optional = true }
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+abi_stable = "0.11.3"
+
+
+# more dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.6"
+console_log = "1.0"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4.30"
+web-sys = { version = "0.3", features = [
+    "Request",
+    "RequestInit",
+    "RequestMode",
+    "Response",
+    "Document",
+    "Window",
+    "Element",
+    "HtmlCanvasElement",
+]}
+js-sys = "0.3"
+wasm-log=  { git = "https://github.com/RaduAlexandru/wasm-log.git", version ="0.3" }
+
+[target.x86_64-unknown-linux-gnu] #slightly faster linking
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+
+[lints]
+workspace = true

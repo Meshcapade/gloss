@@ -1,0 +1,4 @@
+[core]
+log_level = "info"
+floor_texture = "checkerboard" #can be none or checkerboard
+floor_uv_scale = "auto"

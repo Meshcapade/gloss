@@ -1,0 +1,117 @@
+[package]
+name = "gloss-img"
+authors.workspace = true
+description = "The Gloss img for CPU images and manipulation"
+edition.workspace = true
+# homepage.workspace = true
+# license.workspace = true
+publish = false
+# repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+# include = [
+#   "../../LICENSE-APACHE",
+#   "../../LICENSE-MIT",
+#   "**/*.rs",
+#   "Cargo.toml",
+#   "data/*",
+# ]
+# default-run = "gloss_view_mesh"
+
+# [package.metadata.docs.rs]
+# all-features = true
+# targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+
+[lib]
+# name = "gloss_renderer_lib"
+# crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
+
+
+[features]
+# default = ["gif", "jpeg", "ico", "png", "pnm", "tga", "tiff", "webp", "bmp", "hdr", "dxt", "dds", "farbfeld", "jpeg_rayon", "openexr", "qoi"]
+default = ["jpeg", "png", "tiff"]
+
+gif = ["image/gif"]
+jpeg = ["image/jpeg"]
+ico = ["image/ico", "bmp", "png"]
+png = ["image/png"]
+pnm = ["image/pnm"]
+tga = ["image/tga"]
+tiff = ["image/tiff"]
+webp = ["image/webp"] #
+bmp = ["image/bmp"]
+hdr = ["image/hdr"]
+# dxt = ["image/dxt"]
+# dds = ["image/dds","dxt"]
+# farbfeld = ["image/farbfeld"]
+# jpeg_rayon = ["image/jpeg_rayon"]
+openexr = ["image/exr"]
+qoi = ["image/qoi"]
+# avif-encoder = ["image/avif-encoder"]
+# avif-decoder = ["image/avif-decoder"]
+
+# # Enables WebP decoder support.
+# webp = ["image/webp"]
+# # Non-default, not included in `webp`. Requires native dependency libwebp.
+# webp-encoder = ["image/webp-encoder"]
+
+# # Enables multi-threading.
+# # Requires latest stable Rust.
+# jpeg_rayon = ["image/jpeg_rayon"]
+# # Non-default, enables avif support.
+# # Requires latest stable Rust.
+# avif = ["avif-encoder"]
+# # Requires latest stable Rust and recent nasm (>= 2.14).
+# avif-encoder = ["image/ravif", "image/rgb"]
+# # Non-default, even in `avif`. Requires stable Rust and native dependency libdav1d.
+# avif-decoder = ["image/mp4parse", "image/dcv-color-primitives", "image/dav1d"]
+
+
+
+
+
+[dependencies]
+#local to package
+
+#workspace internal gloss
+# utils-rs.workspace=true
+
+#workspace third-party
+image.workspace=true
+png.workspace=true
+flate2.workspace=true
+bytemuck.workspace=true
+num-traits.workspace=true
+# smallvec.workspace=true
+# parking_lot.workspace=true
+# once_cell.workspace=true
+# log.workspace=true
+# ahash.workspace=true
+# nohash-hasher.workspace=true
+# itertools.workspace=true
+# atomic.workspace=true
+
+#optional dependencies from image-rs
+#KEEP IN SYNC to the image-rs version
+# gif = { version = "0.13", optional = true }
+# jpeg = { package = "jpeg-decoder", version = "0.3.0", default-features = false, optional = true }
+# png = { version = "0.17.6", optional = true }
+# tiff = { version = "0.9.0", optional = true }
+# ravif = { version = "0.11.0", optional = true }
+# rgb = { version = "0.8.25", optional = true }
+# mp4parse = { version = "0.17.0", optional = true }
+# dav1d = { version = "0.10.2", optional = true }
+# dcv-color-primitives = { version = "0.6.1", optional = true }
+# color_quant = "1.1"
+# exr = { version = "1.5.0", optional = true }
+# qoi = { version = "0.4", optional = true }
+# libwebp = { package = "webp", version = "0.2.2", default-features = false, optional = true }
+# rayon = { version = "1.7.0", optional = true }
+
+
+
+
+[lints]
+workspace = true

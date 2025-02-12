@@ -1,0 +1,21 @@
+[package]
+name = "hecs-macros"
+version.workspace = true
+description = "Procedural macro definitions for hecs"
+authors = ["Benjamin Saunders <ben.e.saunders@gmail.com>"]
+edition.workspace = true
+license = "Apache-2.0"
+doctest = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0", default-features = false, features = ["proc-macro", "parsing", "printing", "derive", "clone-impls", "visit-mut"] }
+quote = "1.0.3"
+proc-macro2 = "1.0.1"
+
+[dev-dependencies]
+# Remarkably, this isn't a circular dependency. Test crates coexist
+# with regular crates, even in unit tests!
+gloss-hecs = { features = ["macros"], path = "../" }

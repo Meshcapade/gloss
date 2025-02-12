@@ -1,0 +1,102 @@
+# These are the default config values, which will be used if its not been overriden 
+# =====================================================================
+[core]
+# =====================================================================
+enable_gui = true
+gui_start_hidden = false
+auto_add_floor = true
+floor_type = "solid" # solid or grid
+floor_scale = "auto"
+floor_origin = [0,0,0]
+floor_texture = "none" # Can be none or checkerboard
+floor_uv_scale = "auto"
+floor_grid_line_width = 3.0
+canvas_id = "auto"
+auto_create_logger = false # We don't setup a logger since Gloss is used as a library. If you want to setup logger call gloss_setup_logger()
+# auto_create_logger = true # by default we create a logger using env_logger. However if you want to use gloss as a library and want to use your own logger, you can disable this
+# log levels in order of verbosity: "off", "error", "warn", "info", "debug", "trace"
+log_level = "info" 
+# caps the verbosity at a per-crate level. The verbosity of each crate will be the least verbose between the corresponding `cap` and the global `log_level`
+log_level_caps = { wgpu = "warn", winit = "warn", naga="warn" }
+enable_memory_profiling_callstacks= true
+
+# =====================================================================
+[render]
+# =====================================================================
+ambient_factor = 0.25
+environment_factor = 1.0
+bg_color = [0.05, 0.05, 0.05, 1.0]
+enable_distance_fade = true
+distance_fade_center = "auto" # #can be either array like [1.0, 3.0, 0.3] or "auto"
+distance_fade_start = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+distance_fade_end = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+apply_lighting = true
+saturation = 1.0 
+gamma = 1.0
+exposure = 0.0
+shadow_filter_method= "castano13" #options are hardware2x2, castano13. Hardware2x2 is fast but looks blocky. Castano13 is slower but shows smooth shadows
+msaa_nr_samples = 4 #can specify a number or it will automatically choose one for you depending on the window scale factor
+preallocated_staging_buffer_bytes = 0 #used for a slower transfer of texture from CPU->GPU but potentially uses less memory than wgpu staging buffers since we reuse the same staging buffer, only used when `ImgConfig.fast_upload=false`
+offscreen_color_float_tex = false #usually the offscreen is RGBA8Unorm but setting this to true will render into a RGBA32F 
+
+# =====================================================================
+[scene]
+# =====================================================================
+[scene.cam]
+position = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+lookat = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+fovy = 0.7 #radians
+near =  "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+far =  "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+limit_max_dist = "auto"
+limit_max_vertical_angle = "auto"
+limit_min_vertical_angle = "auto"
+
+
+# =====================================================================
+# 3 Light sources
+# =====================================================================
+[[scene.lights]]
+position = "auto" #can be either array like [1.0, 3.0, 0.3] or "auto" which means it will depend on the scale of the scene
+lookat = "auto" #can be either array like [1.0, 3.0, 0.3] or "auto" which means it will depend on the scale of the scene
+fovy= 0.7 #radians
+near= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+far= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+color= [1.0, 1.0, 1.0]
+intensity= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+range= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+radius= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+shadow_res= 2048 #can be set to 0 to diable shadow
+shadow_bias_fixed= 0.1
+shadow_bias= 0.4
+shadow_bias_normal= 5.0
+
+[[scene.lights]]
+position = "auto" #can be either array like [1.0, 3.0, 0.3] or "auto" which means it will depend on the scale of the scene
+lookat = "auto" #can be either array like [1.0, 3.0, 0.3] or "auto" which means it will depend on the scale of the scene
+fovy= 0.7 #radians
+near= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+far= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+color= [0.9, 1.0, 0.9]
+intensity= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+range= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+radius= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+shadow_res= 2048 #can be set to 0 to diable shadow
+shadow_bias_fixed= 0.1
+shadow_bias= 0.4
+shadow_bias_normal= 5.0
+
+[[scene.lights]]
+position = "auto" #can be either array like [1.0, 3.0, 0.3] or "auto" which means it will depend on the scale of the scene
+lookat = "auto" #can be either array like [1.0, 3.0, 0.3] or "auto" which means it will depend on the scale of the scene
+fovy= 0.7 #radians
+near= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+far= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+color= [0.8, 0.9, 1.0]
+intensity= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+range= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+radius= "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+shadow_res= 2048 #can be set to 0 to diable shadow
+shadow_bias_fixed= 0.1
+shadow_bias= 0.4
+shadow_bias_normal= 5.0

@@ -1,0 +1,9 @@
+[alias]
+#'cargo gloss' is a shorthand for running the rust viewer in native 
+gloss = "run --package gloss_renderer --"
+
+#'cargo gloss-web' is a shorthand for running the rust viewer in native 
+# run-wasm = "run --release --bin gloss_wasm -- --package gloss_wasm"
+# gloss-web = "run --release --package gloss_wasm --bin gloss_renderer --"
+run-wasm = "run --release --package gloss_wasm --"
+
