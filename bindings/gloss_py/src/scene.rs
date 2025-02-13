@@ -64,4 +64,6 @@ impl PyScene {
         });
         result
     }
+    //TODO add a remove_resource
+    //TODO more todo
 }
