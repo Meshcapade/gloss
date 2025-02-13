@@ -1,6 +1,6 @@
 # Gloss 
 
-Gloss is a light-weight, Rust + wgpu-based renderer designed for rendering realistic appearances of human characters. 
+Gloss is a light-weight Physically-based Renderer, written in Rust + wgpu
 
 The main functionality includes loading meshes with high-resolution textures, rendering them with advanced graphics features, and allowing a general framework to explore new rendering techniques.
 Gloss also compiles for Python and Web, allowing for rendering in multiple different environments.

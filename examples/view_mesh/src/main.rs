@@ -18,7 +18,7 @@ async fn create_test_scene(viewer: &mut Viewer) {
     let path_mesh = "./data/bust.obj";
     let path_diffuse = "./data/bust_alb.jpg";
     let path_normal = "./data/bust_nrm.png";
-    let name = "SmplX_Avatar";
+    let name = "default_mesh";
 
     viewer
         .scene
