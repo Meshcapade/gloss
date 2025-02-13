@@ -64,4 +64,10 @@ impl PyScene {
         });
         result
     }
+    #[pyo3(text_signature = "($self, cls: Type[T]) -> T")]
+    pub fn remove_resource(slf: PyRefMut<'_, Self>, cls: &Bound<'_, PyType>) {
+        let entity = slf.get_entity_resource();
+        let args = (entity.to_bits().get(), slf.obj_ptr as u64);
+        let _ = cls.call_method("remove", args, None).unwrap();
+    }
 }

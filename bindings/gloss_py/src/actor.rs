@@ -88,6 +88,15 @@ impl PyActorMut {
         result
     }
 
+    #[pyo3(text_signature = "($self, cls: Type[T]) -> bool")]
+    pub fn remove(slf: PyRefMut<'_, Self>, cls: &Bound<'_, PyType>) {
+        //ideally we would use a function that takes PyEntityMut as parameter. However,
+        // PyEntityMut cannot be shared between multiple crates due to this: https://github.com/PyO3/pyo3/issues/1444
+        // therefore we pass around just the raw data for the entity and the scene_ptr
+        let args = (slf.actor.entity.to_bits().get(), slf.scene_ptr as u64);
+        let _ = cls.call_method("remove", args, None).unwrap();
+    }
+
     #[pyo3(text_signature = "($self) -> int")]
     pub fn entity(slf: PyRefMut<'_, Self>) -> u64 {
         slf.actor.entity.to_bits().get()

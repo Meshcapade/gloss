@@ -72,6 +72,14 @@ pub fn pycomponent_derive(input: TokenStream) -> TokenStream {
                 let scene: &mut Scene = unsafe { &mut *scene_ptr };
                 scene.world.has::<#first_field_ty>(entity).unwrap()
             }
+            #[staticmethod]
+            pub fn remove(entity_bits: u64, scene_ptr_idx: u64) {
+                let entity = Entity::from_bits(entity_bits).unwrap();
+                //TODO this is super brittle because if the scene obj is ever compiled differently in gloss, any plugin that depends on derefering it will fail because the Scene object will have different size
+                let scene_ptr = scene_ptr_idx as *mut Scene;
+                let scene: &mut Scene = unsafe { &mut *scene_ptr };
+                scene.world.remove_one::<#first_field_ty>(entity).ok(); //don't unwrap because we don't care if the component exists or not
+            }
         }
     };
     gen.into()
