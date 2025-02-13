@@ -82,7 +82,7 @@ winapi = "0.3.9"
 # [target.'cfg(not(target_env = "msvc"))'.dependencies]
 # tikv-jemallocator ={ workspace = true, optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-abi_stable = "0.11.3"
+abi_stable.workspace=true
 
 
 # more dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web

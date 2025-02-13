@@ -100,6 +100,13 @@ pub mod std_types {
             self.into_option().unwrap()
         }
         #[inline]
+        pub fn unwrap_or(self, def: T) -> T {
+            match self {
+                RSome(x) => x,
+                RNone => def,
+            }
+        }
+        #[inline]
         pub fn map<U, F>(self, f: F) -> ROption<U>
         where
             F: FnOnce(T) -> U,
@@ -111,10 +118,25 @@ pub mod std_types {
         }
     }
 
-    /// The default value is `RNone`.
     impl<T> Default for ROption<T> {
         fn default() -> Self {
             RNone
+        }
+    }
+    impl<T> From<Option<T>> for ROption<T> {
+        fn from(opt: Option<T>) -> Self {
+            match opt {
+                Some(v) => RSome(v),
+                None => RNone,
+            }
+        }
+    }
+    impl<T> Into<Option<T>> for ROption<T> {
+        fn into(self) -> Option<T> {
+            match self {
+                RSome(v) => Some(v),
+                RNone => None,
+            }
         }
     }
 }
