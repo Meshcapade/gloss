@@ -20,6 +20,7 @@ use crate::{
 };
 
 use easy_wgpu::gpu::Gpu;
+use easy_wgpu::texture::Texture;
 #[cfg(feature = "with-gui")]
 use egui_winit::EventResponse;
 use log::{debug, warn};
@@ -1240,6 +1241,16 @@ impl Viewer {
         let window = event_loop.create_window(window_attributes)?;
 
         Ok(window)
+    }
+
+    pub fn get_final_tex(&self) -> &Texture {
+        let tex = self.gpu_res.as_ref().unwrap().renderer.rendered_tex();
+        tex
+    }
+
+    pub fn get_final_depth(&self) -> &Texture {
+        let depth = self.gpu_res.as_ref().unwrap().renderer.depth_buffer();
+        depth
     }
 }
 

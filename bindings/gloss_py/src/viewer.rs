@@ -1,11 +1,13 @@
 #![allow(clippy::new_without_default)]
 
-use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, plugin::PyPluginList, queue::PyQueue, scene::PyScene};
+use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, plugin::PyPluginList, queue::PyQueue, scene::PyScene, texture::PyTexture};
 
 use gloss_renderer::{camera::Camera, config::Config, plugin_manager::Plugins, scene::Scene, viewer::Viewer};
 
 #[cfg(not(target_arch = "wasm32"))]
 use ctrlc;
+use easy_wgpu::texture::Texture;
+use numpy::PyUntypedArray;
 use pyo3::prelude::*;
 use wgpu;
 
@@ -80,6 +82,30 @@ impl PyViewer {
     pub fn render_next_frame(&mut self) {
         self.start_frame();
         self.update();
+    }
+    #[pyo3(text_signature = "($self, path: str) -> None")]
+    pub fn save_last_render(&mut self, path: &str) {
+        let mut last_render = self.get_final_tex();
+        last_render.save_to_file(&self.get_device(), &self.get_queue(), path);
+    }
+    // #[pyo3(text_signature = "($self, camera: Camera) -> None")]
+    // pub fn render_from_cam(&mut self, cam: &mut PyCamera) {
+    //     self.0.render_from_cam(cam);
+    // }
+    #[pyo3(text_signature = "($self) -> Texture")]
+    pub fn get_final_tex(&mut self) -> PyTexture {
+        let ptr: *const Texture = self.0.get_final_tex();
+        PyTexture::new(ptr)
+    }
+    #[pyo3(text_signature = "($self) -> Texture")]
+    pub fn get_final_depth(&mut self) -> PyTexture {
+        let ptr: *const Texture = self.0.get_final_depth();
+        PyTexture::new(ptr)
+    }
+    #[pyo3(text_signature = "($self) -> NDArray[np.float32]")]
+    pub fn get_linearised_depth(&mut self) -> Py<PyUntypedArray> {
+        let (znear, zfar) = self.0.camera.near_far(&mut self.0.scene);
+        self.get_final_depth().depth_linearize(&self.get_device(), &self.get_queue(), znear, zfar)
     }
     #[pyo3(text_signature = "($self) -> PluginList")]
     pub fn get_plugin_list(&mut self) -> PyPluginList {
