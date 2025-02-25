@@ -512,6 +512,12 @@ impl Viewer {
         let _ = self.render();
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn update_offscreen_texture(&mut self) {
+        self.event_loop_one_iter();
+        let _ = self.render_to_texture();
+    }
+
     /// Processes a custom event that we defined. If it matches one of the
     /// events, returns true
     fn process_custom_resize_events(&mut self, event: &Event<CustomEvent>) -> bool {
@@ -1045,6 +1051,65 @@ impl Viewer {
         Ok(())
     }
 
+    /// # Panics
+    /// Will panic if the `gpu_resources` have not been created
+    /// # Errors
+    /// Will return error if the surface texture cannot be adquired
+    pub fn render_to_texture(&mut self) -> Result<(), wgpu::SurfaceError> {
+        if !self.runner.frame_is_started {
+            error!("The frame was not started so this might contain stale dt. Please use viewer.start_frame() before doing a v.render_to_texture()");
+        }
+
+        //we actually take the init time as being the fist time we render, otherwise
+        // the init time would be higher since some other processing might happen
+        // between creating the viewer and actually rendering with it
+        if self.runner.first_time {
+            self.runner.time_init = Instant::now();
+        }
+
+        let gpu_res = self.gpu_res.as_mut().unwrap();
+        self.plugins.run_logic_systems(gpu_res, &mut self.scene, &mut self.runner, true);
+
+        //get surface texture (which can fail and return an SurfaceError)
+        // let output = gpu_res.surface.get_current_texture()?;
+        let out_tex = gpu_res.renderer.rendered_tex();
+        let out_width = out_tex.width();
+        let out_height = out_tex.height();
+
+        //render to_texture of the size of the surface
+        let dt = self.runner.dt();
+
+        self.camera.on_window_resize(out_width, out_height, &mut self.scene);
+
+        //TODO return the textured final so we can just plug it into blit pass without
+        // doing renderer.rendered_tex
+        gpu_res
+            .renderer
+            .render_to_texture(&gpu_res.gpu, &mut self.camera, &mut self.scene, &mut self.config, dt);
+
+        //render gui
+        //TODO pass the whole renderer and the scene so we can do gui stuff on them
+        #[cfg(feature = "with-gui")]
+        if let Some(ref mut gui) = gpu_res.gui {
+            let out_view = &gpu_res.renderer.rendered_tex().view;
+            gui.render(
+                &gpu_res.window,
+                &gpu_res.gpu,
+                &gpu_res.renderer,
+                &self.runner,
+                &mut self.scene,
+                &self.plugins,
+                &mut self.config,
+                out_view,
+            );
+        }
+
+        self.runner.first_time = false;
+        self.runner.frame_is_started = false;
+
+        Ok(())
+    }
+
     /// Runs the rendering loop automatically. This function does not return as
     /// it will take full control of the loop. If you need to still have control
     /// over the loop use [`Viewer::update`]
@@ -1241,6 +1306,10 @@ impl Viewer {
         let window = event_loop.create_window(window_attributes)?;
 
         Ok(window)
+    }
+
+    pub fn override_dt(&mut self, new_dt: f32) {
+        self.runner.override_dt(new_dt);
     }
 
     pub fn get_final_tex(&self) -> &Texture {

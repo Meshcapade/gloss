@@ -852,9 +852,18 @@ impl Texture {
             let h = self.height();
             match self.texture.format() {
                 TextureFormat::Rgba8Unorm => ImageBuffer::from_raw(w, h, data_unpadded.to_vec()).map(DynImage::ImageRgba8),
+                TextureFormat::Bgra8Unorm => {
+                    let bgra_data = data_unpadded.to_vec();
+                    // Convert BGRA to RGBA by swapping channels
+                    let mut rgba_data = bgra_data.clone();
+                    for chunk in rgba_data.chunks_exact_mut(4) {
+                        chunk.swap(0, 2); // Swap B and R
+                    }
+                    ImageBuffer::from_raw(w, h, rgba_data).map(DynImage::ImageRgba8)
+                }
                 TextureFormat::Rgba32Float => ImageBuffer::from_raw(w, h, numerical::u8_to_f32_vec(&data_unpadded)).map(DynImage::ImageRgba32F),
                 TextureFormat::Depth32Float => ImageBuffer::from_raw(w, h, numerical::u8_to_f32_vec(&data_unpadded)).map(DynImage::ImageLuma32F),
-                _ => panic!("Texture format not implemented!"),
+                x => panic!("Texture format not implemented! {x:?}"),
             }
         };
         output_buffer.unmap();

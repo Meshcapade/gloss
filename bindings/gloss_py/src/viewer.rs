@@ -43,9 +43,17 @@ impl PyViewer {
         let dt = self.0.start_frame();
         dt.as_secs_f32()
     }
+    #[pyo3(text_signature = "($self, new_dt: f32)")]
+    pub fn override_dt(&mut self, new_dt: f32) {
+        self.0.runner.override_dt(new_dt);
+    }
     #[pyo3(text_signature = "($self) -> None")]
     pub fn update(&mut self) {
         self.0.update();
+    }
+    #[pyo3(text_signature = "($self) -> None")]
+    pub fn update_offscreen_texture(&mut self) {
+        self.0.update_offscreen_texture();
     }
     #[pyo3(text_signature = "($self) -> None")]
     pub fn run(&mut self) {
