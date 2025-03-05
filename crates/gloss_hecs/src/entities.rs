@@ -13,9 +13,9 @@ use std::error::Error;
 #[allow(unused_imports)]
 use std::vec::Vec;
 
-use utils_rs::abi_stable_aliases::std_types::RVec;
+use gloss_utils::abi_stable_aliases::std_types::RVec;
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 /// Lightweight unique ID, or handle, of an entity
 ///

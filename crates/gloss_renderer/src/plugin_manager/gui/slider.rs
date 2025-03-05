@@ -1,9 +1,9 @@
 use crate::scene::Scene;
 
 use gloss_hecs::Entity;
-use utils_rs::abi_stable_aliases::std_types::{ROption, RString};
+use gloss_utils::abi_stable_aliases::std_types::{ROption, RString};
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 #[repr(C)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(StableAbi))]

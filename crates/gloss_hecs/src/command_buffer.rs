@@ -24,10 +24,10 @@ use crate::{
     layout::Layout,
     Bundle, Component, DynamicBundle, Entity, World,
 };
-use utils_rs::abi_stable_aliases::std_types::{ROption, ROption::RNone, ROption::RSome, RVec};
+use gloss_utils::abi_stable_aliases::std_types::{ROption, ROption::RNone, ROption::RSome, RVec};
 
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 /// Records operations for future application to a [`World`]
 ///

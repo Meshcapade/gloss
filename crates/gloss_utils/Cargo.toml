@@ -1,0 +1,58 @@
+[package]
+name = "gloss-utils"
+authors.workspace = true
+description = "Small library for utility function"
+edition.workspace = true
+publish = false
+rust-version.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+# default = ["log_with_time"]
+default = []
+log_with_time =[]
+
+[dependencies]
+#local to package
+strum = "0.25"
+strum_macros = "0.25"
+
+#workspace internal gloss
+
+#workspace third-party
+log.workspace=true
+env_logger.workspace=true
+nalgebra.workspace=true
+config.workspace=true
+serde.workspace=true
+toml.workspace=true
+bytemuck.workspace=true
+image.workspace=true
+wgpu.workspace=true
+burn.workspace=true
+async-trait.workspace=true
+pollster.workspace=true
+ndarray.workspace=true
+num-traits = "^0.2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+abi_stable.workspace=true
+
+#more dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+abi_stable_dummy_derive = { path = "macros", version = "0.5.0" }
+console_error_panic_hook.workspace=true
+console_log.workspace=true
+wasm-bindgen.workspace=true
+wasm-bindgen-futures.workspace=true
+web-sys.workspace=true
+js-sys.workspace=true
+# paste = "1.0"
+
+[lints]
+workspace = true
+
+
+

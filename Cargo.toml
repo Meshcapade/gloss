@@ -23,8 +23,7 @@ features = ["doc"]
 gloss-renderer = { path = "crates/gloss_renderer", version = "=0.5.0" }
 gloss = { path = "crates/gloss", version = "=0.5.0"}
 easy-wgpu = { path = "crates/easy_wgpu", version = "=0.5.0"}
-utils-rs = { path = "crates/utils_rs", version = "=0.5.0"}
-# gloss-memory = { path = "crates/gloss_memory", version = "=0.5.0"}
+gloss-utils = { path = "crates/gloss_utils", version = "=0.5.0"}
 gloss-img = { path = "crates/gloss_img", version = "=0.5.0"}
 gloss-hecs = { path = "crates/gloss_hecs", version = "0.5.0", features = ["macros"]}
 
@@ -35,7 +34,7 @@ cfg-if = "1"
 anyhow = "1.0"
 bytemuck = { version = "1.12", features = [ "derive" ] }
 env_logger = "0.10"
-log = "0.4"
+log = {version = "0.4", features = ["std"]}
 pollster = "0.3"
 ash = "0.37"
 libc = "0.2"

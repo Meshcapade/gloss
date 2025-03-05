@@ -15,7 +15,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 use identity_hash::IdentityHasher;
 use std::any::TypeId;

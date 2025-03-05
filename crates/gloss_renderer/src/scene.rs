@@ -15,11 +15,11 @@ use crate::{
     geom::Geom,
     light::Light,
 };
-use nalgebra as na;
-use utils_rs::abi_stable_aliases::std_types::{RHashMap, RString};
+use gloss_utils::abi_stable_aliases::std_types::{RHashMap, RString};
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
-use utils_rs::tensor::{DynamicMatrixOps, DynamicTensorOps};
+use gloss_utils::abi_stable_aliases::StableAbi;
+use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorOps};
+use nalgebra as na;
 
 pub static GLOSS_FLOOR_NAME: &str = "floor";
 pub static GLOSS_CAM_NAME: &str = "gloss_camera";

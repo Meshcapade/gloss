@@ -6,13 +6,13 @@ extern crate nalgebra as na;
 // use burn::backend::candle::CandleDevice;
 // use burn::backend::Candle;
 use gloss_img::DynImage;
-use image::ImageReader;
-use na::DMatrix;
-use std::io::{BufReader, Cursor, Read, Seek};
-use utils_rs::{
+use gloss_utils::{
     io::FileLoader,
     tensor::{DynamicTensorFloat2D, DynamicTensorInt2D},
 };
+use image::ImageReader;
+use na::DMatrix;
+use std::io::{BufReader, Cursor, Read, Seek};
 // use burn::backend::{Candle, NdArray, Wgpu};
 
 /// Component that modifications to the config

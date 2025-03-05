@@ -7,7 +7,7 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 /// A bit mask used to signal the `AtomicBorrow` has an active mutable borrow.
 const UNIQUE_BIT: usize = !(usize::MAX >> 1);

@@ -1146,13 +1146,13 @@ dependencies = [
  "futures",
  "futures-intrusive",
  "gloss-img",
+ "gloss-utils",
  "image",
  "log",
  "pollster",
  "smallvec",
  "thiserror",
  "type-map",
- "utils-rs",
  "wgpu",
 ]
 
@@ -1809,7 +1809,7 @@ dependencies = [
  "easy-wgpu",
  "gloss-img",
  "gloss-renderer",
- "utils-rs",
+ "gloss-utils",
 ]
 
 [[package]]
@@ -1818,6 +1818,7 @@ version = "0.5.0"
 dependencies = [
  "abi_stable",
  "bencher",
+ "gloss-utils",
  "hashbrown 0.13.2",
  "hecs-macros",
  "identity-hash",
@@ -1828,7 +1829,6 @@ dependencies = [
  "serde_test",
  "spin",
  "trybuild",
- "utils-rs",
 ]
 
 [[package]]
@@ -1863,6 +1863,7 @@ dependencies = [
  "epaint",
  "gloss-hecs",
  "gloss-img",
+ "gloss-utils",
  "gloss_renderer_macros",
  "image",
  "include-wgsl-oil",
@@ -1885,15 +1886,43 @@ dependencies = [
  "tobj",
  "toml",
  "transform-gizmo",
- "utils-rs",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-log",
  "wasm-timer",
  "web-sys",
  "wgpu",
  "winapi",
  "winit",
+]
+
+[[package]]
+name = "gloss-utils"
+version = "0.5.0"
+dependencies = [
+ "abi_stable",
+ "abi_stable_dummy_derive",
+ "async-trait",
+ "burn",
+ "bytemuck",
+ "config",
+ "console_error_panic_hook",
+ "console_log",
+ "env_logger",
+ "image",
+ "js-sys",
+ "log",
+ "nalgebra",
+ "ndarray",
+ "num-traits",
+ "pollster",
+ "serde",
+ "strum",
+ "strum_macros",
+ "toml",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
 ]
 
 [[package]]
@@ -1920,6 +1949,7 @@ dependencies = [
  "gloss-hecs",
  "gloss-img",
  "gloss-renderer",
+ "gloss-utils",
  "gloss_py_macros",
  "image",
  "log",
@@ -1929,7 +1959,6 @@ dependencies = [
  "numpy",
  "pollster",
  "pyo3",
- "utils-rs",
  "wgpu",
 ]
 
@@ -4358,36 +4387,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7de7d73e1754487cb58364ee906a499937a0dfabd86bcb980fa99ec8c8fa2ce"
 
 [[package]]
-name = "utils-rs"
-version = "0.5.0"
-dependencies = [
- "abi_stable",
- "abi_stable_dummy_derive",
- "async-trait",
- "burn",
- "bytemuck",
- "config",
- "console_error_panic_hook",
- "console_log",
- "env_logger",
- "image",
- "js-sys",
- "log",
- "nalgebra",
- "ndarray",
- "num-traits",
- "pollster",
- "serde",
- "strum",
- "strum_macros",
- "toml",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
-]
-
-[[package]]
 name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4487,17 +4486,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a05d73b933a847d6cccdda8f838a22ff101ad9bf93e33684f39c1f5f0eece3d"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "wasm-log"
-version = "0.3.1"
-source = "git+https://github.com/RaduAlexandru/wasm-log.git#b1037ae3f14e545c329113bb91b227757e7fd11e"
-dependencies = [
- "env_logger",
- "log",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]

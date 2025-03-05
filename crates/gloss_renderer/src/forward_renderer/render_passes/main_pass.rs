@@ -46,7 +46,7 @@ impl MainPass {
         self.begin_pass();
 
         //tonemap bg color
-        let aces = utils_rs::tonemap::AcesFitted::new();
+        let aces = gloss_utils::tonemap::AcesFitted::new();
         let bg_color_vec = render_params.bg_color.fixed_rows::<3>(0).clone_owned();
         let bg_color_tonemapped = aces.tonemap(&bg_color_vec);
         let bg_color_tonemapped_gamma = na::Vector3::from_iterator(bg_color_tonemapped.iter().map(|x| x.powf(1.0 / 2.2)));

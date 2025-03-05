@@ -6,7 +6,7 @@ use crate::{
     geom::Geom,
     scene::Scene,
 };
-use utils_rs::tensor::{DynamicMatrixOps, DynamicTensorFloat2D};
+use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D};
 
 /// Contains a reference to an entity in the world so that any mesh processing
 /// will directly affect the relevant entity in the world.

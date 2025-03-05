@@ -10,7 +10,7 @@ use crate::alignment::Alignment;
 use std::{cmp, error::Error, fmt, mem};
 
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 // While this function is used in one place and its implementation
 // could be inlined, the previous attempts to do so made rustc

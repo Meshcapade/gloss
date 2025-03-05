@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use gloss_renderer::{config::LogLevel, logger::LogLevelCaps};
+use gloss_utils::convert_enum_from;
 use pyo3::prelude::*;
-use utils_rs::convert_enum_from;
 
 #[pyclass(name = "LogLevel", module = "gloss.log", unsendable, eq, eq_int)]
 #[derive(Debug, Clone, Copy, PartialEq)]

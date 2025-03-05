@@ -76,7 +76,7 @@ qoi = ["image/qoi"]
 #local to package
 
 #workspace internal gloss
-# utils-rs.workspace=true
+# gloss-utils.workspace=true
 
 #workspace third-party
 image.workspace=true

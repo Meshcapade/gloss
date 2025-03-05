@@ -19,7 +19,7 @@ use crate::{
 use crate::stabletypeid::StableTypeId;
 use core::ptr::{self, NonNull};
 
-use utils_rs::abi_stable_aliases::std_types::{map::REntry, RHashMap};
+use gloss_utils::abi_stable_aliases::std_types::{map::REntry, RHashMap};
 
 use crate::{
     align,

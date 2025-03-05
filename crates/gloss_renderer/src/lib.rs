@@ -6,9 +6,9 @@
 #[macro_use]
 extern crate static_assertions;
 
+use gloss_utils::string::float2string;
 use log::log;
 use re_memory::{AccountingAllocator, MemoryUse};
-use utils_rs::string::float2string;
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> = AccountingAllocator::new(std::alloc::System);

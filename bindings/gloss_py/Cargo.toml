@@ -44,7 +44,7 @@ gloss_py_macros = { path = "macros"}
 #workspace internal gloss
 gloss-renderer.workspace=true
 easy-wgpu.workspace=true
-utils-rs.workspace=true
+gloss-utils.workspace=true
 gloss-img.workspace=true
 
 # workspace third-party

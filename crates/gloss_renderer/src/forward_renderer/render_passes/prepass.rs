@@ -15,11 +15,11 @@ use easy_wgpu::{
     texture::{TexParams, Texture},
 };
 use gloss_hecs::{Changed, CommandBuffer, Entity};
-use log::{debug, warn};
-use utils_rs::{
+use gloss_utils::{
     bshare::{ToBurn, ToNalgebraFloat, ToNalgebraInt},
     tensor::{DynamicTensorFloat2D, DynamicTensorInt2D, DynamicTensorOps},
 };
+use log::{debug, warn};
 /// Makes sure that the meshes are all with with correct components. Add model
 /// matrices to the ones that will be rendered and dummy textures so that we can
 /// use the same pipeline for all of them

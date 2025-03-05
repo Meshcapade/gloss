@@ -15,7 +15,7 @@ use easy_wgpu::{
     bind_group_layout::{BindGroupLayoutBuilder, BindGroupLayoutDesc},
     buffer::Buffer,
 };
-// use utils_rs::log;
+// use gloss_utils::log;
 
 use easy_wgpu::{
     gpu::Gpu,
@@ -32,7 +32,7 @@ use easy_wgpu::pipeline::RenderPipelineDescBuilder;
 use super::upload_pass::MAX_NUM_SHADOWS;
 use encase;
 
-use utils_rs::numerical::align;
+use gloss_utils::numerical::align;
 
 //shaders
 #[include_wgsl_oil::include_wgsl_oil("../../../shaders/gbuffer_mesh_vert.wgsl")]

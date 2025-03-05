@@ -8,7 +8,7 @@
 //! - [`gloss_renderer`](crate::gloss_renderer) - The core renderer and viewer
 //! - [`gloss_img`](crate::gloss_img) - Image-related functionality.
 //! - [`easy_wgpu`](crate::easy_wgpu) - Abstractions for wgpu.
-//! - [`utils_rs`](crate::utils_rs) - Utility functions and helpers.
+//! - [`gloss_utils`](crate::gloss_utils) - Utility functions and helpers.
 //!
 //! ## Examples
 //! Below are the examples you can explore in the `examples/` folder of the
@@ -28,4 +28,4 @@
 pub use easy_wgpu;
 pub use gloss_img;
 pub use gloss_renderer;
-pub use utils_rs;
+pub use gloss_utils;

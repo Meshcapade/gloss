@@ -13,8 +13,8 @@ use core::{
     convert::TryFrom,
     hash::{BuildHasherDefault, Hasher},
 };
+use gloss_utils::abi_stable_aliases::std_types::map::REntry;
 use spin::Mutex;
-use utils_rs::abi_stable_aliases::std_types::map::REntry;
 // use std::println;
 
 use core::{fmt, ptr};
@@ -30,11 +30,11 @@ use crate::{
     Bundle, ColumnBatch, ComponentRef, DynamicBundle, Entity, EntityRef, Fetch, MissingComponent, NoSuchEntity, Query, QueryBorrow, QueryItem,
     QueryMut, QueryOne, TakenEntity,
 };
-use utils_rs::abi_stable_aliases::std_types::{RHashMap, RVec, Tuple2};
+use gloss_utils::abi_stable_aliases::std_types::{RHashMap, RVec, Tuple2};
 #[cfg(target_arch = "wasm32")]
-use utils_rs::abi_stable_aliases::FromSliceExt;
+use gloss_utils::abi_stable_aliases::FromSliceExt;
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 /// An unordered collection of entities, each having any number of distinctly
 /// typed components

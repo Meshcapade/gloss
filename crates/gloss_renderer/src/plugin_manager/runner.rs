@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use crate::{viewer::Runner, viewer_headless::RunnerHeadless};
 
-use utils_rs::abi_stable_aliases::std_types::RDuration;
+use gloss_utils::abi_stable_aliases::std_types::RDuration;
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 //The runner in the viewer contains event loop and other things that cannot
 // cross the ffi barrier. So we make a new one that is slimmer

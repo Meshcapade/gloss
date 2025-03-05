@@ -1,12 +1,12 @@
 use crate::{components::model_matrix::PyModelMatrix, entity_builder::PyEntityBuilder, img::PyDynImage};
 use gloss_py_macros::DirectDeref;
 use gloss_renderer::geom::{Geom, IndirRemovalPolicy, SplatType};
+use gloss_utils::convert_enum_from;
 use nalgebra as na;
 use numpy::{
     AllowTypeChange, PyArray1, PyArray2, PyArrayLike1, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods, ToPyArray,
 };
 use pyo3::prelude::*;
-use utils_rs::convert_enum_from;
 
 #[pyclass(name = "SplatType", module = "gloss.types", unsendable, eq, eq_int)]
 #[derive(Debug, Clone, Copy, PartialEq)]

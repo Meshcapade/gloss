@@ -1,0 +1,15 @@
+[package]
+name = "abi_stable_dummy_derive"
+authors.workspace = true
+edition.workspace = true
+publish = false
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }

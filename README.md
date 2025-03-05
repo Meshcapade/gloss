@@ -1,28 +1,30 @@
-# Gloss 
+<div align="center">
 
-Gloss is a light-weight Physically-based Renderer, written in Rust + wgpu
+# ✨ Gloss
 
-The main functionality includes loading meshes with high-resolution textures, rendering them with advanced graphics features, and allowing a general framework to explore new rendering techniques.
+**A light-weight Physically-based Renderer, made with Rust and wgpu**
+
+<!-- [![Crates.io](https://img.shields.io/crates/v/gloss.svg)](https://crates.io/crates/gloss)
+[![PyPI](https://img.shields.io/pypi/v/gloss-py.svg)](https://pypi.org/project/gloss-py/) -->
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/Meshcapade/gloss/LICENSE)
+
+Gloss is a light-weight Physically-based Renderer written in Rust and wgpu. The main functionality includes loading meshes with high-resolution textures, rendering them with advanced graphics features, and allowing a general framework to explore new rendering techniques.
 Gloss also compiles for Python and Web, allowing for rendering in multiple different environments.
 
-![Gloss Banner](imgs/banner.png)
+<img alt="Gloss Banner" src="imgs/banner.png">
 
+</div>
 
-<!-- ## Usage
-An example of a python3 script which shows a single mesh using the default viewing parameters:
+## Usage
+Below is an example of a python3 script which shows a single mesh using the default viewing parameters. More examples for the python bindings can be found in the `bindings/gloss_py/examples` folder.
 ```python
-    from gloss_py  import *
+import gloss
 
-    viewer=Viewer()
-    scene=viewer.get_scene()
-
-    mesh = scene.get_or_create_entity("test")
-    mesh.insert_builder(Geom.build_from_file("my_path/mesh.obj")) 
-
-    while True:
-        viewer.start_frame()
-        viewer.update() 
-``` -->
+viewer = gloss.Viewer()
+mesh = viewer.get_or_create_entity("mesh")
+mesh.insert_builder(gloss.geom.build_from_file("my/mesh.obj")) 
+viewer.run()
+```
 
 ## Installation
 The main dependency is installing Rust, as the rest of dependencies are handled by cargo. 
@@ -78,7 +80,6 @@ $ ./scripts/build_local.sh
 $ ./examples/empty.py
 ```
 
-
 ### Install Web
 ```sh
 $ cd gloss/examples/web
@@ -93,27 +94,11 @@ Finally, navigate to `http://0.0.0.0:8000/gloss_webpage/` in your browser of cho
 
 ## Examples
 
-Various examples can be found in the ./examples folder. A short description of each one is given here: 
+Various examples can be found in the `./examples` folder. A short description of each one is given here: 
 
 | Name  | Description |
 | ------------- | ------------- |
 | Mesh View | ![Mesh View](imgs/mesh_view.png) Visualizes a mesh with textures. <br /> Run with [cargo r --bin `gloss_view_mesh`](./examples/view_mesh) |
-
-
-
-## Misc 
-### Publish python 
-Check the readme in `gloss/bindings/gloss_py`.
-
-
-
-## Create documentation
-In the root of the gloss workspace:
-```sh
-$ cargo doc --no-deps --workspace
-```
-Afterwards, open `gloss/target/doc/gloss_renderer/index.html` in your browser.
-
 
 ## Planned features
 - `PyTorch` integration
@@ -144,4 +129,6 @@ Another solution might be: `conda install -c conda-forge libstdcxx-ng`
 * [Rerun](https://github.com/rerun-io/rerun)
 * [Bevy](https://github.com/bevyengine/bevy)
 * [HECS](https://github.com/Ralith/hecs)
+* [wasm-log](https://github.com/s1gtrap/wasm-log)
+* [Stall 2 mesh](https://www.sharetextures.com/models/building/stall_2)
 * [Bust of Róża Loewenfeld](https://sketchfab.com/3d-models/sculpture-bust-of-roza-loewenfeld-fc6e731a0131471ba8e45511c7ea9996)

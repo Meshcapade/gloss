@@ -12,9 +12,9 @@ use easy_wgpu::{
     pipeline::RenderPipelineDescBuilder,
 };
 use gloss_hecs::{Changed, CommandBuffer, Entity, Query, QueryBorrow};
+use gloss_utils::numerical::{align, align_usz};
 use log::debug;
 use std::collections::HashMap;
-use utils_rs::numerical::{align, align_usz};
 
 /// Shadow pass which renders depth maps for each of the lights. Only updates
 /// the depth map when the vertices on the gpu have changed.

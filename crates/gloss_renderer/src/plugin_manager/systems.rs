@@ -1,9 +1,9 @@
 use crate::scene::Scene;
 
 use gloss_hecs::Entity;
-use utils_rs::abi_stable_aliases::std_types::{RDuration, RNone, ROption, ROption::RSome, RString};
+use gloss_utils::abi_stable_aliases::std_types::{RDuration, RNone, ROption, ROption::RSome, RString};
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 use super::{gui::window::GuiWindow, plugins::Event, runner::RunnerState};
 

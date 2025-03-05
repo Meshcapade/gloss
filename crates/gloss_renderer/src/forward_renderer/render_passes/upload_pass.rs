@@ -23,12 +23,12 @@ use easy_wgpu::{
     mipmap::RenderMipmapGenerator,
     texture::Texture,
 };
-use utils_rs::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorOps};
+use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorOps};
 
 use gloss_hecs::{Changed, CommandBuffer, Component, Entity};
+use gloss_utils::numerical::{align, align_usz};
 use log::{debug, info, warn};
 use std::collections::HashMap;
-use utils_rs::numerical::{align, align_usz};
 use wgpu::util::DeviceExt;
 
 use encase;

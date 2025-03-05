@@ -1,6 +1,6 @@
-use utils_rs::abi_stable_aliases::std_types::{RString, RVec};
+use gloss_utils::abi_stable_aliases::std_types::{RString, RVec};
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 use super::widgets::Widgets;
 

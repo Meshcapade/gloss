@@ -1,9 +1,9 @@
 use gloss_hecs::Entity;
 use gloss_py_macros::PyComponent;
 use gloss_renderer::{components::Tangents, scene::Scene};
+use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D};
 use numpy::{PyArray2, PyReadonlyArray2, ToPyArray};
 use pyo3::prelude::*;
-use utils_rs::tensor::{DynamicMatrixOps, DynamicTensorFloat2D};
 
 #[pyclass(name = "Tangents", module = "gloss.components", unsendable)]
 // it has to be unsendable because it does not implement Send: https://pyo3.rs/v0.19.1/class#must-be-send

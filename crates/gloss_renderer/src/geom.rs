@@ -4,14 +4,15 @@
 use crate::components::{Colors, Edges};
 use gloss_hecs::EntityBuilder;
 use gloss_img::DynImage;
+use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorInt2D};
 use image::{GenericImageView, Pixel};
 use log::debug;
 use nalgebra_glm::{Vec2, Vec3};
-use utils_rs::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorInt2D};
 
 extern crate nalgebra as na;
 use crate::components::{Faces, ModelMatrix, Normals, UVs, Verts};
 use core::f32;
+use gloss_utils::io::FileType;
 use itertools::izip;
 #[allow(unused_imports)]
 use log::{error, info, warn};
@@ -19,7 +20,6 @@ use na::DMatrix;
 use obj_exporter::{Geometry, ObjSet, Object, Primitive, Shape, TVertex, Vertex};
 use std::{ops::AddAssign, path::Path};
 use tobj;
-use utils_rs::io::FileType;
 
 use ply_rs::{
     parser,
@@ -27,7 +27,7 @@ use ply_rs::{
 };
 
 use burn::tensor::{backend::Backend, Float, Int, Tensor};
-use utils_rs::tensor;
+use gloss_utils::tensor;
 
 #[derive(PartialEq)]
 pub enum PerVertexNormalsWeightingType {
@@ -441,7 +441,7 @@ impl Geom {
     #[allow(deprecated)]
     async fn build_from_obj_async(path: &Path) -> EntityBuilder {
         //WASM read
-        let mut file_wasm = utils_rs::io::FileLoader::open(path.to_str().unwrap()).await;
+        let mut file_wasm = gloss_utils::io::FileLoader::open(path.to_str().unwrap()).await;
         let (models, _) = tobj::load_obj_buf_async(&mut file_wasm, &tobj::GPU_LOAD_OPTIONS, move |p| async move {
             match p.as_str() {
                 _ => unreachable!(),

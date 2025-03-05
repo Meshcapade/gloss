@@ -5,7 +5,7 @@ use std::convert::{TryFrom, TryInto};
 use std::{cmp, fmt, hash, mem, num::NonZeroUsize};
 
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 /// A type storing a `usize` which is a power of two, and thus
 /// represents a possible alignment in the rust abstract machine.

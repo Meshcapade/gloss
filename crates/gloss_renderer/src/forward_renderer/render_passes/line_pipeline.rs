@@ -21,7 +21,7 @@ use gloss_hecs::Entity;
 use super::{pipeline_runner::PipelineRunner, upload_pass::PerFrameUniforms};
 
 use encase;
-use utils_rs::numerical::align;
+use gloss_utils::numerical::align;
 
 //shaders
 #[include_wgsl_oil::include_wgsl_oil("../../../shaders/line_instanced.wgsl")]

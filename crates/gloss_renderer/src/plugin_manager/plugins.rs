@@ -11,9 +11,9 @@ use crate::{
     viewer_headless::RunnerHeadless,
 };
 
-use utils_rs::abi_stable_aliases::std_types::{RDuration, RString, RVec, Tuple2};
+use gloss_utils::abi_stable_aliases::std_types::{RDuration, RString, RVec, Tuple2};
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 use super::{
     runner::RunnerState,

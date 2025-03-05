@@ -18,7 +18,6 @@ crate-type = ["rlib"]
 
 [features]
 default = ["with-gui"]
-# with-gui=["dep:egui", "dep:egui-winit", "dep:egui-gizmo", "easy-wgpu/with-gui"]
 with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "dep:transform-gizmo", "easy-wgpu/with-gui"]
 
 [dependencies]
@@ -26,8 +25,7 @@ gloss_renderer_macros = { path = "macros"}
 
 # workspace internal gloss
 easy-wgpu.workspace=true
-utils-rs.workspace=true
-# gloss-memory.workspace=true
+gloss-utils.workspace=true
 gloss-img.workspace=true
 gloss-hecs.workspace=true
 
@@ -55,7 +53,6 @@ egui-winit = { workspace = true, optional = true }
 egui-wgpu = { workspace = true, optional = true }
 # egui-gizmo = { workspace = true, optional = true }
 transform-gizmo = { workspace = true, optional = true }
-# gui stuff finish
 
 enum-map.workspace=true
 encase.workspace=true
@@ -67,12 +64,7 @@ serde.workspace=true
 toml.workspace=true
 indexmap.workspace=true
 smallvec.workspace=true
-# abi_stable.workspace=true
 ply-rs.workspace=true
-# peak_alloc={ workspace = true, optional = true }
-# talc={ workspace = true, optional = true }
-# mimalloc= { workspace = true, optional = true }
-# spin.workspace=true
 static_assertions.workspace=true
 itertools.workspace=true
 re_memory.workspace=true
@@ -80,11 +72,8 @@ re_memory.workspace=true
 [target.'cfg(any(target_os = "windows"))'.dependencies]
 winapi = "0.3.9"
 
-# [target.'cfg(not(target_env = "msvc"))'.dependencies]
-# tikv-jemallocator ={ workspace = true, optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 abi_stable.workspace=true
-
 
 # more dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -101,13 +90,12 @@ web-sys = { version = "0.3", features = [
     "Window",
     "Element",
     "HtmlCanvasElement",
+    "console",
 ]}
 js-sys = "0.3"
-wasm-log=  { git = "https://github.com/RaduAlexandru/wasm-log.git", version ="0.3" }
-
+# wasm-log = "0.3"
 [target.x86_64-unknown-linux-gnu] #slightly faster linking
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-
 
 [lints]
 workspace = true

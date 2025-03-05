@@ -29,13 +29,13 @@ use hashbrown::hash_map::DefaultHashBuilder;
 
 use crate::{borrow::AtomicBorrow, query::Fetch, Access, Component, ComponentRef, Query};
 
-use utils_rs::abi_stable_aliases::std_types::{RHashMap, RStr, RVec, Tuple2};
+use gloss_utils::abi_stable_aliases::std_types::{RHashMap, RStr, RVec, Tuple2};
 #[cfg(target_arch = "wasm32")]
-use utils_rs::abi_stable_aliases::FromSliceExt;
+use gloss_utils::abi_stable_aliases::FromSliceExt;
 #[cfg(target_arch = "wasm32")]
-use utils_rs::abi_stable_aliases::FromStrExt;
+use gloss_utils::abi_stable_aliases::FromStrExt;
 #[cfg(not(target_arch = "wasm32"))]
-use utils_rs::abi_stable_aliases::StableAbi;
+use gloss_utils::abi_stable_aliases::StableAbi;
 
 /// A collection of entities having the same component types
 ///

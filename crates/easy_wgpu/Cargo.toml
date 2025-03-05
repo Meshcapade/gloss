@@ -23,7 +23,7 @@ easy_wgpu_macros = { path = "macros"}
 
 
 #workspace internal gloss
-utils-rs.workspace=true
+gloss-utils.workspace=true
 gloss-img.workspace=true
 
 #workspace third-party

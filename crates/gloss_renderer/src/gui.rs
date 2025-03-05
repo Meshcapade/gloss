@@ -16,22 +16,23 @@ use crate::{
     plugin_manager::plugins::Plugins,
     scene::{Scene, GLOSS_FLOOR_NAME},
 };
-use utils_rs::{
-    abi_stable_aliases::std_types::{ROption::RSome, RString, RVec},
-    memory::get_last_relevant_func_name,
-};
 
 use egui::style::TextCursorStyle;
+use gloss_utils::string::float2string;
 use log::debug;
-use utils_rs::string::float2string;
 
 use easy_wgpu::gpu::Gpu;
 use egui_wgpu::ScreenDescriptor;
 
 use egui::style::{HandleShape, NumericColorSpace, ScrollStyle};
 
+use gloss_utils::{
+    abi_stable_aliases::std_types::{ROption::RSome, RString, RVec},
+    memory::get_last_relevant_func_name,
+    tensor::DynamicMatrixOps,
+};
+
 use re_memory::{accounting_allocator, CallstackStatistics, MemoryUse};
-use utils_rs::tensor::DynamicMatrixOps;
 
 use log::error;
 use winit::window::Window;

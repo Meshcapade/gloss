@@ -1,9 +1,9 @@
 use gloss_hecs::Entity;
 use gloss_py_macros::PyComponent;
 use gloss_renderer::{components::Colors, scene::Scene};
+use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D};
 use numpy::{PyArray2, PyReadonlyArray2, PyUntypedArrayMethods, ToPyArray};
 use pyo3::prelude::*;
-use utils_rs::tensor::{DynamicMatrixOps, DynamicTensorFloat2D};
 // use nshare::ToNdarray2;
 
 #[pyclass(name = "Colors", unsendable)]

@@ -4,7 +4,7 @@ use nalgebra as na;
 use std::{collections::HashMap, path::Path};
 
 use crate::components::ConfigChanges;
-use utils_rs::{config::MyTomlFile, convert_enum_into};
+use gloss_utils::{config::MyTomlFile, convert_enum_into};
 
 // Things marked as optional will be sometimes automatically filled depending on
 // the scene scale or other factors known at runtime

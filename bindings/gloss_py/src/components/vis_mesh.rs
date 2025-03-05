@@ -4,10 +4,10 @@ use gloss_renderer::{
     components::{MeshColorType, VisMesh},
     scene::Scene,
 };
+use gloss_utils::convert_enum_from;
 use nalgebra as na;
 use numpy::{AllowTypeChange, PyArrayLike1, PyArrayMethods, PyUntypedArrayMethods};
 use pyo3::prelude::*;
-use utils_rs::convert_enum_from;
 
 #[pyclass(name = "MeshColorType", module = "gloss.types", unsendable, eq, eq_int)]
 #[derive(Debug, Clone, Copy, PartialEq)]

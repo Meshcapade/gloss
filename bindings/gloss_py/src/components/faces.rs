@@ -1,9 +1,9 @@
 use gloss_hecs::Entity;
 use gloss_py_macros::PyComponent;
 use gloss_renderer::{components::Faces, scene::Scene};
+use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorInt2D};
 use numpy::{PyArray2, PyReadonlyArray2, PyUntypedArrayMethods, ToPyArray};
 use pyo3::prelude::*;
-use utils_rs::tensor::{DynamicMatrixOps, DynamicTensorInt2D};
 
 #[pyclass(name = "Faces", module = "gloss.components", unsendable)]
 // it has to be unsendable because it does not implement Send: https://pyo3.rs/v0.19.1/class#must-be-send

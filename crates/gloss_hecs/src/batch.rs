@@ -5,8 +5,8 @@ use crate::{
     archetype::{StableTypeIdMap, TypeInfo},
     Archetype, Component,
 };
+use gloss_utils::abi_stable_aliases::std_types::RVec;
 use std::hash::BuildHasherDefault;
-use utils_rs::abi_stable_aliases::std_types::RVec;
 
 /// A collection of component types
 #[derive(Debug, Clone, Default)]

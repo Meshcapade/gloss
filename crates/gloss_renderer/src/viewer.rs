@@ -23,8 +23,8 @@ use easy_wgpu::gpu::Gpu;
 use easy_wgpu::texture::Texture;
 #[cfg(feature = "with-gui")]
 use egui_winit::EventResponse;
+use gloss_utils::abi_stable_aliases::std_types::{RString, Tuple2};
 use log::{debug, warn};
-use utils_rs::abi_stable_aliases::std_types::{RString, Tuple2};
 use winit::{
     dpi::PhysicalSize,
     event::TouchPhase,
@@ -34,10 +34,10 @@ use winit::{
 };
 
 use core::time::Duration;
+use gloss_utils::io::FileType;
 use log::{error, info};
 use pollster::FutureExt;
 use std::{error::Error, sync::Arc};
-use utils_rs::io::FileType;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

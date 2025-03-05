@@ -7,8 +7,8 @@ use pollster::FutureExt;
 use std::borrow::Cow;
 use wgpu::{util::DeviceExt, CommandEncoderDescriptor, TextureFormat}; //enabled create_texture_with_data
 
-// use utils_rs::gloss_image;
-use utils_rs::numerical;
+// use gloss_utils::gloss_image;
+use gloss_utils::numerical;
 
 use crate::{buffer::Buffer, mipmap::RenderMipmapGenerator};
 
