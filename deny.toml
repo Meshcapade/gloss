@@ -221,7 +221,7 @@ skip = [
     { name = "redox_syscall" },     # Plenty of versions in the wild
     { name = "spin" },              # Old version used by lazystatic
     { name = "bitflags" },          # ktx2 uses an older version
-
+    { name = "itertools" }, # 2 different depedencies of re_memory pull 2 different versions of this
 ]
 # Similarly to `skip` allows you to skip certain crates during duplicate
 # detection. Unlike skip, it also includes the entire tree of transitive

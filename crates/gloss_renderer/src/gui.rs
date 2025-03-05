@@ -16,7 +16,10 @@ use crate::{
     plugin_manager::plugins::Plugins,
     scene::{Scene, GLOSS_FLOOR_NAME},
 };
-use utils_rs::abi_stable_aliases::std_types::{ROption::RSome, RString, RVec};
+use utils_rs::{
+    abi_stable_aliases::std_types::{ROption::RSome, RString, RVec},
+    memory::get_last_relevant_func_name,
+};
 
 use egui::style::TextCursorStyle;
 use log::debug;
@@ -27,7 +30,7 @@ use egui_wgpu::ScreenDescriptor;
 
 use egui::style::{HandleShape, NumericColorSpace, ScrollStyle};
 
-use gloss_memory::{accounting_allocator, CallstackStatistics, MemoryUse};
+use re_memory::{accounting_allocator, CallstackStatistics, MemoryUse};
 use utils_rs::tensor::DynamicMatrixOps;
 
 use log::error;
@@ -1657,10 +1660,10 @@ impl GuiMainWidget {
         }
 
         //are we tracking callstacks
-        let mut is_tracking = gloss_memory::accounting_allocator::is_tracking_callstacks();
+        let mut is_tracking = re_memory::accounting_allocator::is_tracking_callstacks();
         let res = ui.checkbox(&mut is_tracking, "Track memory callstacks");
         if res.clicked() {
-            gloss_memory::accounting_allocator::set_tracking_callstacks(is_tracking);
+            re_memory::accounting_allocator::set_tracking_callstacks(is_tracking);
         }
 
         //make a memory bar where we show all the memory and the parts that are free in
@@ -1732,8 +1735,11 @@ impl GuiMainWidget {
             for (i, cb) in tracks.top_callstacks.iter().enumerate() {
                 //callstack name will be the nr mb
                 let mb_total = cb.extant.size as f32 / (1024.0 * 1024.0);
-                let text_header =
-                    egui::RichText::new(float2string(mb_total, 1) + " MB: " + &cb.readable_backtrace.last_relevant_func_name).size(12.0);
+
+                let cb_stack = cb.readable_backtrace.to_string();
+                let last_relevant_func_name = get_last_relevant_func_name(&cb_stack);
+
+                let text_header = egui::RichText::new(float2string(mb_total, 1) + " MB: " + &last_relevant_func_name).size(12.0);
 
                 ui.push_id(i, |ui| {
                     egui::CollapsingHeader::new(text_header).show(ui, |ui| self.draw_callstack_profiling(ui, cb));

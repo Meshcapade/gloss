@@ -7,7 +7,6 @@
 //! ### Modules
 //! - [`gloss_renderer`](crate::gloss_renderer) - The core renderer and viewer
 //! - [`gloss_img`](crate::gloss_img) - Image-related functionality.
-//! - [`gloss_memory`](crate::gloss_memory) - Utilities for memory profiling.
 //! - [`easy_wgpu`](crate::easy_wgpu) - Abstractions for wgpu.
 //! - [`utils_rs`](crate::utils_rs) - Utility functions and helpers.
 //!
@@ -28,6 +27,5 @@
 // Re-exports
 pub use easy_wgpu;
 pub use gloss_img;
-pub use gloss_memory;
 pub use gloss_renderer;
 pub use utils_rs;

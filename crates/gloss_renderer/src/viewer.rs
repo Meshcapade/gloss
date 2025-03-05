@@ -337,7 +337,7 @@ impl Viewer {
         }
 
         // Expensive but useful
-        gloss_memory::accounting_allocator::set_tracking_callstacks(config.core.enable_memory_profiling_callstacks);
+        re_memory::accounting_allocator::set_tracking_callstacks(config.core.enable_memory_profiling_callstacks);
 
         let canvas_id_parsed = config.core.canvas_id.as_ref().map(|canvas_id| String::from("#") + canvas_id);
 

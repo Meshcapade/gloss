@@ -15,7 +15,7 @@ targets = ["lib"]
 [dependencies]
 easy-wgpu.workspace = true
 gloss-img.workspace = true
-gloss-memory.workspace = true
+# gloss-memory.workspace = true
 gloss-renderer.workspace = true
 utils-rs.workspace = true
 

@@ -126,7 +126,7 @@ impl ViewerHeadless {
         }
 
         //expensive but useful
-        gloss_memory::accounting_allocator::set_tracking_callstacks(config.core.enable_memory_profiling_callstacks);
+        re_memory::accounting_allocator::set_tracking_callstacks(config.core.enable_memory_profiling_callstacks);
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: supported_backends(),

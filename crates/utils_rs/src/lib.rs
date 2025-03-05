@@ -4,6 +4,7 @@ pub mod config;
 pub mod io;
 pub mod logging;
 pub mod macros;
+pub mod memory;
 pub mod ndarray_inverse;
 pub mod nshare;
 pub mod numerical;
