@@ -1667,13 +1667,106 @@ impl GuiMainWidget {
             re_memory::accounting_allocator::set_tracking_callstacks(is_tracking);
         }
 
-        //make a memory bar where we show all the memory and the parts that are free in
-        // red, parts that are allocated in red only works in wasm because it
-        // uses a linear memory model
+        // //make a memory bar where we show all the memory and the parts that are free in
+        // // red, parts that are allocated in red only works in wasm because it
+        // // uses a linear memory model
+        // let size_per_mb = 1.0;
+        // // #[cfg(target_arch = "wasm32")]
+        // {
+        //     use egui::{epaint::RectShape, Sense, Shape};
+        //     let unknown_mem = Color32::from_rgb(150, 150, 150);
+        //     let allocated_mem = Color32::from_rgb(255, 10, 10);
+
+        //     //make per mb colors
+        //     let mut mb2color: Vec<egui::Color32> = Vec::new();
+        //     if let Some(mem_resident) = memory_usage.resident {
+        //         let mb_resident = mem_resident / (1024 * 1024);
+        //         mb2color.resize(mb_resident.try_into().unwrap(), unknown_mem);
+
+        //         // Older usage was
+        //         // let live_allocs = accounting_allocator::live_allocs_list();
+        //         // re_memory does not seem to expose this the same way as before. We can't get the memory addresses.
+        //         // Using backtrace string as a unique identifier since re_memory doesn't expose memory addresses anymore.
+        //         // This maintains similar functionality while working with the available API.
+        //         // let tracking_stats = accounting_allocator::tracking_stats().unwrap();
+        //         // let top_callstacks = tracking_stats.top_callstacks;
+        //         // let live_allocs = top_callstacks.;
+        //         // let live_allocs = GLOBAL.tracking_stats().unwrap().top_callstacks;
+
+        //         // use re_memory::allocation
+        //         // tracking_stats.
+        //         // let live_allocs_big = accounting_allocator::BIG_ALL &BIG_ALLOCATION_TRACKER.lock();
+        //         // use re_memory::accounting_allocator::;
+        //         let live_allocs: Vec<(usize, usize)> = accounting_allocator::tracking_stats()
+        //             .map(|stats| {
+        //                 stats
+        //                     .top_callstacks
+        //                     .iter()
+        //                     .map(|cs| (cs.readable_backtrace.to_string().len(), cs.extant.size))
+        //                     .collect()
+        //             })
+        //             .unwrap_or_default();
+
+        //         // Older usage was
+        //         // let min_ptr = accounting_allocator::min_ptr_alloc_memory();
+        //         // We dont have this fn anymore, so we do something similar to above
+        //         // Using first tracked allocation as minimum pointer since re_memory doesn't expose global min ptr.
+        //         #[allow(clippy::get_first)] // getting borrow issues when using .first()
+        //         let min_ptr = accounting_allocator::tracking_stats().map_or(0, |stats| {
+        //             stats.top_callstacks.get(0).map_or(0, |cs| cs.readable_backtrace.to_string().len())
+        //         });
+
+        //         //for each live allow, paint the value with Red( allocated )
+        //         for (ptr, size) in live_allocs {
+        //             let ptr_mb = (ptr - min_ptr) / (1024 * 1024);
+        //             let size_mb = size / (1024 * 1024);
+        //             //for each mb paint it allocated
+        //             for local_mb_idx in 0..size_mb {
+        //                 let idx = ptr_mb + local_mb_idx;
+        //                 if idx < mb2color.len() {
+        //                     mb2color[idx] = allocated_mem;
+        //                 }
+        //             }
+        //         }
+        //     }
+
+        //     //draw bar
+        //     if let Some(mem_resident) = memory_usage.resident {
+        //         let mb_resident = mem_resident / (1024 * 1024);
+        //         ui.horizontal(|ui| {
+        //             ui.spacing_mut().item_spacing = egui::vec2(0.5, 0.0);
+        //             // for i in 0..mb_resident {
+        //             #[allow(clippy::cast_sign_loss)]
+        //             #[allow(clippy::cast_possible_truncation)]
+        //             for i in 0..(mb_resident as usize) {
+        //                 // let cursor = Ui::cursor(ui);
+        //                 let rect_size = egui::Vec2::new(size_per_mb, 10.0);
+        //                 let rect = ui.allocate_exact_size(rect_size, Sense::click()).0;
+        //                 let rounding = Rounding::default();
+        //                 #[allow(arithmetic_overflow)]
+        //                 // let fill_color = egui::Color32::from_rgb(50 * 3, 0, 0);
+        //                 // let fill_color =
+        //                 let fill_color = if i < mb2color.len() {
+        //                     mb2color[i]
+        //                 } else {
+        //                     egui::Color32::from_rgb(50, 0, 0)
+        //                 };
+        //                 let stroke = Stroke::default();
+        //                 let rect_shape = RectShape::new(rect, rounding, fill_color, stroke);
+        //                 ui.painter().add(Shape::Rect(rect_shape));
+        //             }
+        //         });
+        //     }
+        // }
+
+        // TODO: Find where and how in the re_memory API to get the memory addresses
+        // TODO: Should we factor in sampling rate here? should be a reasonable estimate regardless?
+
+        //make a memory bar showing proportion of allocated vs free memory
         let size_per_mb = 1.0;
         #[cfg(target_arch = "wasm32")]
         {
-            use egui::{epaint::RectShape, Rect, Sense, Shape};
+            use egui::{epaint::RectShape, Sense, Shape};
             let unknown_mem = Color32::from_rgb(150, 150, 150);
             let allocated_mem = Color32::from_rgb(255, 10, 10);
 
@@ -1681,24 +1774,17 @@ impl GuiMainWidget {
             let mut mb2color: Vec<egui::Color32> = Vec::new();
             if let Some(mem_resident) = memory_usage.resident {
                 let mb_resident = mem_resident / (1024 * 1024);
-                mb2color.resize(mb_resident, unknown_mem);
-                let live_allocs = accounting_allocator::live_allocs_list();
-                let min_ptr = accounting_allocator::min_ptr_alloc_memory();
-                // println!("live_allocs {}", live_allocs.len());
-                //for each live allow, paint the value with Red( allocated )
-                for (ptr, size) in live_allocs {
-                    let ptr_mb = (ptr - min_ptr) / (1024 * 1024);
-                    let size_mb = size / (1024 * 1024);
-                    //for each mb paint it allocated
-                    for local_mb_idx in 0..size_mb {
-                        let idx = ptr_mb + local_mb_idx;
-                        // println!(
-                        //     " ptr_mb {}  ptr{} min_ptr{} local_mb_idx {} idx {}",
-                        //     ptr_mb, ptr, min_ptr, local_mb_idx, idx
-                        // );
-                        if idx < mb2color.len() {
-                            mb2color[idx] = allocated_mem;
-                        }
+                mb2color.resize(mb_resident.try_into().unwrap(), unknown_mem);
+
+                // Calculate total allocated memory from tracking stats
+                let total_allocated: usize =
+                    accounting_allocator::tracking_stats().map_or(0, |stats| stats.top_callstacks.iter().map(|cs| cs.extant.size).sum());
+
+                // Convert to MB and fill that proportion of the bar with red
+                let allocated_mb = total_allocated / (1024 * 1024);
+                for i in 0..allocated_mb {
+                    if i < mb2color.len() {
+                        mb2color[i] = allocated_mem;
                     }
                 }
             }
@@ -1708,15 +1794,12 @@ impl GuiMainWidget {
                 let mb_resident = mem_resident / (1024 * 1024);
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing = egui::vec2(0.5, 0.0);
-                    // for i in 0..mb_resident {
-                    for i in 0..mb_resident {
-                        // let cursor = Ui::cursor(ui);
+                    #[allow(clippy::cast_sign_loss)]
+                    #[allow(clippy::cast_possible_truncation)]
+                    for i in 0..(mb_resident as usize) {
                         let rect_size = egui::Vec2::new(size_per_mb, 10.0);
                         let rect = ui.allocate_exact_size(rect_size, Sense::click()).0;
                         let rounding = Rounding::default();
-                        #[allow(arithmetic_overflow)]
-                        // let fill_color = egui::Color32::from_rgb(50 * 3, 0, 0);
-                        // let fill_color =
                         let fill_color = if i < mb2color.len() {
                             mb2color[i]
                         } else {

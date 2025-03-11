@@ -19,10 +19,10 @@ burn.workspace=true
 
 # More dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook = "0.1.6"
-console_log = "1.0"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4.30"
+console_error_panic_hook.workspace=true
+console_log.workspace=true
+wasm-bindgen.workspace=true
+wasm-bindgen-futures.workspace=true
 web-sys = { version = "0.3", features = [
     "Request",
     "RequestInit",

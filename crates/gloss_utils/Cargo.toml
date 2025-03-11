@@ -36,6 +36,8 @@ async-trait.workspace=true
 pollster.workspace=true
 ndarray.workspace=true
 num-traits = "^0.2"
+re_memory.workspace=true
+smallvec.workspace=true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 abi_stable.workspace=true
@@ -49,6 +51,9 @@ wasm-bindgen.workspace=true
 wasm-bindgen-futures.workspace=true
 web-sys.workspace=true
 js-sys.workspace=true
+parking_lot.workspace=true
+once_cell.workspace=true
+
 # paste = "1.0"
 
 [lints]
