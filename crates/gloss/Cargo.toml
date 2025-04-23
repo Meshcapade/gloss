@@ -1,21 +1,23 @@
 [package]
-name = "gloss"
+name = "gloss-rs"
 authors.workspace = true
-description = "Gloss top-level crate"
+description = "Top level crate for gloss-rs"
 edition.workspace = true
-publish = false
+publish = true
+license.workspace = true
 readme.workspace = true
 rust-version.workspace = true
-# repository = ... TODO: fill
+documentation = "https://docs.rs/gloss-rs"
+repository.workspace = true
 version.workspace = true
 
 [package.metadata.docs.rs]
-targets = ["lib"]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 easy-wgpu.workspace = true
 gloss-img.workspace = true
-# gloss-memory.workspace = true
 gloss-renderer.workspace = true
 gloss-utils.workspace = true
 

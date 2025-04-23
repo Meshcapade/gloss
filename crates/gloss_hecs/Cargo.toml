@@ -1,16 +1,16 @@
 [package]
 name = "gloss-hecs"
-description = "A fast, minimal, and ergonomic entity-component-system library"
+description = "A wrapper over hecs for easy use with gloss"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Ralith/hecs"
 keywords = ["ecs", "entity"]
 categories = ["data-structures", "game-engines", "no-std"]
 authors.workspace = true
 edition.workspace = true
-publish = false
+publish = true
 readme = "README.md"
 rust-version.workspace = true
 version.workspace = true
+documentation = "https://docs.rs/gloss-hecs"
 
 [lib]
 # name = "gloss_renderer_lib"
@@ -21,7 +21,7 @@ crate-type = ["rlib"]
 default = ["std"]
 std = []
 # Enables derive(Bundle)
-macros = ["hecs-macros", "lazy_static"]
+macros = ["gloss-hecs-macros", "lazy_static"]
 # Enables the serialize::column module
 column-serialize = ["serde"]
 # Enables the serialize::row module
@@ -30,7 +30,7 @@ row-serialize = ["serde"]
 unsafe_typeid = []
 
 [dependencies]
-hecs-macros = { path = "macros", version = "=0.5.0", optional = true }
+gloss-hecs-macros = { path = "macros", version = "0.5", optional = true }
 hashbrown = { version = "0.13.1", default-features = false, features = ["ahash", "inline-more"] }
 lazy_static = { version = "1.4.0", optional = true, features = ["spin_no_std"] }
 serde = { version = "1.0.117", default-features = false, optional = true }

@@ -8,6 +8,7 @@ doc = false
 
 [dependencies]
 gloss-renderer = { path = "../../../gloss/crates/gloss_renderer", default-features = false }
+gloss-rs = { path = "../../../gloss/crates/gloss", default-features = false }
 
 # Third Party
 pollster.workspace=true

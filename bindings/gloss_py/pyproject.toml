@@ -20,16 +20,15 @@
 # build-backend = "setuptools.build_meta"
 
 [project]
-#name of the wheel (and therefore the name in pypi)
-name = "gloss"
-requires-python = ">=3.8"
+name = "gloss_rs"
+readme = "README.md"
+license = {text = "MIT"}  
 dynamic = [
     "authors",
     "description",
-    "license",
-    "readme",
     "version"
 ]
+requires-python = ">=3.8"
 # [project.optional-dependencies]
 # zig = [
 #     "ziglang~=0.10.0",
@@ -54,7 +53,7 @@ build-backend = "maturin"
 [tool.maturin]
 # "extension-module" tells pyo3 we want to build an extension module (skips linking against libpython.so)
 features = ["pyo3/extension-module"]
-
+include = ["gloss/*.pyi", "gloss/py.typed"]
 
 # [tool.black]
 # target_version = ['py37']

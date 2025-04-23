@@ -4,10 +4,10 @@ edition.workspace = true
 publish = false
 rust-version.workspace = true
 version.workspace = true
-
-#name of the wheel (and therefore the name in pypi)
-# [package.metadata.maturin]
-# name = "gloss"
+authors.workspace = true
+description.workspace = true
+readme = "README.md"
+license.workspace = true
 
 [lib]
 # crate-type = ["cdylib", "rlib"] #cdylib is needed for pyo3 and rlib is needed so that is can be linked with other libs https://stackoverflow.com/a/49762980

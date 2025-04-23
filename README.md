@@ -4,14 +4,14 @@
 
 **A light-weight Physically-based Renderer, made with Rust and wgpu**
 
-<!-- [![Crates.io](https://img.shields.io/crates/v/gloss.svg)](https://crates.io/crates/gloss)
-[![PyPI](https://img.shields.io/pypi/v/gloss-py.svg)](https://pypi.org/project/gloss-py/) -->
+[![Crates.io](https://img.shields.io/crates/v/gloss-rs.svg)](https://crates.io/crates/gloss-rs)
+[![PyPI](https://img.shields.io/pypi/v/gloss-rs.svg)](https://pypi.org/project/gloss-rs/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/Meshcapade/gloss/LICENSE)
 
 Gloss is a light-weight Physically-based Renderer written in Rust and wgpu. The main functionality includes loading meshes with high-resolution textures, rendering them with advanced graphics features, and allowing a general framework to explore new rendering techniques.
 Gloss also compiles for Python and Web, allowing for rendering in multiple different environments.
 
-<img alt="Gloss Banner" src="imgs/banner.png">
+<img alt="Gloss Banner" src="https://raw.githubusercontent.com/Meshcapade/gloss/main/imgs/banner.png">
 
 </div>
 
@@ -98,7 +98,7 @@ Various examples can be found in the `./examples` folder. A short description of
 
 | Name  | Description |
 | ------------- | ------------- |
-| Mesh View | ![Mesh View](imgs/mesh_view.png) Visualizes a mesh with textures. <br /> Run with [cargo r --bin `gloss_view_mesh`](./examples/view_mesh) |
+| Mesh View | ![Mesh View](https://raw.githubusercontent.com/Meshcapade/gloss/main/imgs/mesh_view.png) Visualizes a mesh with textures. <br /> Run with [cargo r --bin `gloss_view_mesh`](./examples/view_mesh) |
 
 ## Planned features
 - `PyTorch` integration

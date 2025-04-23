@@ -1,5 +1,5 @@
 [package]
-name = "hecs-macros"
+name = "gloss-hecs-macros"
 version.workspace = true
 description = "Procedural macro definitions for hecs"
 authors = ["Benjamin Saunders <ben.e.saunders@gmail.com>"]

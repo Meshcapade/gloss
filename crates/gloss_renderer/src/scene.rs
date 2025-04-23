@@ -25,7 +25,7 @@ pub static GLOSS_FLOOR_NAME: &str = "floor";
 pub static GLOSS_CAM_NAME: &str = "gloss_camera";
 
 // TODO make parametric checkerboard
-static CHECKERBOARD_BYTES: &[u8; 2324] = include_bytes!("../../../data/checkerboard.png");
+static CHECKERBOARD_BYTES: &[u8; 2324] = include_bytes!("../data/checkerboard.png");
 
 /// Scene contains the ECS world and various functionality to interact with it.
 #[repr(C)]

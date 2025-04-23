@@ -25,6 +25,7 @@ if __name__ == "__main__":
     # We have to use the config here to set msaa samples to 1
     # Retrieving depth maps with msaa with samples > 1 is not supported
     viewer = ViewerHeadless(2048, 2048, config_path) # Resolution of the rendering window
+
     # Get paths to data
     data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../../../data")
     mesh_path = os.path.join(data_path,"bust.obj")

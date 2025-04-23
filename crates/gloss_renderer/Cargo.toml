@@ -1,12 +1,15 @@
 [package]
 name = "gloss-renderer"
 authors.workspace = true
-description = "The Gloss viewer"
+description = "Core renderer for gloss"
 edition.workspace = true
-publish = false
+publish = true
+license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
 version.workspace = true
+documentation = "https://docs.rs/gloss-renderer"
+repository.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
@@ -15,14 +18,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [lib]
 crate-type = ["rlib"]
 
-
 [features]
 default = ["with-gui"]
 with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "dep:transform-gizmo", "easy-wgpu/with-gui"]
 
 [dependencies]
-gloss_renderer_macros = { path = "macros"}
-
 # workspace internal gloss
 easy-wgpu.workspace=true
 gloss-utils.workspace=true

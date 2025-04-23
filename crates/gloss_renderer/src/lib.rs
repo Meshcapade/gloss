@@ -1,7 +1,4 @@
-//! Documentation for your library.
-// #![deny(missing_docs)]
-
-#![doc = include_str!("../../../README.md")]
+#![doc = include_str!("../README.md")]
 
 #[macro_use]
 extern crate static_assertions;

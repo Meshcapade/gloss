@@ -58,15 +58,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "abi_stable_dummy_derive"
-version = "0.5.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.98",
-]
-
-[[package]]
 name = "abi_stable_shared"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -273,7 +264,17 @@ version = "2.0.0-rc.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f11ea1a0346b94ef188834a65c068a03aec181c94896d481d7a0a40d85b0ce95"
 dependencies = [
+ "bincode_derive",
  "serde",
+]
+
+[[package]]
+name = "bincode_derive"
+version = "2.0.0-rc.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e30759b3b99a1b802a7a3aa21c85c3ded5c28e1c83170d82d70f08bbf7f3e4c"
+dependencies = [
+ "virtue",
 ]
 
 [[package]]
@@ -1136,10 +1137,9 @@ dependencies = [
 
 [[package]]
 name = "easy-wgpu"
-version = "0.5.0"
+version = "0.5.5"
 dependencies = [
  "bytemuck",
- "easy_wgpu_macros",
  "encase",
  "enum-map",
  "epaint",
@@ -1154,14 +1154,6 @@ dependencies = [
  "thiserror",
  "type-map",
  "wgpu",
-]
-
-[[package]]
-name = "easy_wgpu_macros"
-version = "0.5.0"
-dependencies = [
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -1803,24 +1795,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
-name = "gloss"
-version = "0.5.0"
-dependencies = [
- "easy-wgpu",
- "gloss-img",
- "gloss-renderer",
- "gloss-utils",
-]
-
-[[package]]
 name = "gloss-hecs"
-version = "0.5.0"
+version = "0.5.5"
 dependencies = [
  "abi_stable",
  "bencher",
+ "gloss-hecs-macros",
  "gloss-utils",
  "hashbrown 0.13.2",
- "hecs-macros",
  "identity-hash",
  "lazy_static",
  "negative-impl",
@@ -1832,8 +1814,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gloss-hecs-macros"
+version = "0.5.5"
+dependencies = [
+ "gloss-hecs",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "gloss-img"
-version = "0.5.0"
+version = "0.5.5"
 dependencies = [
  "bytemuck",
  "flate2",
@@ -1844,7 +1836,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-renderer"
-version = "0.5.0"
+version = "0.5.5"
 dependencies = [
  "abi_stable",
  "burn",
@@ -1864,7 +1856,6 @@ dependencies = [
  "gloss-hecs",
  "gloss-img",
  "gloss-utils",
- "gloss_renderer_macros",
  "image",
  "include-wgsl-oil",
  "indexmap",
@@ -1896,18 +1887,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "gloss-rs"
+version = "0.5.5"
+dependencies = [
+ "easy-wgpu",
+ "gloss-img",
+ "gloss-renderer",
+ "gloss-utils",
+]
+
+[[package]]
 name = "gloss-utils"
-version = "0.5.0"
+version = "0.5.5"
 dependencies = [
  "abi_stable",
- "abi_stable_dummy_derive",
  "async-trait",
+ "bincode",
+ "bincode_derive",
  "burn",
  "bytemuck",
  "config",
  "console_error_panic_hook",
  "console_log",
  "env_logger",
+ "half",
  "image",
  "js-sys",
  "log",
@@ -1927,6 +1930,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
+ "zerofrom",
 ]
 
 [[package]]
@@ -1946,7 +1950,7 @@ dependencies = [
 
 [[package]]
 name = "gloss_py"
-version = "0.5.0"
+version = "0.5.5"
 dependencies = [
  "ctrlc",
  "easy-wgpu",
@@ -1968,19 +1972,10 @@ dependencies = [
 
 [[package]]
 name = "gloss_py_macros"
-version = "0.5.0"
+version = "0.5.5"
 dependencies = [
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "gloss_renderer_macros"
-version = "0.5.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.98",
 ]
 
 [[package]]
@@ -1988,6 +1983,7 @@ name = "gloss_view_mesh"
 version = "0.1.0"
 dependencies = [
  "gloss-renderer",
+ "gloss-rs",
  "nalgebra",
  "pollster",
 ]
@@ -2161,16 +2157,6 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "hecs-macros"
-version = "0.5.0"
-dependencies = [
- "gloss-hecs",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -4395,6 +4381,12 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "virtue"
+version = "0.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9dcc60c0624df774c82a0ef104151231d37da4962957d691c011c852b2473314"
 
 [[package]]
 name = "walkdir"

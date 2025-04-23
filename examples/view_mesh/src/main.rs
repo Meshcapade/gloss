@@ -5,6 +5,7 @@ use gloss_renderer::{
     gloss_setup_logger,
     viewer::Viewer,
 };
+
 use pollster::FutureExt;
 
 fn main() {

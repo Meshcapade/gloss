@@ -11,8 +11,12 @@ members = [
 [workspace.package]
 authors = ["Radu Alexandru Rosu <alex@meshcapade.com>", "Aman Shenoy <aman@meshcapade.com>"]
 edition = "2021"
-rust-version = "1.69"
-version = "0.5.0"
+rust-version = "1.79"
+version = "0.5.5"
+description = "A light-weight Physically Based Renderer"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Meshcapade/gloss"
 
 [workspace.metadata.docs.rs]
 targets = ["lib"]
@@ -20,12 +24,11 @@ features = ["doc"]
 
 # =====================================================================
 [workspace.dependencies]
-gloss-renderer = { path = "crates/gloss_renderer", version = "=0.5.0" }
-gloss = { path = "crates/gloss", version = "=0.5.0"}
-easy-wgpu = { path = "crates/easy_wgpu", version = "=0.5.0"}
-gloss-utils = { path = "crates/gloss_utils", version = "=0.5.0"}
-gloss-img = { path = "crates/gloss_img", version = "=0.5.0"}
-gloss-hecs = { path = "crates/gloss_hecs", version = "0.5.0", features = ["macros"]}
+gloss-renderer = { path = "crates/gloss_renderer", version = "0.5" }
+easy-wgpu = { path = "crates/easy_wgpu", version = "0.5"}
+gloss-utils = { path = "crates/gloss_utils", version = "0.5"}
+gloss-img = { path = "crates/gloss_img", version = "0.5"}
+gloss-hecs = { path = "crates/gloss_hecs", version = "0.5", features = ["macros"]}
 
 # =====================================================================
 # Third-Party crates
@@ -92,7 +95,10 @@ getrandom = { version = "0.2", features = ["js"] } # used by ahash/egui
 static_assertions = "1.1.0"
 abi_stable = "0.11.3"
 re_memory = "0.20"
-
+bincode_derive = "=2.0.0-rc.3"
+bincode = "=2.0.0-rc.3"
+half = "=2.4.1"
+zerofrom = "=0.1.5"
 # =====================================================================
 # Dependencies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
 # =====================================================================
