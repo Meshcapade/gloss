@@ -23,6 +23,7 @@ pub mod logger;
 pub mod plugin_manager;
 pub mod scene;
 pub mod viewer;
+pub mod viewer_dummy;
 pub mod viewer_headless;
 
 pub use logger::{gloss_setup_logger, gloss_setup_logger_from_config, gloss_setup_logger_from_config_file};

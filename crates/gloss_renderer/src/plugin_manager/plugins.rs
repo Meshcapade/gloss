@@ -6,6 +6,7 @@
 /// don't target C++, we can mangle the functions as normal and therefore avoid
 /// collision in names of function.
 use crate::scene::Scene;
+use crate::viewer_dummy::RunnerDummy;
 use crate::{
     viewer::{GpuResources, Runner},
     viewer_headless::RunnerHeadless,
@@ -121,6 +122,24 @@ impl Plugins {
             }
         }
         runner_state.to_headless(runner);
+    }
+
+    //TODO in an ideal worl this should exist, since the ViewerDummy and RunnerDummy shouldn't exist
+    pub fn run_logic_systems_dummy(&mut self, scene: &mut Scene, runner: &mut RunnerDummy, autorun_flag: bool) {
+        let mut runner_state = RunnerState::from_dummy(runner);
+        for system_and_metadata in self.logic_systems.iter_mut() {
+            let metadata = &mut system_and_metadata.1;
+            let sys = &system_and_metadata.0;
+            if metadata.autorun == autorun_flag {
+                let func = sys.f;
+
+                //run and time the function
+                let now = wasm_timer::Instant::now();
+                func(scene, &mut runner_state);
+                metadata.execution_time = RDuration::from(now.elapsed());
+            }
+        }
+        runner_state.to_dummy(runner);
     }
 
     pub fn try_handle_event(&self, scene: &mut Scene, runner: &mut Runner, event: &Event) -> bool {

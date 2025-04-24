@@ -34,6 +34,7 @@ pub mod queue;
 pub mod scene;
 pub mod texture;
 pub mod viewer;
+pub mod viewer_dummy;
 pub mod viewer_headless;
 use actor::PyActorMut;
 use camera::PyCamera;
@@ -44,6 +45,7 @@ use queue::PyQueue;
 use scene::PyScene;
 use texture::PyTexture;
 use viewer::PyViewer;
+use viewer_dummy::PyViewerDummy;
 use viewer_headless::PyViewerHeadless;
 
 /// A Python module implemented in Rust using tch to manipulate PyTorch
@@ -62,6 +64,7 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTexture>()?;
     m.add_class::<PyViewer>()?;
     m.add_class::<PyViewerHeadless>()?;
+    m.add_class::<PyViewerDummy>()?;
     m.add_class::<PyCamera>()?;
     m.add_class::<PyScene>()?;
     m.add_class::<PyDevice>()?;

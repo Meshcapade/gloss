@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{viewer::Runner, viewer_headless::RunnerHeadless};
+use crate::{viewer::Runner, viewer_dummy::RunnerDummy, viewer_headless::RunnerHeadless};
 
 use gloss_utils::abi_stable_aliases::std_types::RDuration;
 #[cfg(not(target_arch = "wasm32"))]
@@ -39,6 +39,15 @@ impl RunnerState {
             dt: RDuration::from(runner.dt()),
         }
     }
+    pub fn from_dummy(runner: &RunnerDummy) -> Self {
+        Self {
+            is_running: runner.is_running,
+            do_render: false, //ViewerDummy cannot render
+            request_redraw: false,
+            first_time: runner.first_time,
+            dt: RDuration::from_secs(0),
+        }
+    }
     //onyl some of the fields are actually going to be modified and are worth
     // storing back into the runner, at least the pub ones shound be set back into
     // runner
@@ -49,6 +58,9 @@ impl RunnerState {
     pub fn to_headless(&self, runner: &mut RunnerHeadless) {
         runner.is_running = self.is_running;
         runner.do_render = self.do_render;
+    }
+    pub fn to_dummy(&self, runner: &mut RunnerDummy) {
+        runner.is_running = self.is_running;
     }
     pub fn request_redraw(&mut self) {
         self.request_redraw = true;

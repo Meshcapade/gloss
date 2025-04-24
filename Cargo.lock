@@ -811,9 +811,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.14"
+version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06ba6d68e24814cb8de6bb986db8222d3a027d15872cabc0d18817bc3c0e4471"
+checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
 dependencies = [
  "crossbeam-utils",
 ]
@@ -1137,7 +1137,7 @@ dependencies = [
 
 [[package]]
 name = "easy-wgpu"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "bytemuck",
  "encase",
@@ -1796,7 +1796,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "gloss-hecs"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "abi_stable",
  "bencher",
@@ -1815,7 +1815,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-hecs-macros"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "gloss-hecs",
  "proc-macro2",
@@ -1825,7 +1825,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-img"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "bytemuck",
  "flate2",
@@ -1836,7 +1836,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-renderer"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "abi_stable",
  "burn",
@@ -1888,7 +1888,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-rs"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "easy-wgpu",
  "gloss-img",
@@ -1898,7 +1898,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-utils"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "abi_stable",
  "async-trait",
@@ -1950,7 +1950,7 @@ dependencies = [
 
 [[package]]
 name = "gloss_py"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "ctrlc",
  "easy-wgpu",
@@ -1972,7 +1972,7 @@ dependencies = [
 
 [[package]]
 name = "gloss_py_macros"
-version = "0.5.5"
+version = "0.5.6"
 dependencies = [
  "quote",
  "syn 1.0.109",

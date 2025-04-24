@@ -12,7 +12,7 @@ members = [
 authors = ["Radu Alexandru Rosu <alex@meshcapade.com>", "Aman Shenoy <aman@meshcapade.com>"]
 edition = "2021"
 rust-version = "1.79"
-version = "0.5.5"
+version = "0.5.6"
 description = "A light-weight Physically Based Renderer"
 license = "MIT"
 readme = "README.md"
@@ -154,5 +154,5 @@ unused_self = "allow"
 explicit_iter_loop = "allow" #messes with hecs query.iter() and makes them super ugly
 
 # =====================================================================
-[build]
-rustc-args = ["-Vv"]
+# [build]
+# rustc-args = ["-Vv"]
