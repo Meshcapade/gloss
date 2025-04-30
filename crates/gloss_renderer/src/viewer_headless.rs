@@ -162,6 +162,9 @@ impl ViewerHeadless {
                 desired_features = desired_features.union(wgpu::Features::POLYGON_MODE_LINE);
             }
         }
+        // There would not really be a situation where we use ViewerHeadless on the web, so this can be
+        // either within the above cfg_if or here. I have put this here for consistency with the code in Viewer.rs
+        desired_features = desired_features.union(wgpu::Features::DEPTH32FLOAT_STENCIL8);
         let required_features = adapter.features().intersection(desired_features); //only take the features that are actually supported
         info!("enabled features: {required_features:?}");
 

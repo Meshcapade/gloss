@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     components::{
-        ColorsGPU, DiffuseTex, EnvironmentMapGpu, FacesGPU, ModelMatrix, Name, NormalTex, NormalsGPU, Renderable, RoughnessTex, ShadowCaster,
-        ShadowMap, TangentsGPU, UVsGPU, VertsGPU, VisMesh,
+        ColorsGPU, DiffuseTex, EnvironmentMapGpu, FacesGPU, ModelMatrix, Name, NormalTex, NormalsGPU, Renderable, RoughnessTex, Selector,
+        ShadowCaster, ShadowMap, TangentsGPU, UVsGPU, VertsGPU, VisMesh,
     },
     config::RenderConfig,
     forward_renderer::{bind_group_collection::BindGroupCollection, locals::LocalEntData},
@@ -96,7 +96,22 @@ impl MeshPipeline {
                 format: depth_target_format,
                 depth_write_enabled: true,
                 depth_compare: wgpu::CompareFunction::Greater,
-                stencil: wgpu::StencilState::default(),
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Always,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Replace,
+                    },
+                    back: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Always,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Replace,
+                    },
+                    read_mask: 0xFF,
+                    write_mask: 0xFF,
+                },
                 bias: wgpu::DepthBiasState::default(),
             }))
             .multisample(wgpu::MultisampleState {
@@ -190,12 +205,13 @@ impl PipelineRunner for MeshPipeline {
         per_frame_uniforms: &'r PerFrameUniforms,
         _render_params: &RenderConfig,
         query_state: &'r mut Self::QueryState<'_>,
+        scene: &Scene,
     ) {
         //completely skip this if there are no entities to draw
         if query_state.iter().count() == 0 {
             return;
         }
-
+        let selector = scene.get_resource::<&Selector>();
         render_pass.set_pipeline(&self.render_pipeline);
 
         //global binding
@@ -211,6 +227,15 @@ impl PipelineRunner for MeshPipeline {
             //local bindings
             let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&name.0.clone()];
             render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
+
+            // Create stencil only for selected entity
+            if let Ok(ref current_selector) = selector {
+                if name.0 == current_selector.current_selected {
+                    render_pass.set_stencil_reference(1);
+                } else {
+                    render_pass.set_stencil_reference(0);
+                }
+            }
 
             render_pass.set_vertex_buffer(0, verts.buf.slice(..));
             render_pass.set_vertex_buffer(1, uvs.buf.slice(..));

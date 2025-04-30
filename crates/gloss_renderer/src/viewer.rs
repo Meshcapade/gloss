@@ -118,6 +118,15 @@ impl GpuResources {
                 desired_features = desired_features.union(wgpu::Features::POLYGON_MODE_LINE);
             }
         }
+        // We need this feature to be able to have a combined depth and stencil target.
+        // NOTE: We could technically also use Depth24PlusStencil8, which in a lot of ways is better (lesser mem)
+        // However in wgpu, a DepthOnly copy to buffer from the format Depth24PlusStencil8 is 'forbidden' and considered invalid
+        // as per this - https://github.com/gfx-rs/wgpu/blob/9fccdf5cf370fcd104e37a4dc87c5db82cfd0e2b/wgpu-core/src/conv.rs#L5
+        // So we cannot use this to retrieve a depth map in a simple way, which we need to do for our python bindings
+        // But a DepthOnly copy to buffer from the format Depth32FloatStencil8 is allowed. This is a web + native feature
+        // so it fits within our needs. Since the selector is something we want on the web too, we need this feature on both native and web
+        // so it cant go in the cfg_if above
+        desired_features = desired_features.union(wgpu::Features::DEPTH32FLOAT_STENCIL8);
         let required_features = adapter.features().intersection(desired_features); //only take the features that are actually supported
                                                                                    // info!("enabled features: {required_features:?}");
 

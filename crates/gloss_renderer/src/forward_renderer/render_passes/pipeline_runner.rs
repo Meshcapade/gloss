@@ -26,6 +26,7 @@ pub trait PipelineRunner {
         per_frame_uniforms: &'r PerFrameUniforms,
         _render_params: &RenderConfig,
         query_state: &'r mut Self::QueryState<'_>,
+        _scene: &Scene,
     );
     fn begin_pass(&mut self);
     fn input_layout_desc() -> BindGroupLayoutDesc {

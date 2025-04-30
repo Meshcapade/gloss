@@ -1,5 +1,5 @@
 use gloss_renderer::{
-    components::{DiffuseImg, ImgConfig, NormalImg},
+    components::{DiffuseImg, ImgConfig, NormalImg, VisOutline},
     config::LogLevel,
     geom::Geom,
     gloss_setup_logger,
@@ -24,6 +24,7 @@ async fn create_test_scene(viewer: &mut Viewer) {
     viewer
         .scene
         .get_or_create_entity(name)
+        .insert(VisOutline::default())
         .insert_builder(Geom::build_from_file(path_mesh))
         .insert(DiffuseImg::new_from_path_async(path_diffuse, &ImgConfig::default()).await)
         .insert(NormalImg::new_from_path_async(path_normal, &ImgConfig::default()).await);

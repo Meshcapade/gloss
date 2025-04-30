@@ -7,6 +7,9 @@ use gloss_renderer::{config::LogLevel, gloss_setup_logger};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+#[cfg(target_arch = "wasm32")]
+use gloss_renderer::components::VisOutline;
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 #[allow(dead_code)]
 #[allow(unused_mut)]
@@ -15,6 +18,8 @@ async fn start() {
     gloss_setup_logger(LogLevel::Warn, None); //call only once per process
     let mut config = Config::default();
     config.core.canvas_id = Some(String::from("viewer-canvas"));
+    config.core.enable_gui = true;
+    config.core.gui_start_hidden = false;
     let mut viewer = Viewer::new_with_config(&config);
 
     #[cfg(target_arch = "wasm32")]
@@ -31,5 +36,6 @@ async fn create_test_scene_wasm(viewer: &mut Viewer) {
     viewer
         .scene
         .get_or_create_entity("test_mesh")
-        .insert_builder(Geom::build_from_file_async(path_mesh).await);
+        .insert_builder(Geom::build_from_file_async(path_mesh).await)
+        .insert(VisOutline::default());
 }

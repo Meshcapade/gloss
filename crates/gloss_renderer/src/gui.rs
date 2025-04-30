@@ -1,8 +1,8 @@
 use crate::{
     components::{
         Colors, DiffuseImg, DiffuseTex, Faces, ImgConfig, LightEmit, MeshColorType, ModelMatrix, Name, NormalImg, NormalTex, Normals, PointColorType,
-        PosLookat, Projection, Renderable, RoughnessImg, RoughnessTex, ShadowCaster, ShadowMapDirty, UVs, Verts, VisLines, VisMesh, VisNormals,
-        VisPoints, VisWireframe,
+        PosLookat, Projection, Renderable, RoughnessImg, RoughnessTex, Selector, ShadowCaster, ShadowMapDirty, UVs, Verts, VisLines, VisMesh,
+        VisNormals, VisOutline, VisPoints, VisWireframe,
     },
     config::Config,
     viewer::Runner,
@@ -386,13 +386,29 @@ impl GuiMainWidget {
                                         let e_ref = scene.world.entity(entity).unwrap();
                                         //get the name of the mesh which acts like a unique id
                                         let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
-
                                         //GUI for this concrete mesh
                                         //if we click we can see options for vis
                                         let _res = ui.selectable_value(&mut self.selected_mesh_name, name.clone(), &name);
 
                                         if name == self.selected_mesh_name {
+                                            // First, turn off outline for previous selection
+                                            if let Some(prev_entity) = self.selected_entity {
+                                                if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(prev_entity) {
+                                                    vis_outline.show_outline = false;
+                                                }
+                                            }
+
+                                            // Set new selection
                                             self.selected_entity = Some(entity);
+
+                                            // Set selector and update outline for new selection
+                                            let selector = Selector {
+                                                current_selected: name.clone(),
+                                            };
+                                            scene.add_resource(selector);
+                                            if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(entity) {
+                                                vis_outline.show_outline = true;
+                                            }
                                             //make a side window
                                             self.draw_vis(ctx, renderer, scene, entity, command_buffer, callbacks_for_selected_mesh);
                                         }
@@ -621,6 +637,7 @@ impl GuiMainWidget {
         let e_ref = scene.world.entity(entity).unwrap();
         let has_vis_points = e_ref.has::<VisPoints>();
         let has_vis_lines = e_ref.has::<VisLines>();
+        let has_vis_outline = e_ref.has::<VisOutline>();
         let _has_vis_wireframe = e_ref.has::<VisWireframe>();
         let has_vis_mesh = e_ref.has::<VisMesh>();
         let _has_vis_normals = e_ref.has::<VisNormals>();
@@ -654,6 +671,12 @@ impl GuiMainWidget {
                     ui.add_space(SPACING_1);
                     let mut c = scene.get_comp::<&mut VisLines>(&entity).unwrap();
                     self.draw_vis_lines(ui, scene, entity, command_buffer, has_vis_lines, &mut c);
+                }
+                //outline
+                if has_vis_outline {
+                    ui.add_space(SPACING_1);
+                    let mut c = scene.get_comp::<&mut VisOutline>(&entity).unwrap();
+                    self.draw_vis_outline(ui, scene, entity, command_buffer, has_vis_outline, &mut c);
                 }
                 // TODO: Keep this?
                 //wireframe
@@ -846,7 +869,41 @@ impl GuiMainWidget {
             }
         });
     }
+    fn draw_vis_outline(
+        &mut self,
+        ui: &mut Ui,
+        _scene: &Scene,
+        _entity: Entity,
+        _command_buffer: &mut CommandBuffer,
+        is_visible: bool,
+        c: &mut VisOutline,
+    ) {
+        ui.label("Outline");
+        ui.separator();
 
+        // Use `add_enabled_ui` to conditionally enable UI elements
+        ui.add_enabled_ui(is_visible, |ui| {
+            // Do not expose this to the user, we will use this internally to toggle the outline
+            // let res = ui.checkbox(&mut c.show_outline, "Show outline");
+            // if res.clicked() {
+            //     command_buffer.insert_one(entity, ShadowMapDirty);
+            // }
+
+            if c.show_outline {
+                // Outline color editor
+                ui.horizontal(|ui| {
+                    ui.color_edit_button_rgba_unmultiplied(&mut c.outline_color.data.0.as_mut_slice()[0]);
+                    ui.label("Outline color");
+                });
+
+                // Outline width slider
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().slider_width = SIDE_PANEL_WIDTH / 3.0; // Adjust slider width
+                    ui.add(Slider::new(&mut c.outline_width, 0.0..=25.0).text("Width"));
+                });
+            }
+        });
+    }
     fn draw_vis_lines(
         &mut self,
         ui: &mut Ui,

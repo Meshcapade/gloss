@@ -6,7 +6,9 @@ use crate::scene::Scene;
 
 use easy_wgpu::gpu::Gpu;
 
-use super::{line_pipeline::LinePipeline, mesh_pipeline::MeshPipeline, point_pipeline::PointPipeline, upload_pass::PerFrameUniforms};
+use super::{
+    line_pipeline::LinePipeline, mesh_pipeline::MeshPipeline, outline_pass::OutlinePass, point_pipeline::PointPipeline, upload_pass::PerFrameUniforms,
+};
 
 use crate::forward_renderer::{render_passes::pipeline_runner::PipelineRunner, renderer::OffscreenTarget};
 use easy_wgpu::framebuffer::FrameBuffer;
@@ -16,6 +18,7 @@ pub struct MainPass {
     mesh_pipeline: MeshPipeline,
     point_pipeline: PointPipeline,
     line_pipeline: LinePipeline,
+    outline_pass: OutlinePass,
 }
 
 impl MainPass {
@@ -23,10 +26,12 @@ impl MainPass {
         let mesh_pipeline = MeshPipeline::new(gpu, params, color_target_format, depth_target_format);
         let point_pipeline = PointPipeline::new(gpu, params, color_target_format, depth_target_format);
         let line_pipeline = LinePipeline::new(gpu, params, color_target_format, depth_target_format);
+        let outline_pass = OutlinePass::new(gpu, params, color_target_format, depth_target_format);
         Self {
             mesh_pipeline,
             point_pipeline,
             line_pipeline,
+            outline_pass,
         }
     }
 
@@ -58,7 +63,7 @@ impl MainPass {
         let mut line_query = self.line_pipeline.prepare(gpu, per_frame_uniforms, scene);
         let mut mesh_query = self.mesh_pipeline.prepare(gpu, per_frame_uniforms, scene);
         let mut point_query = self.point_pipeline.prepare(gpu, per_frame_uniforms, scene);
-
+        let mut outline_query = self.outline_pass.prepare(gpu, per_frame_uniforms, scene);
         //do the actual rendering now
         let mut encoder = gpu.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("MainPass Encoder"),
@@ -101,20 +106,26 @@ impl MainPass {
                         load: wgpu::LoadOp::Clear(0.0),
                         store,
                     }),
-                    stencil_ops: None,
+                    stencil_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(0),
+                        store: wgpu::StoreOp::Store,
+                    }),
                 }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
 
             //Use the piplines to render to the render targets we specified
+            // render_pass.set_stencil_reference(1);
             self.mesh_pipeline
-                .run(&mut render_pass, per_frame_uniforms, render_params, &mut mesh_query);
+                .run(&mut render_pass, per_frame_uniforms, render_params, &mut mesh_query, scene);
+            self.outline_pass
+                .run(&mut render_pass, per_frame_uniforms, render_params, &mut outline_query, scene);
 
             self.point_pipeline
-                .run(&mut render_pass, per_frame_uniforms, render_params, &mut point_query);
+                .run(&mut render_pass, per_frame_uniforms, render_params, &mut point_query, scene);
             self.line_pipeline
-                .run(&mut render_pass, per_frame_uniforms, render_params, &mut line_query);
+                .run(&mut render_pass, per_frame_uniforms, render_params, &mut line_query, scene);
         }
         gpu.queue().submit(Some(encoder.finish()));
 

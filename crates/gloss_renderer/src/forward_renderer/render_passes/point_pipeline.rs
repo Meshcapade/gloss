@@ -108,6 +108,7 @@ impl PipelineRunner for PointPipeline {
         per_frame_uniforms: &'r PerFrameUniforms,
         _render_params: &RenderConfig,
         query_state: &'r mut Self::QueryState<'_>,
+        _scene: &Scene,
     ) {
         //completely skip this if there are no entities to draw
         if query_state.iter().count() == 0 {

@@ -10,4 +10,5 @@ pub mod uvs;
 pub mod verts;
 pub mod vis_edges;
 pub mod vis_mesh;
+pub mod vis_outline;
 pub mod vis_points;

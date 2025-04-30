@@ -1,4 +1,6 @@
 [core]
+enable_gui = true
+gui_start_hidden = false
 auto_add_floor = false
 auto_create_logger = false # To avoid multiple inits crash
 

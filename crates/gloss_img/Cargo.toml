@@ -85,14 +85,8 @@ png.workspace=true
 flate2.workspace=true
 bytemuck.workspace=true
 num-traits.workspace=true
-# smallvec.workspace=true
-# parking_lot.workspace=true
-# once_cell.workspace=true
-# log.workspace=true
-# ahash.workspace=true
-# nohash-hasher.workspace=true
-# itertools.workspace=true
-# atomic.workspace=true
+half.workspace=true
+image-webp.workspace=true
 
 #optional dependencies from image-rs
 #KEEP IN SYNC to the image-rs version

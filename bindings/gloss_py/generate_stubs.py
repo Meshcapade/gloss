@@ -101,7 +101,7 @@ def generate_stubs():
         '__init__': [
             "from gloss.types import IndirRemovalPolicy, SplatType",
             "from gloss.log import LogLevel, LogLevelCaps",
-            "from gloss.components import Colors, DiffuseImg, Edges, Faces, Normals, Tangents, UVs, Verts, VisLines, VisMesh, VisPoints, ModelMatrix",
+            "from gloss.components import Colors, DiffuseImg, Edges, Faces, Normals, Tangents, UVs, Verts, VisLines, VisMesh, VisPoints, ModelMatrix, VisOutline",
             "from gloss.builders import EntityBuilder",
         ],
         'types': [],

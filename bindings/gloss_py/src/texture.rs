@@ -19,7 +19,9 @@ impl PyTexture {
     #[pyo3(text_signature = "($self, device: Device, queue: Queue, path: str) -> None")]
     pub fn save_to_file(&mut self, device: &PyDevice, queue: &PyQueue, path: &str) {
         let tex = unsafe { &*self.obj_ptr };
-        let dyn_img = pollster::block_on(tex.download_to_cpu(device, queue));
+        // This is for RGB images so aspect is all
+        let aspect = wgpu::TextureAspect::All;
+        let dyn_img = pollster::block_on(tex.download_to_cpu(device, queue, aspect));
         let _ = dyn_img.save(path);
     }
     #[pyo3(text_signature = "($self, device: Device, queue: Queue) -> NDArray[np.float32]")]
@@ -32,8 +34,9 @@ impl PyTexture {
             "InvalidSampleCount: Depth maps not supported for MSAA sample count {} (Use a config to set msaa_nr_samples as 1)",
             tex.texture.sample_count()
         );
-
-        let dynamic_img = pollster::block_on(tex.download_to_cpu(device, queue));
+        // This is for RGB images so aspect is all
+        let aspect = wgpu::TextureAspect::All;
+        let dynamic_img = pollster::block_on(tex.download_to_cpu(device, queue, aspect));
         let pydyn_img = PyDynImage { inner: dynamic_img };
         pydyn_img.numpy(py)
     }

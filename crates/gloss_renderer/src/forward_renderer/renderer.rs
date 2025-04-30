@@ -69,7 +69,7 @@ impl RenderData {
             .add_render_target(
                 gpu.device(),
                 OffscreenTarget::Depth,
-                wgpu::TextureFormat::Depth32Float,
+                wgpu::TextureFormat::Depth32FloatStencil8,
                 depth_texture_usage,
                 TexParams {
                     sample_count: params.msaa_nr_samples,

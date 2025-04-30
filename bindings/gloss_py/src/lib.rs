@@ -15,6 +15,7 @@ use components::{
     verts::PyVerts,
     vis_edges::{PyLineColorType, PyVisLines},
     vis_mesh::{PyMeshColorType, PyVisMesh},
+    vis_outline::PyVisOutline,
     vis_points::{PyPointColorType, PyVisPoints},
 };
 use entity_builder::PyEntityBuilder;
@@ -117,6 +118,7 @@ fn add_submod_components_sm(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()
     m.add_class::<PyVisLines>()?;
     m.add_class::<PyVisMesh>()?;
     m.add_class::<PyVisPoints>()?;
+    m.add_class::<PyVisOutline>()?;
     m.add_class::<PyModelMatrix>()?;
     m.add_class::<PyDiffuseImg>()?;
     m.add_class::<PyNormalImg>()?;

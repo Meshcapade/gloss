@@ -775,9 +775,13 @@ impl Texture {
         device.poll(wgpu::Maintain::Wait);
     }
 
-    pub async fn download_to_cpu(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> DynImage {
+    /// This functions downloads the texture to the cpu and returns a `DynImage`
+    /// The aspect of the texture to download is specified by the aspect parameter
+    /// This is required since we use texture format `Depth32FloatStencil8`
+    /// which has both a depth and a stencil component
+    pub async fn download_to_cpu(&self, device: &wgpu::Device, queue: &wgpu::Queue, aspect: wgpu::TextureAspect) -> DynImage {
         // create buffer
-        let bytes_per_row_unpadded = self.texture.format().block_copy_size(None).unwrap() * self.width();
+        let bytes_per_row_unpadded = self.texture.format().block_copy_size(None).unwrap_or(4) * self.width();
         let bytes_per_row_padded = numerical::align(bytes_per_row_unpadded, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
         let output_buffer_size = u64::from(bytes_per_row_padded * self.height());
         let output_buffer_desc = wgpu::BufferDescriptor {
@@ -795,7 +799,7 @@ impl Texture {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_texture_to_buffer(
             wgpu::ImageCopyTexture {
-                aspect: wgpu::TextureAspect::All,
+                aspect,
                 texture: &self.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
@@ -862,7 +866,9 @@ impl Texture {
                     ImageBuffer::from_raw(w, h, rgba_data).map(DynImage::ImageRgba8)
                 }
                 TextureFormat::Rgba32Float => ImageBuffer::from_raw(w, h, numerical::u8_to_f32_vec(&data_unpadded)).map(DynImage::ImageRgba32F),
-                TextureFormat::Depth32Float => ImageBuffer::from_raw(w, h, numerical::u8_to_f32_vec(&data_unpadded)).map(DynImage::ImageLuma32F),
+                TextureFormat::Depth32Float | TextureFormat::Depth32FloatStencil8 => {
+                    ImageBuffer::from_raw(w, h, numerical::u8_to_f32_vec(&data_unpadded)).map(DynImage::ImageLuma32F)
+                }
                 x => panic!("Texture format not implemented! {x:?}"),
             }
         };
@@ -921,7 +927,9 @@ impl Texture {
             self.texture.sample_count()
         );
 
-        let dynamic_img = pollster::block_on(self.download_to_cpu(device, queue));
+        // This download specifically happens for a depth map so we only want to download the depth component
+        let aspect = wgpu::TextureAspect::DepthOnly;
+        let dynamic_img = pollster::block_on(self.download_to_cpu(device, queue, aspect));
         let w = dynamic_img.width();
         let h = dynamic_img.height();
         let c = dynamic_img.channels();

@@ -46,6 +46,9 @@ pub enum MeshColorType {
     NormalViewCoords,
 }
 
+pub struct Selector {
+    pub current_selected: String,
+}
 /// Component for visualization options of lines
 #[derive(Clone)]
 #[allow(clippy::struct_excessive_bools)]
@@ -117,6 +120,17 @@ pub struct VisMesh {
     // component manually then we shouldn't override his VisMesh.colortype.
     pub added_automatically: bool,
 }
+/// Component for visualization options of meshes
+#[derive(Clone)]
+pub struct VisOutline {
+    pub show_outline: bool,
+    pub outline_color: na::Vector4<f32>,
+    pub outline_width: f32,
+    //if this components was added automatically by the renderer this will be set to true. This is useful to know since when we upload textures to
+    // gpu the vis_mesh.color_type will be set to Texture but this should happen ONLY if the VisMesh was added automatically. If the used adds this
+    // component manually then we shouldn't override his VisMesh.colortype.
+    pub added_automatically: bool,
+}
 //implementations of default vis options
 impl Default for VisLines {
     fn default() -> VisLines {
@@ -178,6 +192,16 @@ impl Default for VisMesh {
             opacity: 1.0,
             needs_sss: false,
             color_type: MeshColorType::Solid,
+            added_automatically: false,
+        }
+    }
+}
+impl Default for VisOutline {
+    fn default() -> VisOutline {
+        VisOutline {
+            show_outline: false,
+            outline_color: na::Vector4::<f32>::new(1.0, 0.5, 0.0, 1.0), // Blender orange selection color
+            outline_width: 4.0,
             added_automatically: false,
         }
     }
