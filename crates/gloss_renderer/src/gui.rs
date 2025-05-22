@@ -418,6 +418,11 @@ impl GuiMainWidget {
                     });
                 });
 
+                // Resources in the scene (global components)
+                egui::CollapsingHeader::new("Resources").show(ui, |ui| {
+                    self.draw_comps(ui, scene, scene.get_entity_resource(), command_buffer);
+                });
+
                 // Params
                 egui::CollapsingHeader::new("Textures").show(ui, |ui| {
                     self.draw_textures(ui, scene, egui_renderer, gpu, command_buffer);
@@ -477,7 +482,7 @@ impl GuiMainWidget {
                 for system_and_metadata in plugins.gui_systems.iter() {
                     let sys = &system_and_metadata.0;
                     let func = sys.f;
-                    let gui_window = func(self.selected_entity.into(), scene);
+                    let gui_window = func(&self.selected_entity.into(), scene);
                     let window_name = gui_window.window_name;
                     let widgets = gui_window.widgets;
                     let window_type = gui_window.window_type;
@@ -506,13 +511,13 @@ impl GuiMainWidget {
                                                 .text(slider.name.as_str()),
                                         );
                                         if res.dragged() {
-                                            (slider.f_change)(val, slider.name.clone(), selected_entity, scene);
+                                            (slider.f_change)(val, &slider.name, &selected_entity, scene);
                                         }
                                         // } else {
                                         if res.drag_stopped() {
                                             // Updated method here
                                             if let RSome(func) = slider.f_no_change {
-                                                func(slider.name.clone(), selected_entity, scene);
+                                                func(&slider.name.clone(), &selected_entity, scene);
                                             }
                                         }
                                         // if res.drag_released() {
@@ -527,19 +532,19 @@ impl GuiMainWidget {
                                         let mut val = checkbox.init_val;
                                         let res = ui.add(egui::Checkbox::new(&mut val, checkbox.name.as_str()));
                                         if res.clicked() {
-                                            (checkbox.f_clicked)(val, checkbox.name.clone(), selected_entity, scene);
+                                            (checkbox.f_clicked)(val, &checkbox.name, &selected_entity, scene);
                                         }
                                     }
                                     WidgetsFFI::Button(button) => {
                                         if ui.add(egui::Button::new(button.name.as_str())).clicked() {
-                                            (button.f_clicked)(button.name.clone(), selected_entity, scene);
+                                            (button.f_clicked)(&button.name, &selected_entity, scene);
                                         }
                                     }
                                     WidgetsFFI::SelectableList(selectable_list) => {
                                         let mut draw_selectables = |ui: &mut Ui| {
                                             for item in selectable_list.items.iter() {
                                                 if ui.add(egui::SelectableLabel::new(item.is_selected, item.name.to_string())).clicked() {
-                                                    (item.f_clicked)(item.name.clone(), selected_entity, scene);
+                                                    (item.f_clicked)(&item.name, &selected_entity, scene);
                                                 }
                                             }
                                         };
@@ -710,7 +715,9 @@ impl GuiMainWidget {
                 //     );
                 // }
 
-                self.draw_comps(ui, scene, entity, command_buffer, true);
+                ui.label("Components");
+                ui.separator();
+                self.draw_comps(ui, scene, entity, command_buffer);
 
                 for f in callbacks_for_selected_mesh.iter() {
                     f(self, ctx, ui, renderer, scene);
@@ -1024,10 +1031,7 @@ impl GuiMainWidget {
     //     });
     // }
 
-    fn draw_comps(&mut self, ui: &mut Ui, scene: &Scene, entity: Entity, _command_buffer: &mut CommandBuffer, _is_visible: bool) {
-        //VIS Normals
-        ui.label("Components");
-        ui.separator();
+    fn draw_comps(&mut self, ui: &mut Ui, scene: &Scene, entity: Entity, _command_buffer: &mut CommandBuffer) {
         let e_ref = scene.world.entity(entity).unwrap();
         //print component names
         let comp_infos: Vec<gloss_hecs::TypeInfo> = e_ref.component_infos().collect();

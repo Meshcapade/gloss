@@ -10,10 +10,10 @@ use gloss_utils::abi_stable_aliases::StableAbi;
 pub struct Selectable {
     pub name: RString,
     pub is_selected: bool,
-    pub f_clicked: extern "C" fn(RString, Entity, &mut Scene),
+    pub f_clicked: extern "C" fn(&RString, &Entity, &mut Scene),
 }
 impl Selectable {
-    pub fn new(name: &str, is_selected: bool, f_clicked: extern "C" fn(RString, Entity, &mut Scene)) -> Self {
+    pub fn new(name: &str, is_selected: bool, f_clicked: extern "C" fn(&RString, &Entity, &mut Scene)) -> Self {
         Self {
             name: RString::from(name),
             is_selected,

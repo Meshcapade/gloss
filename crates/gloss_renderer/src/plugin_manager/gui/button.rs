@@ -8,11 +8,11 @@ use gloss_utils::abi_stable_aliases::StableAbi;
 #[cfg_attr(not(target_arch = "wasm32"), derive(StableAbi))]
 pub struct Button {
     pub name: RString,
-    pub f_clicked: extern "C" fn(RString, Entity, &mut Scene),
+    pub f_clicked: extern "C" fn(&RString, &Entity, &mut Scene),
 }
 
 impl Button {
-    pub fn new(name: &str, f_clicked: extern "C" fn(RString, Entity, &mut Scene)) -> Self {
+    pub fn new(name: &str, f_clicked: extern "C" fn(&RString, &Entity, &mut Scene)) -> Self {
         Self {
             name: RString::from(name),
             f_clicked,

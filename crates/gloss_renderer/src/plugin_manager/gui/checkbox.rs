@@ -10,11 +10,11 @@ use gloss_utils::abi_stable_aliases::StableAbi;
 pub struct Checkbox {
     pub name: RString,
     pub init_val: bool,
-    pub f_clicked: extern "C" fn(bool, RString, Entity, &mut Scene),
+    pub f_clicked: extern "C" fn(bool, &RString, &Entity, &mut Scene),
 }
 
 impl Checkbox {
-    pub fn new(name: &str, init_val: bool, f_clicked: extern "C" fn(bool, RString, Entity, &mut Scene)) -> Self {
+    pub fn new(name: &str, init_val: bool, f_clicked: extern "C" fn(bool, &RString, &Entity, &mut Scene)) -> Self {
         Self {
             name: RString::from(name),
             init_val,

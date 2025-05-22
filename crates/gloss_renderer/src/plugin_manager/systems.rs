@@ -12,10 +12,10 @@ use super::{gui::window::GuiWindow, plugins::Event, runner::RunnerState};
 #[derive(Clone)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(StableAbi))]
 pub struct GuiSystem {
-    pub f: extern "C" fn(selected_entity: ROption<Entity>, scene: &mut Scene) -> GuiWindow,
+    pub f: extern "C" fn(selected_entity: &ROption<Entity>, scene: &mut Scene) -> GuiWindow,
 }
 impl GuiSystem {
-    pub fn new(f: extern "C" fn(selected_entity: ROption<Entity>, scene: &mut Scene) -> GuiWindow) -> Self {
+    pub fn new(f: extern "C" fn(selected_entity: &ROption<Entity>, scene: &mut Scene) -> GuiWindow) -> Self {
         Self { f }
     }
 }

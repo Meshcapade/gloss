@@ -14,8 +14,8 @@ pub struct Slider {
     pub max: f32,
     pub width: ROption<f32>,
     //TODO change to f_dragged f_released
-    pub f_change: extern "C" fn(f32, RString, Entity, &mut Scene),
-    pub f_no_change: ROption<extern "C" fn(RString, Entity, &mut Scene)>,
+    pub f_change: extern "C" fn(f32, &RString, &Entity, &mut Scene),
+    pub f_no_change: ROption<extern "C" fn(&RString, &Entity, &mut Scene)>,
 }
 
 impl Slider {
@@ -25,8 +25,8 @@ impl Slider {
         min: f32,
         max: f32,
         width: ROption<f32>,
-        f_change: extern "C" fn(f32, RString, Entity, &mut Scene),
-        f_no_change: ROption<extern "C" fn(RString, Entity, &mut Scene)>,
+        f_change: extern "C" fn(f32, &RString, &Entity, &mut Scene),
+        f_no_change: ROption<extern "C" fn(&RString, &Entity, &mut Scene)>,
     ) -> Self {
         Self {
             name: RString::from(name),

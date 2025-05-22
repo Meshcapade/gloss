@@ -24,8 +24,11 @@ use crate::{
     layout::Layout,
     Bundle, Component, DynamicBundle, Entity, World,
 };
+
 use gloss_utils::abi_stable_aliases::std_types::{ROption, ROption::RNone, ROption::RSome, RVec};
 
+#[cfg(not(target_arch = "wasm32"))]
+use abi_stable::sabi_extern_fn;
 #[cfg(not(target_arch = "wasm32"))]
 use gloss_utils::abi_stable_aliases::StableAbi;
 
@@ -123,7 +126,9 @@ impl CommandBuffer {
     /// When removing a single component, see [`remove_one`](Self::remove_one)
     /// for convenience.
     pub fn remove<T: Bundle + 'static>(&mut self, ent: Entity) {
-        extern "C" fn remove_bundle_and_ignore_result<T: Bundle + 'static>(world: &mut World, ents: Entity) {
+        #[allow(clippy::semicolon_if_nothing_returned)]
+        #[cfg_attr(not(target_arch = "wasm32"), sabi_extern_fn)] //adds extern "C" to it if it's not compiled on wasm
+        fn remove_bundle_and_ignore_result<T: Bundle + 'static>(world: &mut World, ents: Entity) {
             let _ = world.remove::<T>(ents);
         }
         self.cmds.push(Cmd::Remove(RemovedComps {
@@ -320,6 +325,9 @@ struct EntityIndex {
 #[repr(C)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(StableAbi))]
 struct RemovedComps {
+    #[cfg(target_arch = "wasm32")] //if it's wasn we don't require StableABI so we don't need extern C which causes issues when compiling for wasm
+    remove: fn(&mut World, Entity),
+    #[cfg(not(target_arch = "wasm32"))]
     remove: extern "C" fn(&mut World, Entity),
     entity: Entity,
 }
