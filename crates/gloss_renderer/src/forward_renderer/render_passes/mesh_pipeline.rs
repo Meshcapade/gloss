@@ -2,13 +2,14 @@ use std::collections::HashMap;
 
 use crate::{
     components::{
-        ColorsGPU, DiffuseTex, EnvironmentMapGpu, FacesGPU, ModelMatrix, Name, NormalTex, NormalsGPU, Renderable, RoughnessTex, Selector,
-        ShadowCaster, ShadowMap, TangentsGPU, UVsGPU, VertsGPU, VisMesh,
+        ColorsGPU, DiffuseTex, EnvironmentMapGpu, FacesGPU, ModelMatrix, Name, NormalTex, NormalsGPU, Renderable, RoughnessTex, ShadowCaster,
+        ShadowMap, TangentsGPU, UVsGPU, VertsGPU, VisMesh,
     },
     config::RenderConfig,
     forward_renderer::{bind_group_collection::BindGroupCollection, locals::LocalEntData},
     light::Light,
     scene::Scene,
+    selector::Selector,
 };
 use easy_wgpu::{
     bind_group::{BindGroupBuilder, BindGroupDesc, BindGroupWrapper},
@@ -99,17 +100,17 @@ impl MeshPipeline {
                 stencil: wgpu::StencilState {
                     front: wgpu::StencilFaceState {
                         compare: wgpu::CompareFunction::Always,
-                        fail_op: wgpu::StencilOperation::Keep,
-                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        fail_op: wgpu::StencilOperation::Replace,
+                        depth_fail_op: wgpu::StencilOperation::Replace,
                         pass_op: wgpu::StencilOperation::Replace,
                     },
                     back: wgpu::StencilFaceState {
                         compare: wgpu::CompareFunction::Always,
-                        fail_op: wgpu::StencilOperation::Keep,
-                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        fail_op: wgpu::StencilOperation::Replace,
+                        depth_fail_op: wgpu::StencilOperation::Replace,
                         pass_op: wgpu::StencilOperation::Replace,
                     },
-                    read_mask: 0xFF,
+                    read_mask: 0x00,
                     write_mask: 0xFF,
                 },
                 bias: wgpu::DepthBiasState::default(),
@@ -219,24 +220,30 @@ impl PipelineRunner for MeshPipeline {
         //input binding
         render_pass.set_bind_group(1, self.input_bind_group.as_ref().unwrap().bg(), &[]);
 
+        /* ---------------------------------- NOTE ---------------------------------- */
+        // When we set stencil reference, all further draw calls will write to the stencil buffer.
+        // We do not want that happening since we want to draw to the stencil buffer only using the selected ent
+        // So we do this below for the selected entity after the loop. The first loop draws the unselected entities,
+        //all with stencil reference 0.
+        // The part after draws the selected entity with stencil reference 1, used by the outline pass
+        /* -------------------------------------------------------------------------- */
+
+        render_pass.set_stencil_reference(0);
         for (_id, (verts, faces, uvs, normals, tangents, colors, _diffuse_tex, _normal_tex, _roughness_tex, vis_mesh, name)) in query_state.iter() {
             if !vis_mesh.show_mesh {
                 continue;
             }
 
-            //local bindings
-            let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&name.0.clone()];
-            render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
-
-            // Create stencil only for selected entity
+            // Skip in the loop and do after
             if let Ok(ref current_selector) = selector {
                 if name.0 == current_selector.current_selected {
-                    render_pass.set_stencil_reference(1);
-                } else {
-                    render_pass.set_stencil_reference(0);
+                    continue;
                 }
             }
 
+            //local bindings
+            let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&name.0.clone()];
+            render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
             render_pass.set_vertex_buffer(0, verts.buf.slice(..));
             render_pass.set_vertex_buffer(1, uvs.buf.slice(..));
             render_pass.set_vertex_buffer(2, normals.buf.slice(..));
@@ -245,6 +252,58 @@ impl PipelineRunner for MeshPipeline {
             render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
         }
+
+        for (_id, (verts, faces, uvs, normals, tangents, colors, _diffuse_tex, _normal_tex, _roughness_tex, vis_mesh, name)) in query_state.iter() {
+            if let Ok(ref current_selector) = selector {
+                if name.0 == current_selector.current_selected {
+                    if !vis_mesh.show_mesh {
+                        return;
+                    }
+
+                    render_pass.set_stencil_reference(1);
+
+                    let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&current_selector.current_selected.clone()];
+                    render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
+                    render_pass.set_vertex_buffer(0, verts.buf.slice(..));
+                    render_pass.set_vertex_buffer(1, uvs.buf.slice(..));
+                    render_pass.set_vertex_buffer(2, normals.buf.slice(..));
+                    render_pass.set_vertex_buffer(3, tangents.buf.slice(..));
+                    render_pass.set_vertex_buffer(4, colors.buf.slice(..));
+                    render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
+                    render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
+                }
+            }
+        }
+
+        // This is an alternative way to do the same
+        // if let Ok(ref current_selector) = selector {
+        //     if let Some(selected_entity) = scene.get_entity_with_name(&current_selector.current_selected) {
+        //         let vis_mesh = scene.get_comp::<&VisMesh>(&selected_entity).unwrap();
+        //         // The selected avatar might delete its renderable comp when its outside its timeline, we skip this in that case
+        //         if !vis_mesh.show_mesh {
+        //             return;
+        //         }
+
+        //         render_pass.set_stencil_reference(1);
+
+        //         let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&current_selector.current_selected.clone()];
+        //         let verts = scene.get_comp::<&VertsGPU>(&selected_entity).unwrap();
+        //         let faces = scene.get_comp::<&FacesGPU>(&selected_entity).unwrap();
+        //         let uvs = scene.get_comp::<&UVsGPU>(&selected_entity).unwrap();
+        //         let normals = scene.get_comp::<&NormalsGPU>(&selected_entity).unwrap();
+        //         let tangents = scene.get_comp::<&TangentsGPU>(&selected_entity).unwrap();
+        //         let colors = scene.get_comp::<&ColorsGPU>(&selected_entity).unwrap();
+
+        //         render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
+        //         render_pass.set_vertex_buffer(0, verts.buf.slice(..));
+        //         render_pass.set_vertex_buffer(1, uvs.buf.slice(..));
+        //         render_pass.set_vertex_buffer(2, normals.buf.slice(..));
+        //         render_pass.set_vertex_buffer(3, tangents.buf.slice(..));
+        //         render_pass.set_vertex_buffer(4, colors.buf.slice(..));
+        //         render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
+        //         render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
+        //     }
+        // }
     }
 
     fn begin_pass(&mut self) {}

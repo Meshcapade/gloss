@@ -1,6 +1,10 @@
 // use gloss_hecs::Bundle;
 
+/// Duration of a click in milliseconds, a press followed by release within this duration is considered a click
+pub const CLICK_DURATION_MS: u128 = 250;
+
 use std::collections::HashMap;
+use wasm_timer::Instant;
 use winit::event::Touch;
 
 extern crate nalgebra as na;
@@ -65,6 +69,7 @@ pub struct ProjectionWithIntrinsics {
 
 /// Component usually used on camera, allows to keep track of camera state while
 /// handling mouse events
+#[allow(clippy::struct_excessive_bools)]
 pub struct CamController {
     pub mouse_mode: CamMode,
     pub mouse_pressed: bool,
@@ -75,6 +80,11 @@ pub struct CamController {
     pub limit_min_vertical_angle: Option<f32>,
     pub id2active_touches: HashMap<u64, Touch>, /* when we have multiple touch events each fingers gets an unique id. This maps from the unique id
                                                  * to an "active" or touching finger */
+    // Store some parameters for camera interaction
+    pub cursor_position: Option<winit::dpi::PhysicalPosition<f64>>,
+    pub last_press: Option<Instant>,
+    pub is_last_press_click: bool,
+    pub mouse_moved_while_pressed: bool,
 }
 
 //implementations
@@ -361,6 +371,10 @@ impl Default for CamController {
             limit_max_vertical_angle: None,
             limit_min_vertical_angle: None,
             id2active_touches: HashMap::new(),
+            cursor_position: None,
+            last_press: None,
+            is_last_press_click: false,
+            mouse_moved_while_pressed: false,
         }
     }
 }
@@ -371,6 +385,13 @@ impl CamController {
             limit_max_vertical_angle,
             limit_min_vertical_angle,
             ..Default::default()
+        }
+    }
+    pub fn decide_if_click(&mut self) {
+        if let Some(last_press) = self.last_press {
+            if last_press.elapsed().as_millis() < CLICK_DURATION_MS && !self.mouse_moved_while_pressed {
+                self.is_last_press_click = true;
+            }
         }
     }
 }

@@ -121,7 +121,12 @@ impl<T: enum_map::EnumArray<Option<Texture>> + std::fmt::Debug> FrameBuffer<T> {
         // recreate the bind_group
         for tex in self.targets.values_mut() {
             let tex = tex.as_mut().unwrap();
-            tex.resize(device, width, height);
+
+            let scale_factor = tex.tex_params.scale_factor;
+            let scaled_width = width / scale_factor;
+            let scaled_height = height / scale_factor;
+
+            tex.resize(device, scaled_width, scaled_height);
         }
         self.width = width;
         self.height = height;
@@ -189,10 +194,11 @@ impl<T: enum_map::EnumArray<Option<Texture>> + std::fmt::Debug> FrameBufferBuild
         tex_params: TexParams,
     ) -> Self {
         assert_ne!(usages, wgpu::TextureUsages::empty(), "Texture usage cannot be empty");
-        // let usages = wgpu::TextureUsages::RENDER_ATTACHMENT
-        //     | wgpu::TextureUsages::TEXTURE_BINDING
-        //     | additional_usages;
-        let tex = Texture::new(device, self.width, self.height, format, usages, tex_params);
+
+        let scaled_width = self.width / tex_params.scale_factor;
+        let scaled_height = self.height / tex_params.scale_factor;
+
+        let tex = Texture::new(device, scaled_width, scaled_height, format, usages, tex_params);
         self.targets[target_type] = Some(tex);
         self
     }

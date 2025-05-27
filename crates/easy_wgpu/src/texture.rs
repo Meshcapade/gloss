@@ -18,12 +18,14 @@ use crate::{buffer::Buffer, mipmap::RenderMipmapGenerator};
 pub struct TexParams {
     pub sample_count: u32,
     pub mip_level_count: u32,
+    pub scale_factor: u32,
 }
 impl Default for TexParams {
     fn default() -> Self {
         Self {
             sample_count: 1,
             mip_level_count: 1,
+            scale_factor: 1,
         }
     }
 }
@@ -32,6 +34,7 @@ impl TexParams {
         Self {
             sample_count: desc.sample_count,
             mip_level_count: desc.mip_level_count,
+            scale_factor: 1,
         }
     }
     pub fn apply(&self, desc: &mut wgpu::TextureDescriptor) {
@@ -874,6 +877,71 @@ impl Texture {
         };
         output_buffer.unmap();
         img.unwrap()
+    }
+
+    pub async fn download_pixel_to_cpu(&self, device: &wgpu::Device, queue: &wgpu::Queue, aspect: wgpu::TextureAspect, x: u32, y: u32) -> DynImage {
+        // Create a single pixel buffer to read back the selected pixel
+        let output_buffer_desc = wgpu::BufferDescriptor {
+            label: Some("ID Readback Buffer"),
+            size: 4, // 4 bytes for a single u32
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        };
+        let output_buffer = device.create_buffer(&output_buffer_desc);
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("ID Readback Encoder"),
+        });
+
+        // let scaled_x = x / self.tex_params.scale_factor;
+        // let scaled_y = y / self.tex_params.scale_factor;
+
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                aspect,
+                texture: &self.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d { x, y, z: 0 },
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &output_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: None,
+                    rows_per_image: None,
+                },
+            },
+            wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        queue.submit(Some(encoder.finish()));
+
+        let pixel: Option<DynImage> = {
+            let buffer_slice = output_buffer.slice(..);
+
+            let (tx, rx) = futures_intrusive::channel::shared::oneshot_channel();
+            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                tx.send(result).unwrap();
+            });
+            device.poll(wgpu::Maintain::Wait);
+            rx.receive().await.unwrap().unwrap();
+
+            let data = buffer_slice.get_mapped_range();
+            match self.texture.format() {
+                TextureFormat::Rgba8Unorm => {
+                    // This would be a ingle byte image
+                    let single_pixel_bytes = *data.to_vec().first().unwrap();
+                    ImageBuffer::from_raw(1, 1, [single_pixel_bytes].to_vec()).map(DynImage::ImageLuma8)
+                }
+                x => panic!("Texture format not implemented! {x:?}"),
+            }
+        };
+        output_buffer.unmap();
+        pixel.unwrap()
     }
 
     pub fn remove_padding(buffer: &[u8], bytes_per_row_unpadded: u32, bytes_per_row_padded: u32, nr_rows: u32) -> Cow<'_, [u8]> {

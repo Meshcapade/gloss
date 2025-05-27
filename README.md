@@ -15,7 +15,13 @@ Gloss also compiles for Python and Web, allowing for rendering in multiple diffe
 
 </div>
 
-## Usage
+## Documentation 
+* [Gloss Rust API Documentation](https://docs.rs/gloss-rs/latest/gloss_rs/): Automatically generated docs for Gloss's Rust API
+* [Gloss Rust Examples](https://github.com/Meshcapade/gloss/tree/main/examples): Gloss's runnable examples in Rust, covering basic usage. 
+* [Gloss Python Examples](https://github.com/Meshcapade/gloss/tree/main/bindings/gloss_py/examples): Gloss's runnable examples for the Python bindings. Covers a wide range of features of the Python bindings. 
+
+
+<!-- ## Usage
 Below is an example of a python3 script which shows a single mesh using the default viewing parameters. More examples for the python bindings can be found in the `bindings/gloss_py/examples` folder.
 ```python
 import gloss
@@ -24,19 +30,41 @@ viewer = gloss.Viewer()
 mesh = viewer.get_or_create_entity("mesh")
 mesh.insert_builder(gloss.geom.build_from_file("my/mesh.obj")) 
 viewer.run()
+``` -->
+## Getting Started
+The easiest way to get started with gloss is to install the Python bindings. 
+
+```sh
+$ pip install gloss-rs
 ```
 
-## Installation
+Below is a basic example of a python script which shows a single mesh using the default viewing parameters. More examples for the python bindings can be found in the `bindings/gloss_py/examples` folder.
+
+```python
+import gloss
+
+viewer = gloss.Viewer()
+
+mesh = viewer.get_or_create_entity("mesh")
+mesh.insert_builder(gloss.geom.build_from_file("my/mesh.obj")) 
+
+viewer.run()
+```
+
+## Installation and Dependencies
 The main dependency is installing Rust, as the rest of dependencies are handled by cargo. 
 To install Rust, simply run the following in your terminal: 
+
 ```sh
 $ curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
 ```
 
-Additional dependencies for Linux:
+Some additional dependencies for Linux:
+
 ```sh
 $ sudo apt-get install libvulkan-dev vulkan-tools xorg-dev libxkbcommon-x11-dev
 ```
+
 For `MacOs`, it should run out of the box.
 
 <!-- Additional dependencies for WSL:
@@ -57,34 +85,32 @@ Additional dependencies for MacOS:
 $ 
 ``` -->
 
-For Python bindings, maturin is required:
+### For running the Rust examples
 ```sh
-$ python3 -m pip install maturin
+$ cd gloss
+$ cargo run --bin gloss_view_mesh
 ```
+![View Mesh Example](https://raw.githubusercontent.com/Meshcapade/gloss/main/imgs/mesh_view.png)
+
+### For running the Python examples
+```sh
+$ cd gloss/bindings/gloss_py
+$ pip install gloss-rs
+$ ./examples/empty.py
+```
+
+### Build and run the Web Example
 For Web, we use wasm-pack:
 ```sh
 $ curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
+To build the web example, run:
 
-### Install and Run Rust Native 
-```sh
-$ cd gloss
-$ cargo build
-$ cargo run --bin gloss_view_mesh
-```
-
-### Install and Run Python 
-```sh
-$ cd gloss/bindings/gloss_py
-$ ./scripts/build_local.sh
-$ ./examples/empty.py
-```
-
-### Install Web
 ```sh
 $ cd gloss/examples/web
 $ wasm-pack build --target web
 ```
+
 To run the web example, we can create a dummy web server by opening another terminal and running:
 ```sh
 $ cd gloss/examples/web
@@ -92,13 +118,13 @@ $ python -m http.server
 ```
 Finally, navigate to `http://0.0.0.0:8000/gloss_webpage/` in your browser of choice.
 
-## Examples
+<!-- ## Examples
 
 Various examples can be found in the `./examples` folder. A short description of each one is given here: 
 
 | Name  | Description |
 | ------------- | ------------- |
-| Mesh View | ![Mesh View](https://raw.githubusercontent.com/Meshcapade/gloss/main/imgs/mesh_view.png) Visualizes a mesh with textures. <br /> Run with [cargo r --bin `gloss_view_mesh`](./examples/view_mesh) |
+| Mesh View | ![Mesh View](https://raw.githubusercontent.com/Meshcapade/gloss/main/imgs/mesh_view.png) Visualizes a mesh with textures. <br /> Run with [cargo r --bin `gloss_view_mesh`](./examples/view_mesh) | -->
 
 ## Planned features
 - `PyTorch` integration

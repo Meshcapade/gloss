@@ -4,7 +4,7 @@ use crate::{
     camera::Camera,
     components::{
         Colors, DiffuseTex, Edges, EnvironmentMapGpu, Faces, LightEmit, ModelMatrix, Name, NormalTex, Normals, Renderable, RoughnessTex,
-        ShadowCaster, ShadowMap, Tangents, UVs, Verts, VisLines, VisMesh, VisNormals, VisPoints, VisWireframe,
+        ShadowCaster, ShadowMap, Tangents, UVs, Verts, VisLines, VisMesh, VisNormals, VisOutline, VisPoints, VisWireframe,
     },
     config::Config,
     geom::{Geom, PerVertexNormalsWeightingType},
@@ -60,6 +60,7 @@ impl PrePass {
         self.add_vis_normals(scene);
         self.add_vis_points(scene);
         self.add_vis_mesh(scene);
+        self.add_vis_outline(scene);
         self.command_buffer.run_on(&mut scene.world); //in order to actually
                                                       // create the model matrix
                                                       // so that adding lights
@@ -207,6 +208,23 @@ impl PrePass {
             self.command_buffer.insert_one(
                 entity,
                 VisMesh {
+                    added_automatically: true,
+                    ..Default::default()
+                },
+            );
+        }
+    }
+
+    fn add_vis_outline(&mut self, scene: &mut Scene) {
+        let mut query = scene.world.query::<&Name>().with::<(&Verts, &Faces)>().without::<&VisOutline>();
+        for (entity, name) in query.iter() {
+            // don't add outline to floor
+            if name.0 == "floor" {
+                continue;
+            }
+            self.command_buffer.insert_one(
+                entity,
+                VisOutline {
                     added_automatically: true,
                     ..Default::default()
                 },

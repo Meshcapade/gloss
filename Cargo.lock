@@ -1855,6 +1855,7 @@ dependencies = [
  "enum-map",
  "env_logger",
  "epaint",
+ "futures",
  "gloss-hecs",
  "gloss-img",
  "gloss-utils",

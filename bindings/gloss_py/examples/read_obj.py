@@ -23,7 +23,4 @@ if __name__ == "__main__":
     mesh = viewer.get_or_create_entity(name = "mesh")
     mesh.insert_builder(geom.build_from_file(path_obj))
 
-    # Add selector highlight to the mesh
-    mesh.insert(VisOutline())
-
     viewer.run()

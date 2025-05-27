@@ -16,6 +16,7 @@ use gloss_utils::abi_stable_aliases::std_types::{RDuration, RString, RVec, Tuple
 #[cfg(not(target_arch = "wasm32"))]
 use gloss_utils::abi_stable_aliases::StableAbi;
 
+use super::GpuSystem;
 use super::{
     runner::RunnerState,
     systems::{EventSystem, GuiSystem, LogicSystem, SystemMetadata},
@@ -26,11 +27,22 @@ use super::{
 pub enum Event {
     DroppedFile(RString),
 }
-
+/// Trait for defining a plugin for gloss, to be used when defining Plugins in external crates
+/// This is FFI safe
 pub trait Plugin {
     fn event_systems(&self) -> Vec<EventSystem>;
     fn logic_systems(&self) -> Vec<LogicSystem>;
     fn gui_systems(&self) -> Vec<GuiSystem>;
+    fn autorun(&self) -> bool;
+}
+
+/// Trait for defining an internal plugin for gloss, to be used by Plugins within gloss
+/// Not FFI safe since it is used within gloss
+pub(crate) trait InternalPlugin {
+    // fn event_systems(&self) -> Vec<EventSystem>;
+    // fn logic_systems(&self) -> Vec<LogicSystem>;
+    // fn gui_systems(&self) -> Vec<GuiSystem>;
+    fn gpu_systems(&self) -> Vec<GpuSystem>;
     fn autorun(&self) -> bool;
 }
 
@@ -41,6 +53,7 @@ pub struct Plugins {
     pub logic_systems: RVec<Tuple2<LogicSystem, SystemMetadata>>,
     pub gui_systems: RVec<Tuple2<GuiSystem, SystemMetadata>>,
 }
+
 impl Default for Plugins {
     fn default() -> Self {
         Self {
@@ -82,6 +95,7 @@ impl Plugins {
             self.gui_systems.push(Tuple2(sys.clone(), metadata));
         }
     }
+
     pub fn run_logic_systems(&mut self, gpu_res: &mut GpuResources, scene: &mut Scene, runner: &mut Runner, autorun_flag: bool) {
         let mut runner_state = RunnerState::from(runner);
 
@@ -152,5 +166,52 @@ impl Plugins {
         }
         runner_state.to(runner);
         handled
+    }
+}
+
+pub(crate) struct InternalPlugins {
+    pub gpu_systems: RVec<Tuple2<GpuSystem, SystemMetadata>>,
+}
+
+impl Default for InternalPlugins {
+    fn default() -> Self {
+        Self { gpu_systems: RVec::new() }
+    }
+}
+impl InternalPlugins {
+    pub fn new() -> Self {
+        Self { gpu_systems: RVec::new() }
+    }
+    #[allow(clippy::needless_update)]
+    pub fn insert_plugin<T: InternalPlugin + 'static>(&mut self, plugin: &T) {
+        for sys in plugin.gpu_systems().iter() {
+            let metadata = SystemMetadata {
+                autorun: plugin.autorun(),
+                ..Default::default()
+            };
+            self.gpu_systems.push(Tuple2(sys.clone(), metadata));
+        }
+    }
+
+    pub fn run_gpu_systems(&mut self, gpu_res: &mut GpuResources, scene: &mut Scene, runner: &mut Runner, autorun_flag: bool) {
+        let mut runner_state = RunnerState::from(runner);
+
+        for system_and_metadata in self.gpu_systems.iter_mut() {
+            let metadata = &mut system_and_metadata.1;
+            let sys = &system_and_metadata.0;
+            if metadata.autorun == autorun_flag {
+                let func = sys.f;
+
+                //run and time the function
+                let now = wasm_timer::Instant::now();
+                func(scene, &mut runner_state, gpu_res);
+                metadata.execution_time = RDuration::from(now.elapsed());
+            }
+        }
+        runner_state.to(runner);
+
+        if runner_state.request_redraw {
+            gpu_res.request_redraw();
+        }
     }
 }

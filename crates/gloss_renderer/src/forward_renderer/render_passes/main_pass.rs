@@ -7,7 +7,8 @@ use crate::scene::Scene;
 use easy_wgpu::gpu::Gpu;
 
 use super::{
-    line_pipeline::LinePipeline, mesh_pipeline::MeshPipeline, outline_pass::OutlinePass, point_pipeline::PointPipeline, upload_pass::PerFrameUniforms,
+    entity_id_pass::EntityIdPass, line_pipeline::LinePipeline, mesh_pipeline::MeshPipeline, outline_pass::OutlinePass, point_pipeline::PointPipeline,
+    upload_pass::PerFrameUniforms,
 };
 
 use crate::forward_renderer::{render_passes::pipeline_runner::PipelineRunner, renderer::OffscreenTarget};
@@ -19,6 +20,7 @@ pub struct MainPass {
     point_pipeline: PointPipeline,
     line_pipeline: LinePipeline,
     outline_pass: OutlinePass,
+    entity_id_pass: EntityIdPass,
 }
 
 impl MainPass {
@@ -27,11 +29,13 @@ impl MainPass {
         let point_pipeline = PointPipeline::new(gpu, params, color_target_format, depth_target_format);
         let line_pipeline = LinePipeline::new(gpu, params, color_target_format, depth_target_format);
         let outline_pass = OutlinePass::new(gpu, params, color_target_format, depth_target_format);
+        let entity_id_pass = EntityIdPass::new(gpu);
         Self {
             mesh_pipeline,
             point_pipeline,
             line_pipeline,
             outline_pass,
+            entity_id_pass,
         }
     }
 
@@ -64,6 +68,7 @@ impl MainPass {
         let mut mesh_query = self.mesh_pipeline.prepare(gpu, per_frame_uniforms, scene);
         let mut point_query = self.point_pipeline.prepare(gpu, per_frame_uniforms, scene);
         let mut outline_query = self.outline_pass.prepare(gpu, per_frame_uniforms, scene);
+        let mut entity_id_query = self.entity_id_pass.prepare(gpu, per_frame_uniforms, scene);
         //do the actual rendering now
         let mut encoder = gpu.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("MainPass Encoder"),
@@ -89,43 +94,71 @@ impl MainPass {
                                                 // sample from them again, we
                                                 // just use them for resolving
             }
-
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Main Pass"),
-                color_attachments: &[
-                    //final
-                    Some(wgpu::RenderPassColorAttachment {
+            // Main pass - to run the mesh, outline, point and line render passes
+            {
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Main Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: selected_out_view,
                         resolve_target,
                         ops: wgpu::Operations { load: color_clear_op, store },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &offscreen_fb.get(OffscreenTarget::Depth).unwrap().view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(0.0),
+                            store,
+                        }),
+                        stencil_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(0),
+                            store: wgpu::StoreOp::Store,
+                        }),
                     }),
-                ],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &offscreen_fb.get(OffscreenTarget::Depth).unwrap().view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(0.0),
-                        store,
-                    }),
-                    stencil_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                self.mesh_pipeline
+                    .run(&mut render_pass, per_frame_uniforms, render_params, &mut mesh_query, scene);
+                self.point_pipeline
+                    .run(&mut render_pass, per_frame_uniforms, render_params, &mut point_query, scene);
+                self.line_pipeline
+                    .run(&mut render_pass, per_frame_uniforms, render_params, &mut line_query, scene);
+                // Run outline pass last so that its able to draw over the line and point passes (grid floor draws over outline otherwise)
+                self.outline_pass
+                    .run(&mut render_pass, per_frame_uniforms, render_params, &mut outline_query, scene);
+            }
 
-            //Use the piplines to render to the render targets we specified
-            // render_pass.set_stencil_reference(1);
-            self.mesh_pipeline
-                .run(&mut render_pass, per_frame_uniforms, render_params, &mut mesh_query, scene);
-            self.outline_pass
-                .run(&mut render_pass, per_frame_uniforms, render_params, &mut outline_query, scene);
-
-            self.point_pipeline
-                .run(&mut render_pass, per_frame_uniforms, render_params, &mut point_query, scene);
-            self.line_pipeline
-                .run(&mut render_pass, per_frame_uniforms, render_params, &mut line_query, scene);
+            // Run entity id pass if a click happened
+            if let Some(camera) = scene.get_current_cam() {
+                if camera.is_click(scene) {
+                    let mut entity_id_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Entity ID Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &offscreen_fb.get(OffscreenTarget::EntityID).unwrap().view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &offscreen_fb.get(OffscreenTarget::SingleDepth).unwrap().view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(0.0),
+                                store: wgpu::StoreOp::Discard,
+                            }),
+                            stencil_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Discard,
+                            }),
+                        }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                    });
+                    self.entity_id_pass
+                        .run(&mut entity_id_pass, per_frame_uniforms, render_params, &mut entity_id_query, scene);
+                }
+            }
         }
         gpu.queue().submit(Some(encoder.finish()));
 

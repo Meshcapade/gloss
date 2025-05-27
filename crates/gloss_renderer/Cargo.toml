@@ -68,6 +68,7 @@ ply-rs.workspace=true
 static_assertions.workspace=true
 itertools.workspace=true
 re_memory.workspace=true
+futures.workspace=true
 
 [target.'cfg(any(target_os = "windows"))'.dependencies]
 winapi = "0.3.9"

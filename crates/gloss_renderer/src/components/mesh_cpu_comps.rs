@@ -46,9 +46,6 @@ pub enum MeshColorType {
     NormalViewCoords,
 }
 
-pub struct Selector {
-    pub current_selected: String,
-}
 /// Component for visualization options of lines
 #[derive(Clone)]
 #[allow(clippy::struct_excessive_bools)]
@@ -200,7 +197,7 @@ impl Default for VisOutline {
     fn default() -> VisOutline {
         VisOutline {
             show_outline: false,
-            outline_color: na::Vector4::<f32>::new(1.0, 0.5, 0.0, 1.0), // Blender orange selection color
+            outline_color: na::Vector4::<f32>::new(0.29, 0.82, 0.73, 1.0), // Blue-green default color
             outline_width: 4.0,
             added_automatically: false,
         }

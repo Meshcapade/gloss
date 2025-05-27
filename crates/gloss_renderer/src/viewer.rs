@@ -14,8 +14,10 @@ use crate::{
     plugin_manager::{
         plugins::{Plugin, Plugins},
         systems::{LogicSystem, SystemMetadata},
+        InternalPlugins,
     },
     scene::{Scene, GLOSS_CAM_NAME},
+    selector::SelectorPlugin,
     set_panic_hook,
 };
 
@@ -52,8 +54,11 @@ use winit::{
     window::Window,
 };
 
+// #[cfg(not(target_arch = "wasm32"))]
+
 /// All the ``GpuResources`` are kept together to be able to easily recreate
 /// them
+#[repr(C)]
 pub struct GpuResources {
     window: Arc<Window>,
     surface: wgpu::Surface<'static>,
@@ -95,7 +100,7 @@ impl GpuResources {
 
         let surface = unsafe { instance.create_surface(window.clone()) }.unwrap();
 
-        //if we are on wasm we cannot enumerate adapter so we skip this at compile time
+        // if we are on wasm we cannot enumerate adapter so we skip this at compile time
         cfg_if::cfg_if! {
             if #[cfg(not(target_arch = "wasm32"))]{
                 let adapters = enumerate_adapters(&instance);
@@ -118,17 +123,18 @@ impl GpuResources {
                 desired_features = desired_features.union(wgpu::Features::POLYGON_MODE_LINE);
             }
         }
+        /* ---------------------------------- NOTE ---------------------------------- */
         // We need this feature to be able to have a combined depth and stencil target.
-        // NOTE: We could technically also use Depth24PlusStencil8, which in a lot of ways is better (lesser mem)
+        // We could technically also use Depth24PlusStencil8, which in a lot of ways is better (lesser mem)
         // However in wgpu, a DepthOnly copy to buffer from the format Depth24PlusStencil8 is 'forbidden' and considered invalid
         // as per this - https://github.com/gfx-rs/wgpu/blob/9fccdf5cf370fcd104e37a4dc87c5db82cfd0e2b/wgpu-core/src/conv.rs#L5
         // So we cannot use this to retrieve a depth map in a simple way, which we need to do for our python bindings
         // But a DepthOnly copy to buffer from the format Depth32FloatStencil8 is allowed. This is a web + native feature
         // so it fits within our needs. Since the selector is something we want on the web too, we need this feature on both native and web
         // so it cant go in the cfg_if above
-        desired_features = desired_features.union(wgpu::Features::DEPTH32FLOAT_STENCIL8);
-        let required_features = adapter.features().intersection(desired_features); //only take the features that are actually supported
-                                                                                   // info!("enabled features: {required_features:?}");
+        /* -------------------------------------------------------------------------- */
+        let mut required_features = adapter.features().intersection(desired_features); //only take the features that are actually supported
+        required_features = required_features.union(wgpu::Features::DEPTH32FLOAT_STENCIL8);
 
         //dealing with wasm putting 2048 as maximum texture size
         //https://github.com/gfx-rs/wgpu/discussions/2952
@@ -144,7 +150,7 @@ impl GpuResources {
 
         let mut memory_hints = wgpu::MemoryHints::Performance;
         if cfg!(target_arch = "wasm32") {
-            //we usually have issue with running out of memory on wasm, so I would rather
+            // we usually have issue with running out of memory on wasm, so I would rather
             // optimize for low memory usage
             memory_hints = wgpu::MemoryHints::MemoryUsage;
         }
@@ -182,8 +188,8 @@ impl GpuResources {
         if let Some(canvas_size) = Viewer::get_html_elem_size(&canvas_id_parsed.as_ref().unwrap()) {
             size = canvas_size.to_physical(window.scale_factor());
         }
-        // info!("init: size is {:?}", size);
 
+        println!("scale factor: {:?}", window.scale_factor());
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -197,7 +203,6 @@ impl GpuResources {
         };
         surface.configure(gpu.device(), &surface_config);
 
-        // info!("enable gui is {}", config.core.enable_gui);
         #[cfg(feature = "with-gui")]
         let gui = if config.core.enable_gui {
             let mut gui = Gui::new(&window, &gpu, surface_format);
@@ -328,6 +333,9 @@ pub struct Viewer {
     pub config: Config,
     pub runner: Runner,
     pub plugins: Plugins,
+
+    #[allow(private_interfaces)]
+    pub internal_plugins: InternalPlugins,
 }
 
 impl Viewer {
@@ -358,12 +366,16 @@ impl Viewer {
         let mut scene = Scene::new();
         let camera = Camera::new(GLOSS_CAM_NAME, &mut scene, false); //TODO make it another entity inside the Scene
 
+        let mut internal_plugins = InternalPlugins::new();
+        internal_plugins.insert_plugin(&SelectorPlugin::new(true));
+
         Self {
             gpu_res: None,
             runner,
             scene,
             camera,
             plugins: Plugins::new(),
+            internal_plugins,
             canvas_id_parsed: canvas_id_parsed.clone(),
             config: config.clone(),
             window_size,
@@ -501,7 +513,7 @@ impl Viewer {
         //camera
     }
 
-    //Only a conveneince function so that you don't have to do
+    // Only a convenience function so that you don't have to do
     // viewer.gpu_res.request_redraw()
     pub fn request_redraw(&mut self) {
         if let Some(gpu_res) = self.gpu_res.as_mut() {
@@ -543,7 +555,7 @@ impl Viewer {
                 // self.resize
                 let _ = self.gpu_res.as_ref().unwrap().window.request_inner_size(logical_size);
 
-                //no need to resize here. Resizing the canvas with window.set_inner_size will
+                // no need to resize here. Resizing the canvas with window.set_inner_size will
                 // trigger a Window::Resized event sometimes it's needed to
                 // resize here, I'm not very sure why but in some cases the Window:resize event
                 // is sent AFTER the rendering one
@@ -602,52 +614,6 @@ impl Viewer {
         }
     }
 
-    /// Processes loop-related events like stopping the loop. If it matches one
-    /// of the events, returns true
-    // #[allow(unused_variables)]
-    // fn process_loop_events(&mut self, event: &Event<CustomEvent>, event_loop: &ActiveEventLoop) -> bool {
-    //     // Check if gpu_res is initialized
-    //     if let Some(gpu_res) = self.gpu_res.as_mut() {
-    //         match event {
-    //             Event::AboutToWait => {
-    //                 // For native, it essentially does pooling
-    //                 #[cfg(not(target_arch = "wasm32"))]
-    //                 gpu_res.request_redraw();
-    //                 true
-    //             }
-    //             Event::Resumed => {
-    //                 debug!("rs: Resumed");
-    //                 self.resume(event_loop);
-    //                 true
-    //             }
-    //             Event::Suspended => {
-    //                 debug!("rs: Suspended");
-    //                 self.suspend();
-    //                 true
-    //             }
-    //             Event::LoopExiting => {
-    //                 self.runner.is_running = false;
-    //                 true
-    //             }
-    //             _ => false, // Doesn't match any of the events, some other function will need to process this event
-    //         }
-    //     } else {
-    //         // Handle cases where gpu_res is not yet initialized
-    //         match event {
-    //             Event::Resumed => {
-    //                 debug!("rs: Resumed");
-    //                 self.resume(event_loop);
-    //                 true
-    //             }
-    //             Event::LoopExiting => {
-    //                 self.runner.is_running = false;
-    //                 true
-    //             }
-    //             _ => false, // If gpu_res is None and no other relevant event, do nothing
-    //         }
-    //     }
-    // }
-
     /// Processes events like closing, resizing etc. If it matches one of the
     /// events, returns true
     #[allow(clippy::too_many_lines)]
@@ -665,7 +631,7 @@ impl Viewer {
 
                 debug!("gloss: render");
 
-                //frame was already started before so there is no need to do another render.
+                // frame was already started before so there is no need to do another render.
                 // Check comment in runner.frame_is_started on why this may happen
                 if self.runner.frame_is_started {
                     debug!("the frame was already started, we are ignoring this re-render");
@@ -797,11 +763,8 @@ impl Viewer {
             return false;
         }
 
-        let gpu_res = self.gpu_res.as_mut().unwrap();
-
         let consumed = match event {
             WindowEvent::MouseInput { button, state, .. } => {
-                // self.camera.mouse_pressed = *state == ElementState::Pressed;
                 if *state == ElementState::Pressed {
                     self.camera.mouse_pressed(button, &mut self.scene);
                 } else {
@@ -814,16 +777,12 @@ impl Viewer {
                 true
             }
             WindowEvent::CursorMoved { position, .. } => {
-                self.camera.process_mouse_move(
-                    position.x as f32,
-                    position.y as f32,
-                    self.window_size.width,
-                    self.window_size.height,
-                    &mut self.scene,
-                );
+                self.camera
+                    .process_mouse_move(position.x, position.y, self.window_size.width, self.window_size.height, &mut self.scene);
                 true
             }
             WindowEvent::Touch(touch) => {
+                #[allow(clippy::cast_sign_loss)]
                 if touch.phase == TouchPhase::Started {
                     self.camera.touch_pressed(touch, &mut self.scene);
                 }
@@ -838,6 +797,7 @@ impl Viewer {
             }
             _ => false, //doesn't match any of the events, some other function will need to process this event
         };
+        let gpu_res = self.gpu_res.as_mut().unwrap();
 
         if consumed {
             gpu_res.request_redraw();
@@ -953,10 +913,6 @@ impl Viewer {
                                        // we rather do it manually
         let timeout = Some(Duration::ZERO);
         event_loop.pump_app_events(timeout, self);
-        // self.process_all_events(event, event_loop);
-        // event_loop.pump_events(timeout, |event, event_loop| {
-        //     self.process_all_events(&event, event_loop);
-        // });
 
         self.runner.is_running = false;
 
@@ -1001,7 +957,7 @@ impl Viewer {
             error!("The frame was not started so this might contain stale dt. Please use viewer.start_frame() before doing a v.render()");
         }
 
-        //we actually take the init time as being the fist time we render, otherwise
+        // We actually take the init time as being the fist time we render, otherwise
         // the init time would be higher since some other processing might happen
         // between creating the viewer and actually rendering with it
         if self.runner.first_time {
@@ -1011,32 +967,25 @@ impl Viewer {
         let gpu_res = self.gpu_res.as_mut().unwrap();
         self.plugins.run_logic_systems(gpu_res, &mut self.scene, &mut self.runner, true);
 
-        //get surface texture (which can fail and return an SurfaceError)
+        // Get surface texture (which can fail and return an SurfaceError)
         let output = gpu_res.surface.get_current_texture()?;
         let out_view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let out_width = output.texture.width();
         let out_height = output.texture.height();
 
-        //render to_texture of the size of the surface
+        // Render to texture of the size of the surface
         let dt = self.runner.dt();
 
         self.camera.on_window_resize(out_width, out_height, &mut self.scene);
 
-        //TODO return the textured final so we can just plug it into blit pass without
+        //TODO: Return the textured final so we can just plug it into blit pass without
         // doing renderer.rendered_tex
-        gpu_res.renderer.render_to_view(
-            &out_view,
-            // out_width,
-            // out_height,
-            &gpu_res.gpu,
-            &mut self.camera,
-            &mut self.scene,
-            &mut self.config,
-            dt,
-        );
+        gpu_res
+            .renderer
+            .render_to_view(&out_view, &gpu_res.gpu, &mut self.camera, &mut self.scene, &mut self.config, dt);
 
-        //render gui
-        //TODO pass the whole renderer and the scene so we can do gui stuff on them
+        // Render GUI
+        //TODO: pass the whole renderer and the scene so we can do gui stuff on them
         #[cfg(feature = "with-gui")]
         if let Some(ref mut gui) = gpu_res.gui {
             gui.render(
@@ -1050,6 +999,10 @@ impl Viewer {
                 &out_view,
             );
         }
+
+        self.internal_plugins.run_gpu_systems(gpu_res, &mut self.scene, &mut self.runner, true);
+        // Clear the click state once processed, so this doesnt keep running
+        self.scene.get_current_cam().unwrap().clear_click(&mut self.scene);
 
         //swap
         output.present();
@@ -1112,6 +1065,10 @@ impl Viewer {
                 out_view,
             );
         }
+
+        self.internal_plugins.run_gpu_systems(gpu_res, &mut self.scene, &mut self.runner, true);
+        // Clear the click state once processed, so this doesnt keep running
+        self.scene.get_current_cam().unwrap().clear_click(&mut self.scene);
 
         self.runner.first_time = false;
         self.runner.frame_is_started = false;
@@ -1275,6 +1232,12 @@ impl Viewer {
         self.plugins.insert_plugin(plugin);
     }
 
+    // #[allow(private_bounds)]
+    // pub fn insert_internal_plugin<T: InternalPlugin + 'static>(&mut self, plugin: &T) {
+    //     warn!("Inserting internal plugin, this can only be used within the context of gloss");
+    //     self.internal_plugins.insert_plugin(plugin);
+    // }
+
     /// # Panics
     /// Will panic if the `gpu_resources` have not been created
     pub fn wait_gpu_finish(&self) -> wgpu::MaintainResult {
@@ -1291,7 +1254,10 @@ impl Viewer {
         // TODO read-out activation token.
 
         #[allow(unused_mut)]
-        let mut window_attributes = Window::default_attributes().with_title("Gloss").with_maximized(true);
+        let mut window_attributes = Window::default_attributes()
+            .with_title("Gloss")
+            .with_inner_size(PhysicalSize::new(1600, 1200))
+            .with_maximized(true);
 
         // #[cfg(web_platform)]
         #[cfg(target_arch = "wasm32")]

@@ -1,6 +1,6 @@
 #![allow(clippy::doc_markdown)]
 
-use gloss_hecs::{CommandBuffer, Component, ComponentRef, DynamicBundle, Entity, EntityBuilder, World};
+use gloss_hecs::{CommandBuffer, Component, ComponentRef, DynamicBundle, Entity, EntityBuilder, EntityRef, World};
 use log::{error, trace};
 
 use crate::{
@@ -134,6 +134,20 @@ impl Scene {
     }
 
     /// # Panics
+    /// Will return None if no entity with id found
+    pub fn find_entity_with_id(&mut self, id: u8) -> Option<EntityRef> {
+        let entities = self.get_all_entities(false);
+
+        for entity in entities {
+            if u32::from(id) == entity.id() {
+                let e_ref = self.world.entity(entity).unwrap();
+                return Some(e_ref);
+            }
+        }
+        None
+    }
+
+    /// # Panics
     /// Will panic if there is no camera added yet
     pub fn get_current_cam(&self) -> Option<Camera> {
         // TODO this has to be done better that with just a hard coded name. Maybe a
@@ -211,6 +225,20 @@ impl Scene {
         let mut entities_with_name = Vec::new();
         for (entity_light, (name, _)) in self.world.query::<(&Name, &LightEmit)>().iter() {
             entities_with_name.push((entity_light, name.0.clone()));
+        }
+        //sort by name
+        if sorted_by_name {
+            entities_with_name.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        }
+        let entities = entities_with_name.iter().map(|x| x.0).collect();
+        entities
+    }
+
+    #[allow(clippy::missing_panics_doc)]
+    pub fn get_all_entities(&self, sorted_by_name: bool) -> Vec<Entity> {
+        let mut entities_with_name = Vec::new();
+        for (entity, name) in self.world.query::<&Name>().iter() {
+            entities_with_name.push((entity, name.0.clone()));
         }
         //sort by name
         if sorted_by_name {

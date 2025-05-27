@@ -18,12 +18,16 @@ use log::debug;
 
 use super::main_pass::MainPass;
 
+pub const ENTITY_ID_PASS_SCALE_FACTOR: u32 = 8;
+
 #[derive(Debug, Enum)]
 pub enum OffscreenTarget {
     //order determines the binding index in the shader
-    Color,     //for drawing to offscreen
-    MSAAColor, //useful for drawing during MSAA and then resolving to another view
-    Depth,
+    Color,       //for drawing to offscreen
+    MSAAColor,   //useful for drawing during MSAA and then resolving to another view
+    Depth,       // multi-sampled depth target (incompatible depth target when using with EntityID)
+    EntityID,    // useful for rendering entity IDs, to be used by click2select
+    SingleDepth, // non-multi-sampled depth target, to be used by click2select
 }
 
 ///  Contains long-living objects that will stay alive for the whole duration of
@@ -76,6 +80,26 @@ impl RenderData {
                     ..Default::default()
                 },
             )
+            .add_render_target(
+                gpu.device(),
+                OffscreenTarget::SingleDepth,
+                wgpu::TextureFormat::Depth16Unorm,
+                depth_texture_usage,
+                TexParams {
+                    scale_factor: ENTITY_ID_PASS_SCALE_FACTOR,
+                    ..Default::default()
+                },
+            )
+            .add_render_target(
+                gpu.device(),
+                OffscreenTarget::EntityID,
+                wgpu::TextureFormat::Rgba8Unorm,
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
+                TexParams {
+                    scale_factor: ENTITY_ID_PASS_SCALE_FACTOR,
+                    ..Default::default()
+                },
+            )
             .build(gpu.device());
 
         Self { framebuffer }
@@ -103,10 +127,8 @@ impl RenderPasses {
     pub fn run(&mut self, out_view: &wgpu::TextureView, data: &RenderData, gpu: &Gpu, camera: &mut Camera, scene: &mut Scene, config: &mut Config) {
         //update ubos
         let global_uniforms = self.upload_pass.run(gpu, camera, scene, &config.render);
-
         //render all the geoemtry towards shadow maps
         self.shadow_pass.run(gpu, global_uniforms, scene);
-
         self.main_pass
             .run(gpu, global_uniforms, &data.framebuffer, out_view, scene, &config.render);
     }
@@ -233,6 +255,10 @@ impl Renderer {
     /// `Gtarget::Final`
     pub fn depth_buffer(&self) -> &Texture {
         self.data.framebuffer.get(OffscreenTarget::Depth).unwrap()
+    }
+
+    pub fn entity_id_buffer(&self) -> &Texture {
+        self.data.framebuffer.get(OffscreenTarget::EntityID).unwrap()
     }
 
     fn resize_if_necesary(&mut self, width: u32, height: u32, gpu: &Gpu) {

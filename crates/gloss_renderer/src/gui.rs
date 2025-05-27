@@ -1,10 +1,11 @@
 use crate::{
     components::{
         Colors, DiffuseImg, DiffuseTex, Faces, ImgConfig, LightEmit, MeshColorType, ModelMatrix, Name, NormalImg, NormalTex, Normals, PointColorType,
-        PosLookat, Projection, Renderable, RoughnessImg, RoughnessTex, Selector, ShadowCaster, ShadowMapDirty, UVs, Verts, VisLines, VisMesh,
-        VisNormals, VisOutline, VisPoints, VisWireframe,
+        PosLookat, Projection, Renderable, RoughnessImg, RoughnessTex, ShadowCaster, ShadowMapDirty, UVs, Verts, VisLines, VisMesh, VisNormals,
+        VisOutline, VisPoints, VisWireframe,
     },
     config::Config,
+    selector::Selector,
     viewer::Runner,
 };
 
@@ -61,7 +62,7 @@ use nalgebra as na;
 // official example of egui-wgpu: https://github.com/emilk/egui/blob/master/crates/egui_demo_app/src/apps/custom3d_wgpu.rs
 
 // integration
-const SIDE_PANEL_WIDTH: f32 = 180.0;
+const SIDE_PANEL_WIDTH: f32 = 250.0;
 const SPACING_1: f32 = 10.0;
 
 /// Separate the egui ctx from the rest of the gui because borrow checker
@@ -365,8 +366,9 @@ impl GuiMainWidget {
 
         egui::SidePanel::left("my_left_panel").default_width(SIDE_PANEL_WIDTH).show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                //Scene
-                egui::CollapsingHeader::new("Scene").show(ui, |ui| {
+                // Scene
+                // We use this most if not all of the time, might as well leave it open by default
+                egui::CollapsingHeader::new("Scene").default_open(true).show(ui, |ui| {
                     ui.group(|ui| {
                         ScrollArea::vertical()
                             .max_height(200.0)
@@ -379,15 +381,36 @@ impl GuiMainWidget {
 
                                     //get all entities that are renderable and sort by name
                                     let entities = scene.get_renderables(true);
+                                    /* ---------------------------------- NOTE ---------------------------------- */
+                                    // We have 2 ways to select an entity - click2select and through this GUI
+                                    // Both of them should work together and using one should update the state of the other.
+                                    // Both selection methods are managed by the Selector resource.
+                                    // Since the click2select supports the idea of deselection, so should the GUI.
+                                    /* -------------------------------------------------------------------------- */
 
-                                    //go through all visible meshes and show their name
-                                    // for (_cur_mesh_idx, e_ref) in scene.world.iter().enumerate() {
+                                    // The selector may have been set by click2select, respect that selection instead of starting afresh
+                                    if let Ok(selector) = scene.get_resource::<&mut Selector>() {
+                                        let name = selector.current_selected.clone();
+                                        if self.selected_mesh_name != name.clone() {
+                                            // println!("Updated Selected entity: {name}");
+                                            let entity = scene.get_entity_with_name(&name);
+                                            self.selected_entity = entity;
+                                        }
+                                        self.selected_mesh_name = name;
+                                    } else {
+                                        // If we dont have a selector resource, leave the selection GUI in a deselected state
+                                        self.selected_mesh_name = String::new();
+                                        self.selected_entity = None;
+                                    }
+
+                                    // Manage selection via the GUI
+                                    // Go through all visible meshes and show their names as selectable options
                                     for entity in entities {
                                         let e_ref = scene.world.entity(entity).unwrap();
-                                        //get the name of the mesh which acts like a unique id
+                                        // get the name of the mesh which acts like a unique id
                                         let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
-                                        //GUI for this concrete mesh
-                                        //if we click we can see options for vis
+                                        // GUI for this concrete mesh
+                                        // if we click we can see options for vis
                                         let _res = ui.selectable_value(&mut self.selected_mesh_name, name.clone(), &name);
 
                                         if name == self.selected_mesh_name {
@@ -486,7 +509,6 @@ impl GuiMainWidget {
                     let window_name = gui_window.window_name;
                     let widgets = gui_window.widgets;
                     let window_type = gui_window.window_type;
-
                     if widgets.is_empty() {
                         continue; //there's no widgets so there's nothing to
                                   // draw
@@ -566,6 +588,12 @@ impl GuiMainWidget {
                         if let Some(selected_entity) = self.selected_entity {
                             //finally call the helper function so that we start the recursion
                             helper(ui, &widgets, selected_entity, scene);
+                        } else {
+                            // If we don't have a selected entity, we create a dummy entity and pass it to the helper function
+                            // This is to make sure that the gui is still drawn even for a GuiSystem that doesn't need an entity (SceneAnimation in smpl-rs)
+                            // GuiSystems that do need an entity will not run since the dummy entity has no components
+                            let dummy_entity = scene.get_or_create_hidden_entity("DummyEntity").entity();
+                            helper(ui, &widgets, dummy_entity, scene);
                         }
                     };
 

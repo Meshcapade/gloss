@@ -141,6 +141,21 @@ impl Camera {
         scene
     }
 
+    /// Clear the click state once processed, so this doesnt keep running
+    pub fn clear_click(&self, scene: &mut Scene) {
+        let mut cam_control = scene.get_comp::<&mut CamController>(&self.entity).unwrap();
+        cam_control.is_last_press_click = false;
+    }
+
+    // Since we use LMB for both rotation and selection, rotations tamper with the selection
+    // which can be a little annoying. To avoid this we do -
+    // LMB click + release (within 0.25s) -> entity selection
+    // LMB click + hold + move -> camera rotation
+    pub fn is_click(&self, scene: &Scene) -> bool {
+        let cam_control = scene.get_comp::<&CamController>(&self.entity).unwrap();
+        cam_control.is_last_press_click
+    }
+
     /// Handle the event of touching with a finger
     /// # Panics
     /// Will panic if the ``CamController`` component does not exist for this
@@ -158,6 +173,8 @@ impl Camera {
         // position be at the finger to it being in between the two fingers so we
         // invalidate previous state
         cam_control.prev_mouse_pos_valid = false;
+
+        cam_control.last_press = Some(wasm_timer::Instant::now());
     }
 
     /// Handle the event of pressing mouse
@@ -165,7 +182,6 @@ impl Camera {
     /// Will panic if the ``CamController`` component does not exist for this
     /// entity
     pub fn touch_released(&mut self, touch_event: &Touch, scene: &mut Scene) {
-        // println!("mouse pressed");
         let mut cam_control = scene.get_comp::<&mut CamController>(&self.entity).unwrap();
 
         cam_control.id2active_touches.remove(&touch_event.id);
@@ -180,6 +196,8 @@ impl Camera {
         // were two then it means we switch from the center of the two fingers to just
         // one finger so we also invalidate the previous pos
         cam_control.prev_mouse_pos_valid = false;
+        cam_control.decide_if_click();
+        cam_control.mouse_moved_while_pressed = false; //do this AFTER decide_if_click because that function depends on if the mouse has moved while pressed
     }
 
     /// # Panics
@@ -193,6 +211,7 @@ impl Camera {
         cam_control.mouse_pressed = false;
         cam_control.prev_mouse_pos_valid = false;
         cam_control.prev_mouse_pos_valid = false;
+        cam_control.mouse_moved_while_pressed = false;
     }
 
     /// # Panics
@@ -213,13 +232,7 @@ impl Camera {
                 let mut cam_control = scene.get_comp::<&mut CamController>(&self.entity).unwrap();
                 cam_control.mouse_mode = CamMode::Rotation;
             }
-            self.process_mouse_move(
-                touch_event.location.x as f32,
-                touch_event.location.y as f32,
-                viewport_width,
-                viewport_height,
-                scene,
-            );
+            self.process_mouse_move(touch_event.location.x, touch_event.location.y, viewport_width, viewport_height, scene);
             //update position of this finger
             let mut cam_control = scene.get_comp::<&mut CamController>(&self.entity).unwrap();
             cam_control.id2active_touches.insert(touch_event.id, *touch_event);
@@ -259,7 +272,7 @@ impl Camera {
                 cam_control.mouse_mode = CamMode::Translation;
             }
             let center = na::Vector2::<f64>::new((pos0.x + pos1.x) / 2.0, (pos0.y + pos1.y) / 2.0);
-            self.process_mouse_move(center.x as f32, center.y as f32, viewport_width, viewport_height, scene);
+            self.process_mouse_move(center.x, center.y, viewport_width, viewport_height, scene);
         }
     }
 
@@ -273,6 +286,7 @@ impl Camera {
 
         match mouse_button {
             MouseButton::Left => {
+                cam_control.last_press = Some(wasm_timer::Instant::now());
                 cam_control.mouse_mode = CamMode::Rotation;
                 cam_control.mouse_pressed = true;
             }
@@ -291,28 +305,37 @@ impl Camera {
     /// Will panic if the ``CamController`` component does not exist for this
     /// entity
     pub fn mouse_released(&mut self, scene: &mut Scene) {
-        // println!("mouse released");
         let mut cam_control = scene.get_comp::<&mut CamController>(&self.entity).unwrap();
 
-        // println!("mouse released");
         cam_control.mouse_pressed = false;
         cam_control.prev_mouse_pos_valid = false;
+        cam_control.decide_if_click();
+        cam_control.mouse_moved_while_pressed = false; //do this AFTER decide_if_click because that function depends on if the mouse has moved while pressed
     }
 
     /// Handle the event of dragging the mouse on the window
     /// # Panics
     /// Will panic if the ``PosLookat``, ``Projection``, ``CamController``
     /// component does not exist for this entity
-    pub fn process_mouse_move(&mut self, x: f32, y: f32, viewport_width: u32, viewport_height: u32, scene: &mut Scene) {
+    pub fn process_mouse_move(&mut self, position_x: f64, position_y: f64, viewport_width: u32, viewport_height: u32, scene: &mut Scene) {
         let proj = self.proj_matrix(scene);
         let mut pos_lookat = scene.get_comp::<&mut PosLookat>(&self.entity).unwrap();
         let mut cam_control = scene.get_comp::<&mut CamController>(&self.entity).unwrap();
+
+        cam_control.cursor_position = Some(winit::dpi::PhysicalPosition::new(position_x, position_y));
+
+        #[allow(clippy::cast_possible_truncation)]
+        let (x, y) = (position_x as f32, position_y as f32);
 
         let current_mouse = na::Vector2::<f32>::new(x, y);
         #[allow(clippy::cast_precision_loss)] //it's ok, we don't have very big viewport sizes
         let viewport_size = na::Vector2::<f32>::new(viewport_width as f32, viewport_height as f32);
 
         if cam_control.mouse_pressed {
+            if cam_control.prev_mouse_pos_valid {
+                cam_control.mouse_moved_while_pressed = true;
+            }
+
             if cam_control.mouse_mode == CamMode::Rotation && cam_control.prev_mouse_pos_valid {
                 let speed = 2.0;
                 let (rot_y, mut rot_x) = Self::two_axis_rotation(
@@ -459,4 +482,56 @@ impl Camera {
         let res = scene.get_comp::<&TargetResolution>(&self.entity).unwrap();
         (res.width, res.height)
     }
+
+    // fn handle_selection_click(&self, gpu_res: &Option<GpuResources>, scene: &mut Scene, x: u32, y: u32) {
+    //     if gpu_res.is_none() {
+    //         return;
+    //     }
+
+    //     let gpu = &gpu_res.as_ref().unwrap().gpu;
+
+    //     // Get the entity id texture from the renderer
+    //     let entity_id_texture = gpu_res.as_ref().unwrap().renderer.entity_id_buffer();
+
+    //     // We only need the pixel at selection so we dont really need to download the whole thing
+    //     let single_pixel_img = pollster::block_on(entity_id_texture.download_pixel_to_cpu(
+    //         gpu.device(),
+    //         gpu.queue(),
+    //         wgpu::TextureAspect::All,
+    //         x,
+    //         y,
+    //     ));
+    //     let entity_id = single_pixel_img.as_bytes()[0];
+
+    //     // Switch off selection for previous entity using the name in the selector
+    //     // Always do this, every click regardless of where should switch off the previous selection
+    //     if let Ok(selector) = scene.get_resource::<&mut Selector>() {
+    //         if let Some(prev_entity) = scene.get_entity_with_name(&selector.current_selected) {
+    //             if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(prev_entity) {
+    //                 vis_outline.show_outline = false;
+    //             }
+    //         }
+    //     }
+    //     let _ = scene.remove_resource::<Selector>();
+
+    //     // For pixels with no entity, we get 0, dont do anything in that case.
+    //     // If entity_id is not 0, we can look up the entity in the scene to select
+    //     if entity_id != 0 {
+    //         // Look for an entity with given ID (internally iterates over all ents)
+    //         let entity_ref = scene.find_entity_with_id(entity_id);
+
+    //         // Modify selector and VisOutline state if entity is found
+    //         if let Some(e_ref) = entity_ref {
+    //             let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
+    //             // Only ents with VisOutline are candidates for visual selection
+    //             if let Some(mut vis_outline) = e_ref.get::<&mut VisOutline>() {
+    //                 vis_outline.show_outline = true;
+    //             }
+    //             // Add the selector resource to the scene
+    //             scene.add_resource(Selector {
+    //                 current_selected: name.clone(),
+    //             });
+    //         }
+    //     }
+    // }
 }

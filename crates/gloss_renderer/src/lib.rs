@@ -22,6 +22,7 @@ pub mod light;
 pub mod logger;
 pub mod plugin_manager;
 pub mod scene;
+pub mod selector;
 pub mod viewer;
 pub mod viewer_dummy;
 pub mod viewer_headless;

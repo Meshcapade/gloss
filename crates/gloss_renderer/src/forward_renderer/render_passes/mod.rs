@@ -1,6 +1,7 @@
 pub mod blit_pass;
 // pub mod compose_pass;
 pub mod debug_pass;
+pub mod entity_id_pass;
 pub mod line_pipeline;
 pub mod main_pass;
 pub mod mesh_pipeline;
