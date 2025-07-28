@@ -54,7 +54,6 @@ ndarray.workspace=true
 gloss-hecs.workspace=true
 num-traits.workspace=true
 image.workspace=true
-ctrlc = "3.4"
 
 [lints]
 workspace = true

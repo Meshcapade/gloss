@@ -4,8 +4,6 @@ use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, plugin::PyPlu
 
 use gloss_renderer::{camera::Camera, config::Config, plugin_manager::Plugins, scene::Scene, viewer::Viewer};
 
-#[cfg(not(target_arch = "wasm32"))]
-use ctrlc;
 use easy_wgpu::texture::Texture;
 use numpy::PyUntypedArray;
 use pyo3::prelude::*;
@@ -56,14 +54,17 @@ impl PyViewer {
         self.0.update_offscreen_texture();
     }
     #[pyo3(text_signature = "($self) -> None")]
-    pub fn run(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        ctrlc::set_handler(move || {
-            std::process::exit(0);
-        })
-        .expect("Error setting Ctrl-C handler");
-
-        self.0.run();
+    pub fn run(&mut self, py: Python) {
+        //we do it in a loop rather than calling self.0.run(); because run() does not seem to catch ctrl+c and trying to ctrlc::set_handler with std::process::exit(0) causes it to not finish cleanly
+        //more info: https://pyo3.rs/v0.25.1/faq.html#ctrl-c-doesnt-do-anything-while-my-rust-code-is-executing
+        loop {
+            // Periodically check for SIGINT (Ctrl+C)
+            if py.check_signals().is_err() {
+                return;
+            }
+            self.0.start_frame();
+            self.0.update();
+        }
     }
     #[pyo3(text_signature = "($self) -> Device")]
     pub fn get_device(&mut self) -> PyDevice {
