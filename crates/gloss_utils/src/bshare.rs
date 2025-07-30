@@ -5,6 +5,7 @@ use burn::{
 use nalgebra as na;
 use ndarray as nd;
 
+// TODO: Take another look at these conversions with the burn update
 // ================ Tensor to Data Functions ================
 // Handle Float tensors for both 1D and 2D
 /// Convert a burn float tensor to a Vec on wasm
@@ -243,6 +244,21 @@ pub trait ToNdArray<B: Backend, const D: usize, T> {
     fn into_ndarray(self) -> nd::Array<T, nd::Dim<[usize; D]>>;
 }
 
+/// Trait implementation for converting 3D Float burn tensor to ndarray
+impl<B: Backend> ToNdArray<B, 3, f32> for Tensor<B, 3, Float> {
+    fn to_ndarray(&self) -> nd::Array3<f32> {
+        let tensor_data = tensor_to_data_float(self);
+        let shape = self.dims();
+        nd::Array3::from_shape_vec((shape[0], shape[1], shape[2]), tensor_data).unwrap()
+    }
+
+    fn into_ndarray(self) -> nd::Array3<f32> {
+        let tensor_data = tensor_to_data_float(&self);
+        let shape = self.dims();
+        nd::Array3::from_shape_vec((shape[0], shape[1], shape[2]), tensor_data).unwrap()
+    }
+}
+
 /// Trait implementation for converting 2D Float burn tensor to ndarray
 impl<B: Backend> ToNdArray<B, 2, f32> for Tensor<B, 2, Float> {
     fn to_ndarray(&self) -> nd::Array2<f32> {
@@ -268,6 +284,24 @@ impl<B: Backend> ToNdArray<B, 1, f32> for Tensor<B, 1, Float> {
     fn into_ndarray(self) -> nd::Array1<f32> {
         let tensor_data = tensor_to_data_float(&self);
         nd::Array1::from_vec(tensor_data)
+    }
+}
+
+/// Trait implementation for converting 3D Int burn tensor to ndarray
+#[allow(clippy::cast_sign_loss)]
+impl<B: Backend> ToNdArray<B, 3, u32> for Tensor<B, 3, Int> {
+    fn to_ndarray(&self) -> nd::Array3<u32> {
+        let tensor_data = tensor_to_data_int(self);
+        let tensor_data_u32: Vec<u32> = tensor_data.into_iter().map(|x| x as u32).collect();
+        let shape = self.dims();
+        nd::Array3::from_shape_vec((shape[0], shape[1], shape[2]), tensor_data_u32).unwrap()
+    }
+
+    fn into_ndarray(self) -> nd::Array3<u32> {
+        let tensor_data = tensor_to_data_int(&self);
+        let tensor_data_u32: Vec<u32> = tensor_data.into_iter().map(|x| x as u32).collect();
+        let shape = self.dims();
+        nd::Array3::from_shape_vec((shape[0], shape[1], shape[2]), tensor_data_u32).unwrap()
     }
 }
 

@@ -6,10 +6,9 @@ use crate::scene::Scene;
 
 use easy_wgpu::gpu::Gpu;
 
-use super::{
-    entity_id_pass::EntityIdPass, line_pipeline::LinePipeline, mesh_pipeline::MeshPipeline, outline_pass::OutlinePass, point_pipeline::PointPipeline,
-    upload_pass::PerFrameUniforms,
-};
+#[cfg(feature = "selector")]
+use super::{entity_id_pass::EntityIdPass, outline_pass::OutlinePass};
+use super::{line_pipeline::LinePipeline, mesh_pipeline::MeshPipeline, point_pipeline::PointPipeline, upload_pass::PerFrameUniforms};
 
 use crate::forward_renderer::{render_passes::pipeline_runner::PipelineRunner, renderer::OffscreenTarget};
 use easy_wgpu::framebuffer::FrameBuffer;
@@ -19,7 +18,9 @@ pub struct MainPass {
     mesh_pipeline: MeshPipeline,
     point_pipeline: PointPipeline,
     line_pipeline: LinePipeline,
+    #[cfg(feature = "selector")]
     outline_pass: OutlinePass,
+    #[cfg(feature = "selector")]
     entity_id_pass: EntityIdPass,
 }
 
@@ -28,13 +29,17 @@ impl MainPass {
         let mesh_pipeline = MeshPipeline::new(gpu, params, color_target_format, depth_target_format);
         let point_pipeline = PointPipeline::new(gpu, params, color_target_format, depth_target_format);
         let line_pipeline = LinePipeline::new(gpu, params, color_target_format, depth_target_format);
+        #[cfg(feature = "selector")]
         let outline_pass = OutlinePass::new(gpu, params, color_target_format, depth_target_format);
+        #[cfg(feature = "selector")]
         let entity_id_pass = EntityIdPass::new(gpu);
         Self {
             mesh_pipeline,
             point_pipeline,
             line_pipeline,
+            #[cfg(feature = "selector")]
             outline_pass,
+            #[cfg(feature = "selector")]
             entity_id_pass,
         }
     }
@@ -67,7 +72,9 @@ impl MainPass {
         let mut line_query = self.line_pipeline.prepare(gpu, per_frame_uniforms, scene);
         let mut mesh_query = self.mesh_pipeline.prepare(gpu, per_frame_uniforms, scene);
         let mut point_query = self.point_pipeline.prepare(gpu, per_frame_uniforms, scene);
+        #[cfg(feature = "selector")]
         let mut outline_query = self.outline_pass.prepare(gpu, per_frame_uniforms, scene);
+        #[cfg(feature = "selector")]
         let mut entity_id_query = self.entity_id_pass.prepare(gpu, per_frame_uniforms, scene);
         //do the actual rendering now
         let mut encoder = gpu.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -124,11 +131,13 @@ impl MainPass {
                 self.line_pipeline
                     .run(&mut render_pass, per_frame_uniforms, render_params, &mut line_query, scene);
                 // Run outline pass last so that its able to draw over the line and point passes (grid floor draws over outline otherwise)
+                #[cfg(feature = "selector")]
                 self.outline_pass
                     .run(&mut render_pass, per_frame_uniforms, render_params, &mut outline_query, scene);
             }
 
             // Run entity id pass if a click happened
+            #[cfg(feature = "selector")]
             if let Some(camera) = scene.get_current_cam() {
                 if camera.is_click(scene) {
                     let mut entity_id_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

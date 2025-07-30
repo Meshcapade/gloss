@@ -1,23 +1,20 @@
-use core::panic;
-
 use burn::{
     backend::{candle::CandleDevice, ndarray::NdArrayDevice, wgpu::WgpuDevice, Candle, NdArray, Wgpu},
     prelude::Backend,
     tensor::{Float, Int, Tensor},
 };
-// use burn::backend::ndarray::PrecisionBridge as NdArrayBridge;
-// use burn::backend::candle::PrecisionBridge as CandleBridge;
-// use burn::backend::wgpu::WebGpu PrecisionBridge as WgpuBridge;
-// use burn::tensor::backend::BackendBridge;
+use core::panic;
+use ndarray as nd;
+// TODO: Consider using enum-dispatch whenever possible
 
-use crate::bshare::{tensor_to_data_float, tensor_to_data_int, ToBurn, ToNalgebraFloat, ToNalgebraInt};
+use crate::bshare::{tensor_to_data_float, tensor_to_data_int, ToBurn, ToNalgebraFloat, ToNalgebraInt, ToNdArray};
 extern crate nalgebra as na;
 use bytemuck;
 use log::warn;
 
 pub type DefaultBackend = NdArray; // Change this as needed
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BurnBackend {
     Candle,
     NdArray,
@@ -42,6 +39,14 @@ pub enum DynamicTensorFloat2D {
 
 /// `DynamicTensor` enum for Dynamic backend tensors in burn
 #[derive(Clone, Debug)]
+pub enum DynamicTensorFloat3D {
+    NdArray(Tensor<NdArray, 3, Float>),
+    Wgpu(Tensor<Wgpu, 3, Float>),
+    Candle(Tensor<Candle, 3, Float>),
+}
+
+/// `DynamicTensor` enum for Dynamic backend tensors in burn
+#[derive(Clone, Debug)]
 pub enum DynamicTensorInt1D {
     NdArray(Tensor<NdArray, 1, Int>),
     Wgpu(Tensor<Wgpu, 1, Int>),
@@ -56,55 +61,89 @@ pub enum DynamicTensorInt2D {
     Candle(Tensor<Candle, 2, Int>),
 }
 
+/// `DynamicTensor` enum for Dynamic backend tensors in burn
+#[derive(Clone, Debug)]
+pub enum DynamicTensorInt3D {
+    NdArray(Tensor<NdArray, 3, Int>),
+    Wgpu(Tensor<Wgpu, 3, Int>),
+    Candle(Tensor<Candle, 3, Int>),
+}
+
 /// From methods for converting from Tensor to `DynamicTensor`
 impl DynamicTensorFloat1D {
-    pub fn from_ndarray(tensor: Tensor<NdArray, 1, Float>) -> Self {
+    pub fn from_ndarray_backend(tensor: Tensor<NdArray, 1, Float>) -> Self {
         DynamicTensorFloat1D::NdArray(tensor)
     }
-    pub fn from_wgpu(tensor: Tensor<Wgpu, 1, Float>) -> Self {
+    pub fn from_wgpu_backend(tensor: Tensor<Wgpu, 1, Float>) -> Self {
         DynamicTensorFloat1D::Wgpu(tensor)
     }
-    pub fn from_candle(tensor: Tensor<Candle, 1, Float>) -> Self {
+    pub fn from_candle_backend(tensor: Tensor<Candle, 1, Float>) -> Self {
         DynamicTensorFloat1D::Candle(tensor)
     }
 }
 
 /// From methods for converting from Tensor to `DynamicTensor`
 impl DynamicTensorFloat2D {
-    pub fn from_ndarray(tensor: Tensor<NdArray, 2, Float>) -> Self {
+    pub fn from_ndarray_backend(tensor: Tensor<NdArray, 2, Float>) -> Self {
         DynamicTensorFloat2D::NdArray(tensor)
     }
-    pub fn from_wgpu(tensor: Tensor<Wgpu, 2, Float>) -> Self {
+    pub fn from_wgpu_backend(tensor: Tensor<Wgpu, 2, Float>) -> Self {
         DynamicTensorFloat2D::Wgpu(tensor)
     }
-    pub fn from_candle(tensor: Tensor<Candle, 2, Float>) -> Self {
+    pub fn from_candle_backend(tensor: Tensor<Candle, 2, Float>) -> Self {
         DynamicTensorFloat2D::Candle(tensor)
     }
 }
 
 /// From methods for converting from Tensor to `DynamicTensor`
+impl DynamicTensorFloat3D {
+    pub fn from_ndarray_backend(tensor: Tensor<NdArray, 3, Float>) -> Self {
+        DynamicTensorFloat3D::NdArray(tensor)
+    }
+    pub fn from_wgpu_backend(tensor: Tensor<Wgpu, 3, Float>) -> Self {
+        DynamicTensorFloat3D::Wgpu(tensor)
+    }
+    pub fn from_candle_backend(tensor: Tensor<Candle, 3, Float>) -> Self {
+        DynamicTensorFloat3D::Candle(tensor)
+    }
+}
+
+/// From methods for converting from Tensor to `DynamicTensor`
 impl DynamicTensorInt1D {
-    pub fn from_ndarray(tensor: Tensor<NdArray, 1, Int>) -> Self {
+    pub fn from_ndarray_backend(tensor: Tensor<NdArray, 1, Int>) -> Self {
         DynamicTensorInt1D::NdArray(tensor)
     }
-    pub fn from_wgpu(tensor: Tensor<Wgpu, 1, Int>) -> Self {
+    pub fn from_wgpu_backend(tensor: Tensor<Wgpu, 1, Int>) -> Self {
         DynamicTensorInt1D::Wgpu(tensor)
     }
-    pub fn from_candle(tensor: Tensor<Candle, 1, Int>) -> Self {
+    pub fn from_candle_backend(tensor: Tensor<Candle, 1, Int>) -> Self {
         DynamicTensorInt1D::Candle(tensor)
     }
 }
 
 /// From methods for converting from Tensor to `DynamicTensor`
 impl DynamicTensorInt2D {
-    pub fn from_ndarray(tensor: Tensor<NdArray, 2, Int>) -> Self {
+    pub fn from_ndarray_backend(tensor: Tensor<NdArray, 2, Int>) -> Self {
         DynamicTensorInt2D::NdArray(tensor)
     }
-    pub fn from_wgpu(tensor: Tensor<Wgpu, 2, Int>) -> Self {
+    pub fn from_wgpu_backend(tensor: Tensor<Wgpu, 2, Int>) -> Self {
         DynamicTensorInt2D::Wgpu(tensor)
     }
-    pub fn from_candle(tensor: Tensor<Candle, 2, Int>) -> Self {
+    pub fn from_candle_backend(tensor: Tensor<Candle, 2, Int>) -> Self {
         DynamicTensorInt2D::Candle(tensor)
+    }
+}
+
+/// From methods for converting from Tensor to `DynamicTensor`
+impl DynamicTensorInt3D {
+    pub fn from_ndarray_backend(tensor: Tensor<NdArray, 3, Int>) -> Self {
+        DynamicTensorInt3D::NdArray(tensor)
+    }
+    pub fn from_wgpu_backend(tensor: Tensor<Wgpu, 3, Int>) -> Self {
+        DynamicTensorInt3D::Wgpu(tensor)
+    }
+    pub fn from_candle_backend(tensor: Tensor<Candle, 3, Int>) -> Self {
+        DynamicTensorInt3D::Candle(tensor)
     }
 }
 
@@ -115,7 +154,7 @@ pub trait DynamicTensorOps<T> {
     fn as_bytes(&self) -> Vec<u8>;
 
     fn nrows(&self) -> usize;
-    fn shape(&self) -> (usize, usize);
+    fn shape(&self) -> Vec<usize>;
 
     fn to_vec(&self) -> Vec<T>;
     fn min_vec(&self) -> Vec<T>;
@@ -140,11 +179,11 @@ impl DynamicTensorOps<f32> for DynamicTensorFloat1D {
         }
     }
 
-    fn shape(&self) -> (usize, usize) {
+    fn shape(&self) -> Vec<usize> {
         match self {
-            DynamicTensorFloat1D::NdArray(tensor) => (tensor.dims()[0], 1),
-            DynamicTensorFloat1D::Wgpu(tensor) => (tensor.dims()[0], 1),
-            DynamicTensorFloat1D::Candle(tensor) => (tensor.dims()[0], 1),
+            DynamicTensorFloat1D::NdArray(tensor) => vec![tensor.dims()[0]],
+            DynamicTensorFloat1D::Wgpu(tensor) => vec![tensor.dims()[0]],
+            DynamicTensorFloat1D::Candle(tensor) => vec![tensor.dims()[0]],
         }
     }
 
@@ -193,11 +232,11 @@ impl DynamicTensorOps<f32> for DynamicTensorFloat2D {
         }
     }
 
-    fn shape(&self) -> (usize, usize) {
+    fn shape(&self) -> Vec<usize> {
         match self {
-            DynamicTensorFloat2D::NdArray(tensor) => (tensor.dims()[0], tensor.dims()[1]),
-            DynamicTensorFloat2D::Wgpu(tensor) => (tensor.dims()[0], tensor.dims()[1]),
-            DynamicTensorFloat2D::Candle(tensor) => (tensor.dims()[0], tensor.dims()[1]),
+            DynamicTensorFloat2D::NdArray(tensor) => vec![tensor.dims()[0], tensor.dims()[1]],
+            DynamicTensorFloat2D::Wgpu(tensor) => vec![tensor.dims()[0], tensor.dims()[1]],
+            DynamicTensorFloat2D::Candle(tensor) => vec![tensor.dims()[0], tensor.dims()[1]],
         }
     }
 
@@ -247,6 +286,88 @@ impl DynamicTensorOps<f32> for DynamicTensorFloat2D {
     }
 }
 
+/// `DynamicTensorOps` for Float 3D tensors
+impl DynamicTensorOps<f32> for DynamicTensorFloat3D {
+    fn as_bytes(&self) -> Vec<u8> {
+        match self {
+            DynamicTensorFloat3D::NdArray(tensor) => {
+                let tensor_data = tensor_to_data_float(tensor);
+                bytemuck::cast_slice(&tensor_data).to_vec()
+            }
+            DynamicTensorFloat3D::Wgpu(tensor) => {
+                warn!("Forcing DynamicTensor with Wgpu backend to CPU");
+                let tensor_data = tensor_to_data_float(tensor);
+                bytemuck::cast_slice(&tensor_data).to_vec()
+            }
+            DynamicTensorFloat3D::Candle(tensor) => {
+                let tensor_data = tensor_to_data_float(tensor);
+                bytemuck::cast_slice(&tensor_data).to_vec()
+            }
+        }
+    }
+
+    fn nrows(&self) -> usize {
+        match self {
+            DynamicTensorFloat3D::NdArray(tensor) => tensor.dims()[0],
+            DynamicTensorFloat3D::Wgpu(tensor) => tensor.dims()[0],
+            DynamicTensorFloat3D::Candle(tensor) => tensor.dims()[0],
+        }
+    }
+
+    fn shape(&self) -> Vec<usize> {
+        match self {
+            DynamicTensorFloat3D::NdArray(tensor) => vec![tensor.dims()[0], tensor.dims()[1], tensor.dims()[2]],
+            DynamicTensorFloat3D::Wgpu(tensor) => vec![tensor.dims()[0], tensor.dims()[1], tensor.dims()[2]],
+            DynamicTensorFloat3D::Candle(tensor) => vec![tensor.dims()[0], tensor.dims()[1], tensor.dims()[2]],
+        }
+    }
+
+    fn to_vec(&self) -> Vec<f32> {
+        match &self {
+            DynamicTensorFloat3D::NdArray(tensor) => tensor_to_data_float(tensor),
+            DynamicTensorFloat3D::Wgpu(tensor) => {
+                warn!("Forcing DynamicTensor with Wgpu backend to CPU");
+                tensor_to_data_float(tensor)
+            }
+            DynamicTensorFloat3D::Candle(tensor) => tensor_to_data_float(tensor),
+        }
+    }
+
+    fn min_vec(&self) -> Vec<f32> {
+        match &self {
+            DynamicTensorFloat3D::NdArray(tensor) => {
+                let min_tensor = tensor.clone().min_dim(0);
+                tensor_to_data_float(&min_tensor)
+            }
+            DynamicTensorFloat3D::Wgpu(tensor) => {
+                let min_tensor = tensor.clone().min_dim(0);
+                tensor_to_data_float(&min_tensor)
+            }
+            DynamicTensorFloat3D::Candle(tensor) => {
+                let min_tensor = tensor.clone().min_dim(0);
+                tensor_to_data_float(&min_tensor)
+            }
+        }
+    }
+
+    fn max_vec(&self) -> Vec<f32> {
+        match &self {
+            DynamicTensorFloat3D::NdArray(tensor) => {
+                let max_tensor = tensor.clone().max_dim(0);
+                tensor_to_data_float(&max_tensor)
+            }
+            DynamicTensorFloat3D::Wgpu(tensor) => {
+                let max_tensor = tensor.clone().max_dim(0);
+                tensor_to_data_float(&max_tensor)
+            }
+            DynamicTensorFloat3D::Candle(tensor) => {
+                let max_tensor = tensor.clone().max_dim(0);
+                tensor_to_data_float(&max_tensor)
+            }
+        }
+    }
+}
+
 /// `DynamicTensorOps` for Int 1D tensors
 impl DynamicTensorOps<u32> for DynamicTensorInt1D {
     fn as_bytes(&self) -> Vec<u8> {
@@ -286,11 +407,11 @@ impl DynamicTensorOps<u32> for DynamicTensorInt1D {
         }
     }
 
-    fn shape(&self) -> (usize, usize) {
+    fn shape(&self) -> Vec<usize> {
         match self {
-            DynamicTensorInt1D::NdArray(tensor) => (tensor.dims()[0], 1),
-            DynamicTensorInt1D::Wgpu(tensor) => (tensor.dims()[0], 1),
-            DynamicTensorInt1D::Candle(tensor) => (tensor.dims()[0], 1),
+            DynamicTensorInt1D::NdArray(tensor) => vec![tensor.dims()[0]],
+            DynamicTensorInt1D::Wgpu(tensor) => vec![tensor.dims()[0]],
+            DynamicTensorInt1D::Candle(tensor) => vec![tensor.dims()[0]],
         }
     }
 
@@ -365,11 +486,11 @@ impl DynamicTensorOps<u32> for DynamicTensorInt2D {
         }
     }
 
-    fn shape(&self) -> (usize, usize) {
+    fn shape(&self) -> Vec<usize> {
         match self {
-            DynamicTensorInt2D::NdArray(tensor) => (tensor.dims()[0], tensor.dims()[1]),
-            DynamicTensorInt2D::Wgpu(tensor) => (tensor.dims()[0], tensor.dims()[1]),
-            DynamicTensorInt2D::Candle(tensor) => (tensor.dims()[0], tensor.dims()[1]),
+            DynamicTensorInt2D::NdArray(tensor) => vec![tensor.dims()[0], tensor.dims()[1]],
+            DynamicTensorInt2D::Wgpu(tensor) => vec![tensor.dims()[0], tensor.dims()[1]],
+            DynamicTensorInt2D::Candle(tensor) => vec![tensor.dims()[0], tensor.dims()[1]],
         }
     }
 
@@ -449,15 +570,175 @@ impl DynamicTensorOps<u32> for DynamicTensorInt2D {
     }
 }
 
+/// `DynamicTensorOps` for Int 2D tensors
+impl DynamicTensorOps<u32> for DynamicTensorInt3D {
+    fn as_bytes(&self) -> Vec<u8> {
+        match self {
+            DynamicTensorInt3D::NdArray(tensor) => {
+                let tensor_data = tensor_to_data_int(tensor);
+                let u32_data: Vec<u32> = tensor_data
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect();
+                bytemuck::cast_slice(&u32_data).to_vec()
+            }
+            DynamicTensorInt3D::Wgpu(tensor) => {
+                let tensor_data = tensor_to_data_int(tensor);
+                let u32_data: Vec<u32> = tensor_data
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect();
+                bytemuck::cast_slice(&u32_data).to_vec()
+            }
+            DynamicTensorInt3D::Candle(tensor) => {
+                let tensor_data = tensor_to_data_int(tensor);
+                let u32_data: Vec<u32> = tensor_data
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect();
+                bytemuck::cast_slice(&u32_data).to_vec()
+            }
+        }
+    }
+
+    fn nrows(&self) -> usize {
+        match self {
+            DynamicTensorInt3D::NdArray(tensor) => tensor.dims()[0],
+            DynamicTensorInt3D::Wgpu(tensor) => tensor.dims()[0],
+            DynamicTensorInt3D::Candle(tensor) => tensor.dims()[0],
+        }
+    }
+
+    fn shape(&self) -> Vec<usize> {
+        match self {
+            DynamicTensorInt3D::NdArray(tensor) => vec![tensor.dims()[0], tensor.dims()[1], tensor.dims()[2]],
+            DynamicTensorInt3D::Wgpu(tensor) => vec![tensor.dims()[0], tensor.dims()[1], tensor.dims()[2]],
+            DynamicTensorInt3D::Candle(tensor) => vec![tensor.dims()[0], tensor.dims()[1], tensor.dims()[2]],
+        }
+    }
+
+    fn to_vec(&self) -> Vec<u32> {
+        match &self {
+            DynamicTensorInt3D::NdArray(tensor) => {
+                let data = tensor_to_data_int(tensor);
+                data.into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+            DynamicTensorInt3D::Wgpu(tensor) => {
+                let data = tensor_to_data_int(tensor);
+                data.into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+            DynamicTensorInt3D::Candle(tensor) => {
+                let data = tensor_to_data_int(tensor);
+                data.into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+        }
+    }
+
+    fn min_vec(&self) -> Vec<u32> {
+        match &self {
+            DynamicTensorInt3D::NdArray(tensor) => {
+                let min_tensor = tensor.clone().min_dim(0);
+                tensor_to_data_int(&min_tensor)
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+            DynamicTensorInt3D::Wgpu(tensor) => {
+                let min_tensor = tensor.clone().min_dim(0);
+                tensor_to_data_int(&min_tensor)
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+            DynamicTensorInt3D::Candle(tensor) => {
+                let min_tensor = tensor.clone().min_dim(0);
+                tensor_to_data_int(&min_tensor)
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+        }
+    }
+
+    fn max_vec(&self) -> Vec<u32> {
+        match &self {
+            DynamicTensorInt3D::NdArray(tensor) => {
+                let max_tensor = tensor.clone().max_dim(0);
+                tensor_to_data_int(&max_tensor)
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+            DynamicTensorInt3D::Wgpu(tensor) => {
+                let max_tensor = tensor.clone().max_dim(0);
+                tensor_to_data_int(&max_tensor)
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+            DynamicTensorInt3D::Candle(tensor) => {
+                let max_tensor = tensor.clone().max_dim(0);
+                tensor_to_data_int(&max_tensor)
+                    .into_iter()
+                    .map(|x| x.try_into().expect("Negative value found during conversion to u32"))
+                    .collect()
+            }
+        }
+    }
+}
+
 /// Trait for conversion to and from nalgebra matrices
-pub trait DynamicMatrixOps<T> {
+pub trait DynamicMatrixOps<T, const D: usize> {
+    fn from_ndarray(array: &nd::Array<T, nd::Dim<[usize; D]>>) -> Self;
+    fn to_ndarray(&self) -> nd::Array<T, nd::Dim<[usize; D]>>;
+    fn into_ndarray(self) -> nd::Array<T, nd::Dim<[usize; D]>>;
     fn from_dmatrix(matrix: &na::DMatrix<T>) -> Self;
     fn to_dmatrix(&self) -> na::DMatrix<T>;
     fn into_dmatrix(self) -> na::DMatrix<T>;
 }
 
 /// `DynamicMatrixOps` for `DynamicTensorFloat2D`
-impl DynamicMatrixOps<f32> for DynamicTensorFloat2D {
+impl DynamicMatrixOps<f32, 2> for DynamicTensorFloat2D {
+    fn from_ndarray(array: &nd::Array<f32, nd::Dim<[usize; 2]>>) -> Self {
+        match std::any::TypeId::of::<DefaultBackend>() {
+            id if id == std::any::TypeId::of::<NdArray>() => {
+                let tensor = array.to_burn(&NdArrayDevice::Cpu);
+                DynamicTensorFloat2D::NdArray(tensor)
+            }
+            id if id == std::any::TypeId::of::<Candle>() => {
+                let tensor = array.to_burn(&CandleDevice::Cpu);
+                DynamicTensorFloat2D::Candle(tensor)
+            }
+            id if id == std::any::TypeId::of::<Wgpu>() => {
+                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                DynamicTensorFloat2D::Wgpu(tensor)
+            }
+            _ => panic!("Unsupported backend!"),
+        }
+    }
+
+    fn to_ndarray(&self) -> nd::Array<f32, nd::Dim<[usize; 2]>> {
+        match self {
+            DynamicTensorFloat2D::NdArray(tensor) => tensor.to_ndarray(),
+            DynamicTensorFloat2D::Wgpu(tensor) => tensor.to_ndarray(),
+            DynamicTensorFloat2D::Candle(tensor) => tensor.to_ndarray(),
+        }
+    }
+
+    fn into_ndarray(self) -> nd::Array<f32, nd::Dim<[usize; 2]>> {
+        match self {
+            DynamicTensorFloat2D::NdArray(tensor) => tensor.into_ndarray(),
+            DynamicTensorFloat2D::Wgpu(tensor) => tensor.into_ndarray(),
+            DynamicTensorFloat2D::Candle(tensor) => tensor.into_ndarray(),
+        }
+    }
+
     fn from_dmatrix(matrix: &na::DMatrix<f32>) -> Self {
         match std::any::TypeId::of::<DefaultBackend>() {
             id if id == std::any::TypeId::of::<NdArray>() => {
@@ -493,8 +774,91 @@ impl DynamicMatrixOps<f32> for DynamicTensorFloat2D {
     }
 }
 
+/// `DynamicMatrixOps` for `DynamicTensorFloat3D`
+impl DynamicMatrixOps<f32, 3> for DynamicTensorFloat3D {
+    fn from_ndarray(array: &nd::Array<f32, nd::Dim<[usize; 3]>>) -> Self {
+        match std::any::TypeId::of::<DefaultBackend>() {
+            id if id == std::any::TypeId::of::<NdArray>() => {
+                let tensor = array.to_burn(&NdArrayDevice::Cpu);
+                DynamicTensorFloat3D::NdArray(tensor)
+            }
+            id if id == std::any::TypeId::of::<Candle>() => {
+                let tensor = array.to_burn(&CandleDevice::Cpu);
+                DynamicTensorFloat3D::Candle(tensor)
+            }
+            id if id == std::any::TypeId::of::<Wgpu>() => {
+                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                DynamicTensorFloat3D::Wgpu(tensor)
+            }
+            _ => panic!("Unsupported backend!"),
+        }
+    }
+
+    fn to_ndarray(&self) -> nd::Array<f32, nd::Dim<[usize; 3]>> {
+        match self {
+            DynamicTensorFloat3D::NdArray(tensor) => tensor.to_ndarray(),
+            DynamicTensorFloat3D::Wgpu(tensor) => tensor.to_ndarray(),
+            DynamicTensorFloat3D::Candle(tensor) => tensor.to_ndarray(),
+        }
+    }
+
+    fn into_ndarray(self) -> nd::Array<f32, nd::Dim<[usize; 3]>> {
+        match self {
+            DynamicTensorFloat3D::NdArray(tensor) => tensor.into_ndarray(),
+            DynamicTensorFloat3D::Wgpu(tensor) => tensor.into_ndarray(),
+            DynamicTensorFloat3D::Candle(tensor) => tensor.into_ndarray(),
+        }
+    }
+
+    fn from_dmatrix(_matrix: &na::DMatrix<f32>) -> Self {
+        panic!("3D DynamicTensor interop with DMatrix is not supported!");
+    }
+
+    fn to_dmatrix(&self) -> na::DMatrix<f32> {
+        panic!("3D DynamicTensor interop with DMatrix is not supported!");
+    }
+
+    fn into_dmatrix(self) -> na::DMatrix<f32> {
+        panic!("3D DynamicTensor interop with DMatrix is not supported!");
+    }
+}
+
 /// `DynamicMatrixOps` for `DynamicTensorInt2D`
-impl DynamicMatrixOps<u32> for DynamicTensorInt2D {
+impl DynamicMatrixOps<u32, 2> for DynamicTensorInt2D {
+    fn from_ndarray(array: &nd::Array<u32, nd::Dim<[usize; 2]>>) -> Self {
+        match std::any::TypeId::of::<DefaultBackend>() {
+            id if id == std::any::TypeId::of::<NdArray>() => {
+                let tensor = array.to_burn(&NdArrayDevice::Cpu);
+                DynamicTensorInt2D::NdArray(tensor)
+            }
+            id if id == std::any::TypeId::of::<Candle>() => {
+                let tensor = array.to_burn(&CandleDevice::Cpu);
+                DynamicTensorInt2D::Candle(tensor)
+            }
+            id if id == std::any::TypeId::of::<Wgpu>() => {
+                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                DynamicTensorInt2D::Wgpu(tensor)
+            }
+            _ => panic!("Unsupported backend!"),
+        }
+    }
+
+    fn to_ndarray(&self) -> nd::Array<u32, nd::Dim<[usize; 2]>> {
+        match self {
+            DynamicTensorInt2D::NdArray(tensor) => tensor.to_ndarray(),
+            DynamicTensorInt2D::Wgpu(tensor) => tensor.to_ndarray(),
+            DynamicTensorInt2D::Candle(tensor) => tensor.to_ndarray(),
+        }
+    }
+
+    fn into_ndarray(self) -> nd::Array<u32, nd::Dim<[usize; 2]>> {
+        match self {
+            DynamicTensorInt2D::NdArray(tensor) => tensor.into_ndarray(),
+            DynamicTensorInt2D::Wgpu(tensor) => tensor.into_ndarray(),
+            DynamicTensorInt2D::Candle(tensor) => tensor.into_ndarray(),
+        }
+    }
+
     fn from_dmatrix(matrix: &na::DMatrix<u32>) -> Self {
         match std::any::TypeId::of::<DefaultBackend>() {
             id if id == std::any::TypeId::of::<NdArray>() => {
@@ -527,6 +891,55 @@ impl DynamicMatrixOps<u32> for DynamicTensorInt2D {
             DynamicTensorInt2D::Wgpu(tensor) => tensor.into_nalgebra(),
             DynamicTensorInt2D::Candle(tensor) => tensor.into_nalgebra(),
         }
+    }
+}
+
+/// `DynamicMatrixOps` for `DynamicTensorInt3D`
+impl DynamicMatrixOps<u32, 3> for DynamicTensorInt3D {
+    fn from_ndarray(array: &nd::Array<u32, nd::Dim<[usize; 3]>>) -> Self {
+        match std::any::TypeId::of::<DefaultBackend>() {
+            id if id == std::any::TypeId::of::<NdArray>() => {
+                let tensor = array.to_burn(&NdArrayDevice::Cpu);
+                DynamicTensorInt3D::NdArray(tensor)
+            }
+            id if id == std::any::TypeId::of::<Candle>() => {
+                let tensor = array.to_burn(&CandleDevice::Cpu);
+                DynamicTensorInt3D::Candle(tensor)
+            }
+            id if id == std::any::TypeId::of::<Wgpu>() => {
+                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                DynamicTensorInt3D::Wgpu(tensor)
+            }
+            _ => panic!("Unsupported backend!"),
+        }
+    }
+
+    fn to_ndarray(&self) -> nd::Array<u32, nd::Dim<[usize; 3]>> {
+        match self {
+            DynamicTensorInt3D::NdArray(tensor) => tensor.to_ndarray(),
+            DynamicTensorInt3D::Wgpu(tensor) => tensor.to_ndarray(),
+            DynamicTensorInt3D::Candle(tensor) => tensor.to_ndarray(),
+        }
+    }
+
+    fn into_ndarray(self) -> nd::Array<u32, nd::Dim<[usize; 3]>> {
+        match self {
+            DynamicTensorInt3D::NdArray(tensor) => tensor.into_ndarray(),
+            DynamicTensorInt3D::Wgpu(tensor) => tensor.into_ndarray(),
+            DynamicTensorInt3D::Candle(tensor) => tensor.into_ndarray(),
+        }
+    }
+
+    fn from_dmatrix(_matrix: &na::DMatrix<u32>) -> Self {
+        panic!("3D DynamicTensor interop with DMatrix is not supported!");
+    }
+
+    fn to_dmatrix(&self) -> na::DMatrix<u32> {
+        panic!("3D DynamicTensor interop with DMatrix is not supported!");
+    }
+
+    fn into_dmatrix(self) -> na::DMatrix<u32> {
+        panic!("3D DynamicTensor interop with DMatrix is not supported!");
     }
 }
 

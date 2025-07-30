@@ -19,8 +19,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 crate-type = ["rlib"]
 
 [features]
-default = ["with-gui"]
+default = ["with-gui", "selector"]
 with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "dep:transform-gizmo", "easy-wgpu/with-gui"]
+selector=[]
 
 [dependencies]
 # workspace internal gloss
