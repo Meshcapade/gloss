@@ -20,8 +20,8 @@ log_with_time =[]
 
 [dependencies]
 #local to package
-strum = "0.25"
-strum_macros = "0.25"
+strum = "0.26.3"
+strum_macros = "0.26.3"
 
 #workspace internal gloss
 
