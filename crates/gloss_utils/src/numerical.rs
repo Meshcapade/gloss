@@ -1,9 +1,17 @@
+// pub fn align(size: u32, alignment: u32) -> u32 {
+//     ((size + alignment - 1) / alignment) * alignment
+// }
+
+// pub fn align_usz(size: usize, alignment: usize) -> usize {
+//     ((size + alignment - 1) / alignment) * alignment
+// }
+
 pub fn align(size: u32, alignment: u32) -> u32 {
-    ((size + alignment - 1) / alignment) * alignment
+    size.div_ceil(alignment) * alignment
 }
 
 pub fn align_usz(size: usize, alignment: usize) -> usize {
-    ((size + alignment - 1) / alignment) * alignment
+    size.div_ceil(alignment) * alignment
 }
 
 // https://iolite-engine.com/blog_posts/reverse_z_cheatsheet

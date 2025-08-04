@@ -10,6 +10,7 @@
 //! - [`easy_wgpu`](crate::easy_wgpu) - Abstractions for wgpu.
 //! - [`gloss_hecs`](crate::gloss_hecs) - A wrapper around hecs forECS-related functionality.
 //! - [`gloss_utils`](crate::gloss_utils) - Utility functions and helpers.
+//! - [`gloss_geometry`](crate::gloss_geometry) - Geometry-related functionality.
 //!
 //! ## Examples
 //! Below are the examples you can explore in the `examples/` folder of the
@@ -25,6 +26,7 @@
 
 // Re-exports
 pub use easy_wgpu;
+pub use gloss_geometry;
 pub use gloss_img;
 pub use gloss_renderer;
 pub use gloss_utils;

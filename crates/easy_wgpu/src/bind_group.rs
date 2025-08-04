@@ -4,7 +4,7 @@ use wgpu;
 use crate::texture::Texture;
 
 pub fn align(size: usize, alignment: usize) -> usize {
-    ((size + alignment - 1) / alignment) * alignment
+    size.div_ceil(alignment) * alignment
 }
 
 /// Since we want the `BindGroupWrapper` to keep a vector of the ids and the ids
@@ -23,14 +23,14 @@ pub struct BindGroupWrapper {
     bind_group: wgpu::BindGroup,
     ids: SmallVec<[BgEntriesId; 16]>,
 }
-impl<'a> BindGroupWrapper {
+impl BindGroupWrapper {
     fn new(bind_group: wgpu::BindGroup, ids: SmallVec<[BgEntriesId; 16]>) -> Self {
         Self { bind_group, ids }
     }
     pub fn bg(&self) -> &wgpu::BindGroup {
         &self.bind_group
     }
-    pub fn is_stale(&self, entries: &SmallVec<[BindGroupEntry<'a>; 16]>) -> bool {
+    pub fn is_stale(&self, entries: &SmallVec<[BindGroupEntry; 16]>) -> bool {
         if self.ids.len() != entries.len() {
             return true;
         }
@@ -106,7 +106,7 @@ impl<'a> BindGroupDesc<'a> {
 pub struct BindGroupBuilder<'a> {
     bind_group_desc: Option<BindGroupDesc<'a>>,
 }
-impl<'a> Default for BindGroupBuilder<'a> {
+impl Default for BindGroupBuilder<'_> {
     fn default() -> Self {
         Self::new()
     }

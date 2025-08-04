@@ -1,7 +1,7 @@
 use gloss_renderer::{config::Config, viewer::Viewer};
 
 #[cfg(target_arch = "wasm32")]
-use gloss_renderer::geom::Geom;
+use gloss_renderer::builders;
 use gloss_renderer::{config::LogLevel, gloss_setup_logger};
 
 #[cfg(target_arch = "wasm32")]
@@ -36,6 +36,6 @@ async fn create_test_scene_wasm(viewer: &mut Viewer) {
     viewer
         .scene
         .get_or_create_entity("test_mesh")
-        .insert_builder(Geom::build_from_file_async(path_mesh).await)
+        .insert_builder(builders::build_from_file_async(path_mesh).await)
         .insert(VisOutline::default());
 }

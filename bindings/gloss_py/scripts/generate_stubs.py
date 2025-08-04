@@ -92,7 +92,9 @@ def module_stubs(module: Any) -> ast.Module:
                 ),
             )
         elif inspect.isclass(member_value):
-            classes.append(class_stubs(member_name, member_value, element_path, types_to_import))
+            classes.append(
+                class_stubs(member_name, member_value, element_path, types_to_import)
+            )
         elif inspect.isbuiltin(member_value):
             functions.append(
                 function_stub(
@@ -117,12 +119,17 @@ def module_stubs(module: Any) -> ast.Module:
                 )
             )
     return ast.Module(
-        body=[ast.Import(names=[ast.alias(name=t)]) for t in sorted(types_to_import)] + constants + classes + functions,
+        body=[ast.Import(names=[ast.alias(name=t)]) for t in sorted(types_to_import)]
+        + constants
+        + classes
+        + functions,
         type_ignores=[],
     )
 
 
-def class_stubs(cls_name: str, cls_def: Any, element_path: List[str], types_to_import: Set[str]) -> ast.ClassDef:
+def class_stubs(
+    cls_name: str, cls_def: Any, element_path: List[str], types_to_import: Set[str]
+) -> ast.ClassDef:
     attributes: List[ast.stmt] = []
     methods: List[ast.stmt] = []
     magic_methods: List[ast.stmt] = []
@@ -144,13 +151,20 @@ def class_stubs(cls_name: str, cls_def: Any, element_path: List[str], types_to_i
                 ]
             except ValueError as e:
                 if "no signature found" not in str(e):
-                    raise ValueError(f"Error while parsing signature of {cls_name}.__init__") from e
-        elif (member_name in OBJECT_MEMBERS and member_value == OBJECT_MEMBERS[member_name]) or BUILTINS.get(
-            member_name, ()
-        ) is None:
+                    raise ValueError(
+                        f"Error while parsing signature of {cls_name}.__init__"
+                    ) from e
+        elif (
+            member_name in OBJECT_MEMBERS
+            and member_value == OBJECT_MEMBERS[member_name]
+        ) or BUILTINS.get(member_name, ()) is None:
             pass
         elif inspect.isdatadescriptor(member_value):
-            attributes.extend(data_descriptor_stub(member_name, member_value, current_element_path, types_to_import))
+            attributes.extend(
+                data_descriptor_stub(
+                    member_name, member_value, current_element_path, types_to_import
+                )
+            )
         elif inspect.isroutine(member_value):
             (magic_methods if member_name.startswith("__") else methods).append(
                 function_stub(
@@ -167,7 +181,10 @@ def class_stubs(cls_name: str, cls_def: Any, element_path: List[str], types_to_i
                     target=ast.Name(id=member_name, ctx=ast.Store()),
                     annotation=ast.Subscript(
                         value=path_to_type("tuple"),
-                        slice=ast.Tuple(elts=[path_to_type("str"), ast.Constant(...)], ctx=ast.Load()),
+                        slice=ast.Tuple(
+                            elts=[path_to_type("str"), ast.Constant(...)],
+                            ctx=ast.Load(),
+                        ),
                         ctx=ast.Load(),
                     ),
                     value=ast.Constant(member_value),
@@ -186,11 +203,19 @@ def class_stubs(cls_name: str, cls_def: Any, element_path: List[str], types_to_i
                 )
             )
         else:
-            logging.warning(f"Unsupported member {member_name} of class {'.'.join(element_path)}")
+            logging.warning(
+                f"Unsupported member {member_name} of class {'.'.join(element_path)}"
+            )
 
     doc = inspect.getdoc(cls_def)
     doc_comment = build_doc_comment(doc) if doc else None
-    body = ([doc_comment] if doc_comment else []) + attributes + methods + magic_methods + constants
+    body = (
+        ([doc_comment] if doc_comment else [])
+        + attributes
+        + methods
+        + magic_methods
+        + constants
+    )
     if not body:
         body.append(ast.Expr(value=ast.Constant(...)))
     return ast.ClassDef(
@@ -258,7 +283,9 @@ def function_stub(
         arguments_stub(fn_name, fn_def, doc or "", element_path, types_to_import),
         body,
         decorator_list=decorator_list,
-        returns=returns_stub(fn_name, doc, element_path, types_to_import) if doc else None,
+        returns=(
+            returns_stub(fn_name, doc, element_path, types_to_import) if doc else None
+        ),
         type_params=[],
         lineno=0,
     )
@@ -271,7 +298,9 @@ def arguments_stub(
     element_path: List[str],
     types_to_import: Set[str],
 ) -> ast.arguments:
-    real_parameters: Mapping[str, inspect.Parameter] = inspect.signature(callable_def).parameters
+    real_parameters: Mapping[str, inspect.Parameter] = inspect.signature(
+        callable_def
+    ).parameters
     if callable_name == "__init__":
         real_parameters = {
             "self": inspect.Parameter("self", inspect.Parameter.POSITIONAL_ONLY),
@@ -301,7 +330,9 @@ def arguments_stub(
         if type.endswith(", optional"):
             optional_params.add(match[0])
             type = type[:-10]
-        parsed_param_types[match[0]] = convert_type_from_doc(type, element_path, types_to_import)
+        parsed_param_types[match[0]] = convert_type_from_doc(
+            type, element_path, types_to_import
+        )
 
     # we parse the parameters
     posonlyargs = []
@@ -317,7 +348,9 @@ def arguments_stub(
                 f"The parameter {param.name} of {'.'.join(element_path)} "
                 "has no type definition in the function documentation"
             )
-        param_ast = ast.arg(arg=param.name, annotation=parsed_param_types.get(param.name))
+        param_ast = ast.arg(
+            arg=param.name, annotation=parsed_param_types.get(param.name)
+        )
 
         default_ast: Optional[ast.expr] = None
         if param.default != param.empty:
@@ -373,16 +406,22 @@ def returns_stub(
             "has no type definition using :rtype: in the function documentation"
         )
     if len(m) > 1:
-        raise ValueError(f"Multiple return type annotations found with :rtype: for {'.'.join(element_path)}")
+        raise ValueError(
+            f"Multiple return type annotations found with :rtype: for {'.'.join(element_path)}"
+        )
     return convert_type_from_doc(m[0], element_path, types_to_import)
 
 
-def convert_type_from_doc(type_str: str, element_path: List[str], types_to_import: Set[str]) -> ast.expr:
+def convert_type_from_doc(
+    type_str: str, element_path: List[str], types_to_import: Set[str]
+) -> ast.expr:
     type_str = type_str.strip()
     return parse_type_to_ast(type_str, element_path, types_to_import)
 
 
-def parse_type_to_ast(type_str: str, element_path: List[str], types_to_import: Set[str]) -> ast.expr:
+def parse_type_to_ast(
+    type_str: str, element_path: List[str], types_to_import: Set[str]
+) -> ast.expr:
     # let's tokenize
     tokens = []
     current_token = ""
@@ -422,7 +461,9 @@ def parse_type_to_ast(type_str: str, element_path: List[str], types_to_import: S
             else:
                 or_groups[-1].append(e)
         if any(not g for g in or_groups):
-            raise ValueError(f"Not able to parse type '{type_str}' used by {'.'.join(element_path)}")
+            raise ValueError(
+                f"Not able to parse type '{type_str}' used by {'.'.join(element_path)}"
+            )
 
         new_elements: List[ast.expr] = []
         for group in or_groups:
@@ -430,14 +471,26 @@ def parse_type_to_ast(type_str: str, element_path: List[str], types_to_import: S
                 if group[0] == "...":
                     new_elements.append(ast.Constant(...))
                 else:
-                    new_elements.append(concatenated_path_to_type(group[0], element_path, types_to_import))
-            elif len(group) == 2 and isinstance(group[0], str) and isinstance(group[1], list):
+                    new_elements.append(
+                        concatenated_path_to_type(
+                            group[0], element_path, types_to_import
+                        )
+                    )
+            elif (
+                len(group) == 2
+                and isinstance(group[0], str)
+                and isinstance(group[1], list)
+            ):
                 new_elements.append(
                     ast.Subscript(
-                        value=concatenated_path_to_type(group[0], element_path, types_to_import),
-                        slice=ast.Tuple([parse_sequence(g) for g in group[1]])
-                        if len(group[1]) > 1
-                        else parse_sequence(group[1][0]),
+                        value=concatenated_path_to_type(
+                            group[0], element_path, types_to_import
+                        ),
+                        slice=(
+                            ast.Tuple([parse_sequence(g) for g in group[1]])
+                            if len(group[1]) > 1
+                            else parse_sequence(group[1][0])
+                        ),
                         ctx=ast.Load(),
                     )
                 )
@@ -446,20 +499,33 @@ def parse_type_to_ast(type_str: str, element_path: List[str], types_to_import: S
                     # TODO: hack to convert Callable[[T, ...], R] into Callable[..., R]
                     new_elements.append(ast.Constant(...))
                 else:
-                    new_elements.append(ast.Expr(value=ast.List([parse_sequence(g) for g in group[0]])))
+                    new_elements.append(
+                        ast.Expr(value=ast.List([parse_sequence(g) for g in group[0]]))
+                    )
             else:
-                raise ValueError(f"Not able to parse type '{type_str}' used by {'.'.join(element_path)}")
-        return reduce(lambda left, right: ast.BinOp(left=left, op=ast.BitOr(), right=right), new_elements)
+                raise ValueError(
+                    f"Not able to parse type '{type_str}' used by {'.'.join(element_path)}"
+                )
+        return reduce(
+            lambda left, right: ast.BinOp(left=left, op=ast.BitOr(), right=right),
+            new_elements,
+        )
 
     if len(stack[0]) != 1:
-        raise ValueError(f"Not able to parse type '{type_str}' used by {'.'.join(element_path)}")
+        raise ValueError(
+            f"Not able to parse type '{type_str}' used by {'.'.join(element_path)}"
+        )
     return parse_sequence(stack[0][0])
 
 
-def concatenated_path_to_type(path: str, element_path: List[str], types_to_import: Set[str]) -> ast.expr:
+def concatenated_path_to_type(
+    path: str, element_path: List[str], types_to_import: Set[str]
+) -> ast.expr:
     parts = path.split(".")
     if any(not p for p in parts):
-        raise ValueError(f"Not able to parse type '{path}' used by {'.'.join(element_path)}")
+        raise ValueError(
+            f"Not able to parse type '{path}' used by {'.'.join(element_path)}"
+        )
     if len(parts) > 1:
         types_to_import.add(".".join(parts[:-1]))
     return path_to_type(*parts)
@@ -481,14 +547,20 @@ def format_with_ruff(file: str) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract Python type stub from a python module.")
-    parser.add_argument("module_name", help="Name of the Python module for which generate stubs")
+    parser = argparse.ArgumentParser(
+        description="Extract Python type stub from a python module."
+    )
+    parser.add_argument(
+        "module_name", help="Name of the Python module for which generate stubs"
+    )
     parser.add_argument(
         "out",
         help="Name of the Python stub file to write to",
         type=argparse.FileType("wt"),
     )
-    parser.add_argument("--ruff", help="Formats the generated stubs using Ruff", action="store_true")
+    parser.add_argument(
+        "--ruff", help="Formats the generated stubs using Ruff", action="store_true"
+    )
     args = parser.parse_args()
     stub_content = ast.unparse(module_stubs(importlib.import_module(args.module_name)))
     args.out.write(stub_content)

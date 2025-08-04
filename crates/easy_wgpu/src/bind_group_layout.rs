@@ -23,23 +23,6 @@ impl BindGroupLayoutDesc {
     }
 }
 
-/// Convenience builder to build the layout of a bind group
-/// # Example
-/// ```
-///  # use easy_wgpu::bind_group_layout::BindGroupLayoutBuilder;
-/// let desc = BindGroupLayoutBuilder::new()
-///     .add_entry_uniform(
-///         wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-///         false,
-///         None,
-///     )
-///     .add_entry_sampler(
-///         wgpu::ShaderStages::FRAGMENT,
-///         wgpu::SamplerBindingType::NonFiltering,
-///     )
-///     .build();
-/// ```
-
 pub struct BindGroupLayoutBuilder {
     layout_desc: Option<BindGroupLayoutDesc>,
     last_binding_number: u32,

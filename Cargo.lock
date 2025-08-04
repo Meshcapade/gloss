@@ -1127,7 +1127,7 @@ dependencies = [
 
 [[package]]
 name = "easy-wgpu"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bytemuck",
  "encase",
@@ -1785,8 +1785,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
+name = "gloss-geometry"
+version = "0.7.0"
+dependencies = [
+ "abi_stable",
+ "burn",
+ "console_error_panic_hook",
+ "console_log",
+ "gloss-img",
+ "gloss-utils",
+ "image",
+ "itertools 0.12.1",
+ "js-sys",
+ "log",
+ "nalgebra",
+ "obj-exporter",
+ "once_cell",
+ "parking_lot 0.12.3",
+ "ply-rs",
+ "strum",
+ "strum_macros",
+ "tobj",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "gloss-hecs"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "abi_stable",
  "bencher",
@@ -1805,7 +1832,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-hecs-macros"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "gloss-hecs",
  "proc-macro2",
@@ -1815,7 +1842,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-img"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "bytemuck",
  "flate2",
@@ -1828,7 +1855,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-renderer"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "abi_stable",
  "burn",
@@ -1846,6 +1873,7 @@ dependencies = [
  "env_logger",
  "epaint",
  "futures",
+ "gloss-geometry",
  "gloss-hecs",
  "gloss-img",
  "gloss-utils",
@@ -1881,9 +1909,10 @@ dependencies = [
 
 [[package]]
 name = "gloss-rs"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "easy-wgpu",
+ "gloss-geometry",
  "gloss-img",
  "gloss-renderer",
  "gloss-utils",
@@ -1891,7 +1920,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-utils"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "abi_stable",
  "async-trait",
@@ -1943,9 +1972,10 @@ dependencies = [
 
 [[package]]
 name = "gloss_py"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "easy-wgpu",
+ "gloss-geometry",
  "gloss-hecs",
  "gloss-img",
  "gloss-renderer",
@@ -1964,7 +1994,7 @@ dependencies = [
 
 [[package]]
 name = "gloss_py_macros"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "quote",
  "syn 1.0.109",

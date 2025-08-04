@@ -92,11 +92,11 @@ pub enum Access {
     Write,
 }
 
-impl<'a, T: Component> Query for &'a T {
+impl<T: Component> Query for &T {
     type Fetch = FetchRead<T>;
 }
 
-unsafe impl<'a, T> QueryShared for &'a T {}
+unsafe impl<T> QueryShared for &T {}
 
 #[doc(hidden)]
 pub struct FetchRead<T>(NonNull<T>);
@@ -160,7 +160,7 @@ impl<'a, T: Component> Mut<'a, T> {
 unsafe impl<T: Component> Send for Mut<'_, T> {}
 unsafe impl<T: Component> Sync for Mut<'_, T> {}
 
-impl<'a, T: Component> Deref for Mut<'a, T> {
+impl<T: Component> Deref for Mut<'_, T> {
     type Target = T;
 
     #[inline]
@@ -169,7 +169,7 @@ impl<'a, T: Component> Deref for Mut<'a, T> {
     }
 }
 
-impl<'a, T: Component> DerefMut for Mut<'a, T> {
+impl<T: Component> DerefMut for Mut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         *self.mutated = true;
@@ -177,13 +177,13 @@ impl<'a, T: Component> DerefMut for Mut<'a, T> {
     }
 }
 
-impl<'a, T: Component + core::fmt::Debug> core::fmt::Debug for Mut<'a, T> {
+impl<T: Component + core::fmt::Debug> core::fmt::Debug for Mut<'_, T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.value.fmt(f)
     }
 }
 
-impl<'a, T: Component> Query for &'a mut T {
+impl<T: Component> Query for &mut T {
     type Fetch = FetchWrite<T>;
 }
 
@@ -752,7 +752,7 @@ impl<'w, Q: Query> QueryBorrow<'w, Q> {
 unsafe impl<'w, Q: Query> Send for QueryBorrow<'w, Q> where <Q::Fetch as Fetch<'w>>::Item: Send {}
 unsafe impl<'w, Q: Query> Sync for QueryBorrow<'w, Q> where <Q::Fetch as Fetch<'w>>::Item: Send {}
 
-impl<'w, Q: Query> Drop for QueryBorrow<'w, Q> {
+impl<Q: Query> Drop for QueryBorrow<'_, Q> {
     fn drop(&mut self) {
         if self.borrowed {
             for x in self.archetypes {
@@ -768,7 +768,7 @@ impl<'w, Q: Query> Drop for QueryBorrow<'w, Q> {
 }
 
 #[allow(clippy::into_iter_without_iter)]
-impl<'q, 'w, Q: Query> IntoIterator for &'q mut QueryBorrow<'w, Q> {
+impl<'q, Q: Query> IntoIterator for &'q mut QueryBorrow<'_, Q> {
     type Item = (Entity, QueryItem<'q, Q>);
     type IntoIter = QueryIter<'q, Q>;
 
@@ -841,7 +841,7 @@ impl<'q, Q: Query> Iterator for QueryIter<'q, Q> {
     }
 }
 
-impl<'q, Q: Query> ExactSizeIterator for QueryIter<'q, Q> {
+impl<Q: Query> ExactSizeIterator for QueryIter<'_, Q> {
     fn len(&self) -> usize {
         self.archetypes
             .clone()

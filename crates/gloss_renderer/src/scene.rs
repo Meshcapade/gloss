@@ -5,6 +5,7 @@ use log::{error, trace};
 
 use crate::{
     actor::Actor,
+    builders,
     camera::Camera,
     components::{
         CamController, ColorsGPU, DiffuseImg, DiffuseTex, EdgesGPU, EnvironmentMapGpu, FacesGPU, ImgConfig, LightEmit, MeshColorType, MetalnessTex,
@@ -12,9 +13,10 @@ use crate::{
         TangentsGPU, UVsGPU, Verts, VertsGPU, VisLines, VisMesh, VisPoints,
     },
     config::{Config, FloorTexture, FloorType, LightConfig},
-    geom::Geom,
     light::Light,
 };
+
+use gloss_geometry::geom;
 use gloss_utils::abi_stable_aliases::std_types::{RHashMap, RString};
 #[cfg(not(target_arch = "wasm32"))]
 use gloss_utils::abi_stable_aliases::StableAbi;
@@ -270,10 +272,10 @@ impl Scene {
             .collect()
     }
 
-    /// # Errors
-    /// Will return an error if the entity with the given name is not found.
-    /// # Panics
-    /// Will panic if no entity has that name
+    // # Errors
+    // Will return an error if the entity with the given name is not found.
+    // # Panics
+    // Will panic if no entity has that name
     // pub fn remove_renderable(&mut self, name: &str) -> Result<(), String> {
     //     let r_name = RString::from(name.to_string());
     //     if let Some(&entity) = self.name2entity.get(&r_name) {
@@ -349,7 +351,7 @@ impl Scene {
             };
 
             //get min and max vertex in obj coords
-            let v_world = Geom::transform_verts(&verts.0.to_dmatrix(), &model_matrix.0);
+            let v_world = geom::transform_verts(&verts.0.to_dmatrix(), &model_matrix.0);
             let min_y_cur = v_world.column(1).min();
             min_y_global = min_y_global.min(min_y_cur);
         }
@@ -606,14 +608,14 @@ impl Scene {
         #[allow(clippy::cast_possible_truncation)]
         #[allow(clippy::cast_sign_loss)]
         let floor_builder = match config.core.floor_type {
-            FloorType::Solid => Geom::build_plane(
+            FloorType::Solid => builders::build_plane(
                 config.core.floor_origin.unwrap(),
                 na::Vector3::<f32>::new(0.0, 1.0, 0.0),
                 config.core.floor_scale.unwrap(),
                 config.core.floor_scale.unwrap(),
                 false,
             ),
-            FloorType::Grid => Geom::build_grid(
+            FloorType::Grid => builders::build_grid(
                 config.core.floor_origin.unwrap(),
                 na::Vector3::<f32>::new(0.0, 1.0, 0.0),
                 (config.core.floor_scale.unwrap() / 1.0) as u32,

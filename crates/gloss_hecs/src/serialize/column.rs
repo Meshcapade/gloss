@@ -415,7 +415,7 @@ where
     }
 }
 
-impl<'de, 'a, T> DeserializeSeed<'de> for DeserializeColumn<'a, T>
+impl<'de, T> DeserializeSeed<'de> for DeserializeColumn<'_, T>
 where
     T: Component + Deserialize<'de>,
 {
@@ -442,7 +442,7 @@ struct ColumnVisitor<'a, T> {
     marker: PhantomData<fn() -> T>,
 }
 
-impl<'de, 'a, T> Visitor<'de> for ColumnVisitor<'a, T>
+impl<'de, T> Visitor<'de> for ColumnVisitor<'_, T>
 where
     T: Component + Deserialize<'de>,
 {
@@ -480,7 +480,7 @@ where
 
 struct WorldVisitor<'a, C>(&'a mut C);
 
-impl<'de, 'a, C> Visitor<'de> for WorldVisitor<'a, C>
+impl<'de, C> Visitor<'de> for WorldVisitor<'_, C>
 where
     C: DeserializeContext,
 {
@@ -506,7 +506,7 @@ where
 
 struct DeserializeArchetype<'a, C>(&'a mut C, &'a mut Vec<Entity>);
 
-impl<'de, 'a, C> DeserializeSeed<'de> for DeserializeArchetype<'a, C>
+impl<'de, C> DeserializeSeed<'de> for DeserializeArchetype<'_, C>
 where
     C: DeserializeContext,
 {
@@ -522,7 +522,7 @@ where
 
 struct ArchetypeVisitor<'a, C>(&'a mut C, &'a mut Vec<Entity>);
 
-impl<'de, 'a, C> Visitor<'de> for ArchetypeVisitor<'a, C>
+impl<'de, C> Visitor<'de> for ArchetypeVisitor<'_, C>
 where
     C: DeserializeContext,
 {
@@ -559,7 +559,7 @@ where
 
 struct DeserializeComponentIds<'a, C>(&'a mut C, u32);
 
-impl<'de, 'a, C> DeserializeSeed<'de> for DeserializeComponentIds<'a, C>
+impl<'de, C> DeserializeSeed<'de> for DeserializeComponentIds<'_, C>
 where
     C: DeserializeContext,
 {
@@ -575,7 +575,7 @@ where
 
 struct ComponentIdVisitor<'a, C>(&'a mut C, u32);
 
-impl<'de, 'a, C> Visitor<'de> for ComponentIdVisitor<'a, C>
+impl<'de, C> Visitor<'de> for ComponentIdVisitor<'_, C>
 where
     C: DeserializeContext,
 {
@@ -601,7 +601,7 @@ struct DeserializeComponents<'a, C> {
     out: &'a mut ColumnBatchBuilder,
 }
 
-impl<'de, 'a, C> DeserializeSeed<'de> for DeserializeComponents<'a, C>
+impl<'de, C> DeserializeSeed<'de> for DeserializeComponents<'_, C>
 where
     C: DeserializeContext,
 {
@@ -630,7 +630,7 @@ struct ComponentsVisitor<'a, C> {
     out: &'a mut ColumnBatchBuilder,
 }
 
-impl<'de, 'a, C> Visitor<'de> for ComponentsVisitor<'a, C>
+impl<'de, C> Visitor<'de> for ComponentsVisitor<'_, C>
 where
     C: DeserializeContext,
 {
@@ -657,7 +657,7 @@ struct DeserializeEntities<'a> {
     out: &'a mut Vec<Entity>,
 }
 
-impl<'de, 'a> DeserializeSeed<'de> for DeserializeEntities<'a> {
+impl<'de> DeserializeSeed<'de> for DeserializeEntities<'_> {
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
@@ -679,7 +679,7 @@ struct EntitiesVisitor<'a> {
     out: &'a mut Vec<Entity>,
 }
 
-impl<'de, 'a> Visitor<'de> for EntitiesVisitor<'a> {
+impl<'de> Visitor<'de> for EntitiesVisitor<'_> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

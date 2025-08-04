@@ -29,6 +29,7 @@ easy-wgpu.workspace=true
 gloss-utils.workspace=true
 gloss-img.workspace=true
 gloss-hecs.workspace=true
+gloss-geometry.workspace=true
 
 # workspace third-party
 cfg-if.workspace=true

@@ -108,8 +108,8 @@ impl<'a> EntityRef<'a> {
     }
 }
 
-unsafe impl<'a> Send for EntityRef<'a> {}
-unsafe impl<'a> Sync for EntityRef<'a> {}
+unsafe impl Send for EntityRef<'_> {}
+unsafe impl Sync for EntityRef<'_> {}
 
 /// Shared borrow of an entity's component
 #[derive(Clone)]
@@ -150,13 +150,13 @@ impl<'a, T: Component> Ref<'a, T> {
 unsafe impl<T: Component> Send for Ref<'_, T> {}
 unsafe impl<T: Component> Sync for Ref<'_, T> {}
 
-impl<'a, T: Component> Drop for Ref<'a, T> {
+impl<T: Component> Drop for Ref<'_, T> {
     fn drop(&mut self) {
         self.archetype.release::<T>(self.state);
     }
 }
 
-impl<'a, T: Component> Deref for Ref<'a, T> {
+impl<T: Component> Deref for Ref<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
         unsafe { self.target.as_ref() }
@@ -227,20 +227,20 @@ impl<'a, T: Component> RefMut<'a, T> {
 unsafe impl<T: Component> Send for RefMut<'_, T> {}
 unsafe impl<T: Component> Sync for RefMut<'_, T> {}
 
-impl<'a, T: Component> Drop for RefMut<'a, T> {
+impl<T: Component> Drop for RefMut<'_, T> {
     fn drop(&mut self) {
         self.archetype.release_mut::<T>(self.state);
     }
 }
 
-impl<'a, T: Component> Deref for RefMut<'a, T> {
+impl<T: Component> Deref for RefMut<'_, T> {
     type Target = T;
     fn deref(&self) -> &T {
         unsafe { self.target.as_ref() }
     }
 }
 
-impl<'a, T: Component> DerefMut for RefMut<'a, T> {
+impl<T: Component> DerefMut for RefMut<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         *self.mutated = true;
         unsafe { self.target.as_mut() }

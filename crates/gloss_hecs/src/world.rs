@@ -316,7 +316,7 @@ impl World {
     ///
     /// Useful for reserving an ID that will later have components attached to
     /// it with `insert`.
-    pub fn reserve_entities(&self, count: u32) -> ReserveEntitiesIterator {
+    pub fn reserve_entities(&self, count: u32) -> ReserveEntitiesIterator<'_> {
         self.entities.reserve_entities(count)
     }
 

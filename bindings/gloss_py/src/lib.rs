@@ -22,7 +22,9 @@ use entity_builder::PyEntityBuilder;
 use img::PyDynImage;
 use plugin::PyPluginList;
 use pyo3::prelude::*;
+
 pub mod actor;
+pub mod builders;
 pub mod camera;
 pub mod components;
 pub mod device;
@@ -37,6 +39,7 @@ pub mod texture;
 pub mod viewer;
 pub mod viewer_dummy;
 pub mod viewer_headless;
+
 use actor::PyActorMut;
 use camera::PyCamera;
 use device::PyDevice;
@@ -48,6 +51,8 @@ use texture::PyTexture;
 use viewer::PyViewer;
 use viewer_dummy::PyViewerDummy;
 use viewer_headless::PyViewerHeadless;
+
+use crate::builders::PyBuilders;
 
 /// A Python module implemented in Rust using tch to manipulate PyTorch
 /// objects.
@@ -138,5 +143,6 @@ fn add_submod_types(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 #[pymodule]
 fn add_submod_builders(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyEntityBuilder>()?;
+    m.add_class::<PyBuilders>()?;
     Ok(())
 }

@@ -151,9 +151,9 @@ impl Layout {
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
-    /// Produces layout describing a record that could be used to
-    /// allocate backing structure for `T` (which could be a trait
-    /// or other unsized type like a slice).
+    // Produces layout describing a record that could be used to
+    // allocate backing structure for `T` (which could be a trait
+    // or other unsized type like a slice).
     // #[must_use]
     // #[inline]
     // pub const fn for_value<T: ?Sized>(t: &T) -> Self {
@@ -162,31 +162,31 @@ impl Layout {
     //     unsafe { Layout::from_size_align_unchecked(size, align) }
     // }
 
-    /// Produces layout describing a record that could be used to
-    /// allocate backing structure for `T` (which could be a trait
-    /// or other unsized type like a slice).
-    ///
-    /// # Safety
-    ///
-    /// This function is only safe to call if the following conditions hold:
-    ///
-    /// - If `T` is `Sized`, this function is always safe to call.
-    /// - If the unsized tail of `T` is:
-    ///     - a [slice], then the length of the slice tail must be an
-    ///       initialized integer, and the size of the *entire value* (dynamic
-    ///       tail length + statically sized prefix) must fit in `isize`.
-    ///     - a [trait object], then the vtable part of the pointer must point
-    ///       to a valid vtable for the type `T` acquired by an unsizing
-    ///       coercion, and the size of the *entire value* (dynamic tail length
-    ///       + statically sized prefix) must fit in `isize`.
-    ///     - an (unstable) [extern type], then this function is always safe to
-    ///       call, but may panic or otherwise return the wrong value, as the
-    ///       extern type's layout is not known. This is the same behavior as
-    ///       [`Layout::for_value`] on a reference to an extern type tail.
-    ///     - otherwise, it is conservatively not allowed to call this function.
-    ///
-    /// [trait object]: ../../book/ch17-02-trait-objects.html
-    /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    // Produces layout describing a record that could be used to
+    // allocate backing structure for `T` (which could be a trait
+    // or other unsized type like a slice).
+    //
+    // # Safety
+    //
+    // This function is only safe to call if the following conditions hold:
+    //
+    // - If `T` is `Sized`, this function is always safe to call.
+    // - If the unsized tail of `T` is:
+    //     - a [slice], then the length of the slice tail must be an
+    //       initialized integer, and the size of the *entire value* (dynamic
+    //       tail length + statically sized prefix) must fit in `isize`.
+    //     - a [trait object], then the vtable part of the pointer must point
+    //       to a valid vtable for the type `T` acquired by an unsizing
+    //       coercion, and the size of the *entire value* (dynamic tail length
+    //       + statically sized prefix) must fit in `isize`.
+    //     - an (unstable) [extern type], then this function is always safe to
+    //       call, but may panic or otherwise return the wrong value, as the
+    //       extern type's layout is not known. This is the same behavior as
+    //       [`Layout::for_value`] on a reference to an extern type tail.
+    //     - otherwise, it is conservatively not allowed to call this function.
+    //
+    // [trait object]: ../../book/ch17-02-trait-objects.html
+    // [extern type]: ../../unstable-book/language-features/extern-types.html
     // #[must_use]
     // pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
     //     // SAFETY: we pass along the prerequisites of these functions to the caller
@@ -195,12 +195,12 @@ impl Layout {
     //     unsafe { Layout::from_size_align_unchecked(size, align) }
     // }
 
-    /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
-    ///
-    /// Note that the pointer value may potentially represent a valid pointer,
-    /// which means this must not be used as a "not yet initialized"
-    /// sentinel value. Types that lazily allocate must track initialization by
-    /// some other means.
+    // Creates a `NonNull` that is dangling, but well-aligned for this Layout.
+    //
+    // Note that the pointer value may potentially represent a valid pointer,
+    // which means this must not be used as a "not yet initialized"
+    // sentinel value. Types that lazily allocate must track initialization by
+    // some other means.
     // #[must_use]
     // #[inline]
     // pub const fn dangling(&self) -> NonNull<u8> {

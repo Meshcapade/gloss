@@ -12,13 +12,14 @@ use crate::{
 use crate::plugin_manager::gui::window::{GuiWindowType, WindowPivot, WindowPositionType};
 
 use crate::{
+    builders,
     forward_renderer::Renderer,
-    geom::Geom,
     plugin_manager::plugins::Plugins,
     scene::{Scene, GLOSS_FLOOR_NAME},
 };
 
 use egui::style::TextCursorStyle;
+use gloss_geometry::geom;
 use gloss_utils::string::float2string;
 use log::debug;
 
@@ -1505,7 +1506,7 @@ impl GuiMainWidget {
                     let normal = scene.get_comp::<&PosLookat>(&entity).unwrap().direction();
                     //move the plane a bit behind the light so it doesn't cast a shadow
                     let center = center - normal * 0.03;
-                    let mut builder = Geom::build_plane(center, normal, 0.3, 0.3, false);
+                    let mut builder = builders::build_plane(center, normal, 0.3, 0.3, false);
                     let _ = scene.world.insert(entity, builder.build());
                     let _ = scene.world.insert_one(
                         entity,
@@ -1627,7 +1628,7 @@ impl GuiMainWidget {
 
                     //transform vertices
                     let mm = scene.get_comp::<&ModelMatrix>(&selected_entity).unwrap();
-                    let v = Geom::transform_verts(&v.0.to_dmatrix(), &mm.0);
+                    let v = geom::transform_verts(&v.0.to_dmatrix(), &mm.0);
 
                     let f = scene.get_comp::<&Faces>(&selected_entity).ok().map(|f| f.0.clone());
 
@@ -1636,10 +1637,10 @@ impl GuiMainWidget {
                     let normals = scene
                         .get_comp::<&Normals>(&selected_entity)
                         .ok()
-                        .map(|normals| Geom::transform_vectors(&normals.0.to_dmatrix(), &mm.0));
+                        .map(|normals| geom::transform_vectors(&normals.0.to_dmatrix(), &mm.0));
 
                     //TODO make the path parametrizable
-                    Geom::save_obj(
+                    geom::save_obj(
                         &v,
                         f.map(|faces| faces.to_dmatrix()).as_ref(),
                         // None,
@@ -1660,7 +1661,7 @@ impl GuiMainWidget {
 
                     //transform vertices
                     let mm = scene.get_comp::<&ModelMatrix>(&selected_entity).unwrap();
-                    let v = Geom::transform_verts(&v.0.to_dmatrix(), &mm.0);
+                    let v = geom::transform_verts(&v.0.to_dmatrix(), &mm.0);
 
                     let f = scene.get_comp::<&Faces>(&selected_entity).ok().map(|f| f.0.clone());
 
@@ -1669,12 +1670,12 @@ impl GuiMainWidget {
                     let normals = scene
                         .get_comp::<&Normals>(&selected_entity)
                         .ok()
-                        .map(|normals| Geom::transform_vectors(&normals.0.to_dmatrix(), &mm.0));
+                        .map(|normals| geom::transform_vectors(&normals.0.to_dmatrix(), &mm.0));
 
                     let colors = scene.get_comp::<&Colors>(&selected_entity).ok().map(|colors| colors.0.clone());
 
                     //TODO make the path parametrizable
-                    Geom::save_ply(
+                    geom::save_ply(
                         &v,
                         f.map(|faces| faces.to_dmatrix()).as_ref(),
                         // None,

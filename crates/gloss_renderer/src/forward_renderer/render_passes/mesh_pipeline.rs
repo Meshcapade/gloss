@@ -359,7 +359,8 @@ impl PipelineRunner for MeshPipeline {
             .add_entry_tex(&shadow_maps[1].tex_depth)
             .add_entry_tex(&shadow_maps[2].tex_depth)
             .build_entries();
-        let stale = self.input_bind_group.as_ref().map_or(true, |b| b.is_stale(&entries)); //returns true if the bg has not been created or if stale
+        // let stale = self.input_bind_group.as_ref().map_or(true, |b| b.is_stale(&entries)); //returns true if the bg has not been created or if stale
+        let stale = self.input_bind_group.as_ref().is_none_or(|b| b.is_stale(&entries));
         if stale {
             debug!("compose input bind group is stale, recreating");
             self.input_bind_group = Some(BindGroupDesc::new("compose_input_bg", entries).into_bind_group_wrapper(gpu.device(), &self.input_layout));

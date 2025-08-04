@@ -1,3 +1,7 @@
+// TODO: This is a useless warning that is fixed in PyO3 0.23.5 (https://stackoverflow.com/questions/79467287/how-can-i-solve-the-useless-conversion-clippy-warning)
+// The below is added here instead of the relevant functions since the clippy warning is coming from macro-generated code
+#![allow(clippy::useless_conversion)]
+
 use gloss_hecs::Entity;
 use gloss_img::DynImage;
 use gloss_py_macros::PyComponent;

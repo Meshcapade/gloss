@@ -111,7 +111,7 @@ where
 
 struct SerializeComponents<'a, C>(RefCell<(&'a mut C, Option<EntityRef<'a>>)>);
 
-impl<'a, C: SerializeContext> Serialize for SerializeComponents<'a, C> {
+impl<C: SerializeContext> Serialize for SerializeComponents<'_, C> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -188,7 +188,7 @@ pub trait DeserializeContext {
 
 struct WorldVisitor<'a, C>(&'a mut C);
 
-impl<'de, 'a, C> Visitor<'de> for WorldVisitor<'a, C>
+impl<'de, C> Visitor<'de> for WorldVisitor<'_, C>
 where
     C: DeserializeContext,
 {
@@ -214,7 +214,7 @@ where
 
 struct DeserializeComponents<'a, C>(&'a mut C, &'a mut EntityBuilder);
 
-impl<'de, 'a, C> DeserializeSeed<'de> for DeserializeComponents<'a, C>
+impl<'de, C> DeserializeSeed<'de> for DeserializeComponents<'_, C>
 where
     C: DeserializeContext,
 {
@@ -230,7 +230,7 @@ where
 
 struct ComponentsVisitor<'a, C>(&'a mut C, &'a mut EntityBuilder);
 
-impl<'de, 'a, C> Visitor<'de> for ComponentsVisitor<'a, C>
+impl<'de, C> Visitor<'de> for ComponentsVisitor<'_, C>
 where
     C: DeserializeContext,
 {

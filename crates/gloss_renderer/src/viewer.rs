@@ -5,11 +5,11 @@ use crate::gui::Gui;
 #[cfg(feature = "with-gui")]
 use crate::plugin_manager::GuiSystem;
 use crate::{
+    builders,
     camera::Camera,
     components::Projection,
     config::Config,
     forward_renderer::{render_passes::blit_pass::BlitPass, renderer::Renderer},
-    geom::Geom,
     logger::gloss_setup_logger_from_config,
     plugin_manager::{
         plugins::{Plugin, Plugins},
@@ -83,7 +83,7 @@ impl GpuResources {
     pub fn new(
         event_loop: &ActiveEventLoop,
         event_loop_proxy: &EventLoopProxy<CustomEvent>,
-        canvas_id_parsed: &Option<String>,
+        canvas_id_parsed: Option<&String>,
         config: &Config,
     ) -> Self {
         // The instance is a handle to our GPU
@@ -94,7 +94,7 @@ impl GpuResources {
             gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
         });
 
-        let window = Viewer::create_window(event_loop, event_loop_proxy, &canvas_id_parsed.clone()).expect("failed to create initial window");
+        let window = Viewer::create_window(event_loop, event_loop_proxy, canvas_id_parsed).expect("failed to create initial window");
 
         let window = Arc::new(window);
 
@@ -693,7 +693,7 @@ impl Viewer {
                 };
                 match filetype {
                     FileType::Obj | FileType::Ply => {
-                        let builder = Geom::build_from_file(path);
+                        let builder = builders::build_from_file(path);
                         let name = self.scene.get_unused_name();
                         self.scene.get_or_create_entity(&name).insert_builder(builder);
                         return true;
@@ -1076,9 +1076,9 @@ impl Viewer {
         Ok(())
     }
 
-    /// Runs the rendering loop automatically. This function does not return as
-    /// it will take full control of the loop. If you need to still have control
-    /// over the loop use [`Viewer::update`]
+    // Runs the rendering loop automatically. This function does not return as
+    // it will take full control of the loop. If you need to still have control
+    // over the loop use [`Viewer::update`]
     // #[allow(clippy::missing_panics_doc)]
     // pub fn run(mut self) {
     //     // pub fn run(&'static mut self) {
@@ -1162,7 +1162,7 @@ impl Viewer {
             self.gpu_res = Some(GpuResources::new(
                 event_loop,
                 &self.runner.event_loop_proxy,
-                &self.canvas_id_parsed.clone(),
+                self.canvas_id_parsed.as_ref(),
                 &self.config,
             ));
             // We set all the components to changed because we want them to be reuploaded to
@@ -1249,7 +1249,7 @@ impl Viewer {
     fn create_window(
         event_loop: &ActiveEventLoop,
         _event_loop_proxy: &EventLoopProxy<CustomEvent>,
-        _canvas_id: &Option<String>,
+        _canvas_id: Option<&String>,
     ) -> Result<Window, Box<dyn Error>> {
         // TODO read-out activation token.
 

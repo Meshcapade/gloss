@@ -56,7 +56,7 @@ impl Entity {
     /// `Entity::from_bits` and `World::spawn_at` for easy serialization.
     /// Alternatively, consider `id` for more compact representation.
     pub fn to_bits(self) -> NonZeroU64 {
-        unsafe { NonZeroU64::new_unchecked(u64::from(self.generation.get()) << 32 | u64::from(self.id)) }
+        unsafe { NonZeroU64::new_unchecked((u64::from(self.generation.get()) << 32) | u64::from(self.id)) }
     }
 
     /// Reconstruct an `Entity` previously destructured with `to_bits` if the
@@ -132,7 +132,7 @@ pub struct ReserveEntitiesIterator<'a> {
     id_range: core::ops::Range<u32>,
 }
 
-impl<'a> Iterator for ReserveEntitiesIterator<'a> {
+impl Iterator for ReserveEntitiesIterator<'_> {
     type Item = Entity;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -156,7 +156,7 @@ impl<'a> Iterator for ReserveEntitiesIterator<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for ReserveEntitiesIterator<'a> {}
+impl ExactSizeIterator for ReserveEntitiesIterator<'_> {}
 
 #[derive(Default)]
 #[repr(C)]
@@ -210,7 +210,7 @@ impl Entities {
     ///
     /// Storage for entity generation and location is lazily allocated by
     /// calling `flush`.
-    pub fn reserve_entities(&self, count: u32) -> ReserveEntitiesIterator {
+    pub fn reserve_entities(&self, count: u32) -> ReserveEntitiesIterator<'_> {
         // Use one atomic subtract to grab a range of new IDs. The range might be
         // entirely nonnegative, meaning all IDs come from the freelist, or entirely
         // negative, meaning they are all new IDs to allocate, or a mix of both.

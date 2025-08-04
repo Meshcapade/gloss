@@ -20,6 +20,7 @@ easy-wgpu.workspace = true
 gloss-img.workspace = true
 gloss-renderer.workspace = true
 gloss-utils.workspace = true
+gloss-geometry.workspace = true
 
 [lib]
 crate-type = ["rlib"]

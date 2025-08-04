@@ -11,11 +11,11 @@ use re_memory::{AccountingAllocator, MemoryUse};
 static GLOBAL: AccountingAllocator<std::alloc::System> = AccountingAllocator::new(std::alloc::System);
 
 pub mod actor;
+pub mod builders;
 pub mod camera;
 pub mod components;
 pub mod config;
 pub mod forward_renderer;
-pub mod geom;
 #[cfg(feature = "with-gui")]
 pub mod gui;
 pub mod light;
