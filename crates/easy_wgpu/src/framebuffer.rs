@@ -10,13 +10,13 @@ use enum_map::EnumMap;
 /// use pollster::FutureExt;
 /// use wgpu;
 ///
-/// let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
+/// let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
 /// let adapter = instance
 ///     .request_adapter(&wgpu::RequestAdapterOptions::default())
 ///     .block_on()
 ///     .unwrap();
 /// let (device, queue) = adapter
-///     .request_device(&wgpu::DeviceDescriptor::default(), None)
+///     .request_device(&wgpu::DeviceDescriptor::default())
 ///     .block_on()
 ///     .unwrap();
 ///

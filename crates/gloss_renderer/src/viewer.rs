@@ -27,6 +27,7 @@ use easy_wgpu::texture::Texture;
 use egui_winit::EventResponse;
 use gloss_utils::abi_stable_aliases::std_types::{RString, Tuple2};
 use log::{debug, warn};
+use wgpu::BackendOptions;
 use winit::{
     dpi::PhysicalSize,
     event::TouchPhase,
@@ -87,11 +88,10 @@ impl GpuResources {
         config: &Config,
     ) -> Self {
         // The instance is a handle to our GPU
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: supported_backends(),
-            dx12_shader_compiler: wgpu::Dx12Compiler::default(),
             flags: wgpu::InstanceFlags::default(),
-            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+            backend_options: BackendOptions::default(),
         });
 
         let window = Viewer::create_window(event_loop, event_loop_proxy, canvas_id_parsed).expect("failed to create initial window");
@@ -157,15 +157,13 @@ impl GpuResources {
 
         //device and queue
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    required_features,
-                    required_limits: limits_to_request,
-                    memory_hints,
-                },
-                None, // Trace path
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: None,
+                required_features,
+                required_limits: limits_to_request,
+                memory_hints,
+                trace: wgpu::Trace::Off,
+            })
             .block_on()
             .expect("A device and queue could not be created. Maybe there's a driver issue on your machine?");
         let gpu = Gpu::new(adapter, instance, device, queue);
@@ -484,7 +482,7 @@ impl Viewer {
 
     #[allow(clippy::cast_precision_loss)]
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        debug!("resizing new_size is {:?}", new_size);
+        debug!("resizing new_size is {new_size:?}");
         let max_2d_size = self.gpu_res.as_ref().unwrap().gpu.limits().max_texture_dimension_2d;
         if new_size.width > 16 && new_size.height > 16 && new_size.width < max_2d_size && new_size.height < max_2d_size {
             let gpu_res = self.gpu_res.as_mut().unwrap();
@@ -544,7 +542,7 @@ impl Viewer {
     fn process_custom_resize_events(&mut self, event: &Event<CustomEvent>) -> bool {
         match event {
             Event::UserEvent(CustomEvent::Resize(new_width, new_height)) => {
-                debug!("rs: handling resize canvas: {:?}", event);
+                debug!("rs: handling resize canvas: {event:?}");
                 let logical_size = winit::dpi::LogicalSize {
                     width: *new_width,
                     height: *new_height,
@@ -652,6 +650,7 @@ impl Viewer {
                     }
                     // We're ignoring timeouts
                     Err(wgpu::SurfaceError::Timeout) => error!("SurfaceError: timeout"),
+                    _ => error!("Render error: other"),
                 }
                 debug!("finsihed handing RedrawRequested");
                 true
@@ -667,7 +666,7 @@ impl Viewer {
             //     true
             // }
             WindowEvent::DroppedFile(path_buf) => {
-                info!("Dropped file {:?}", path_buf);
+                info!("Dropped file {path_buf:?}");
                 let path = path_buf.to_str().unwrap();
 
                 //do it so that we process the events we accumulated and actually get a proper
@@ -699,10 +698,7 @@ impl Viewer {
                         return true;
                     }
                     FileType::Unknown => {
-                        info!(
-                            "Gloss doesn't know how to handle dropped file {:?}. trying to let plugins handle it",
-                            path
-                        );
+                        info!("Gloss doesn't know how to handle dropped file {path:?}. trying to let plugins handle it");
                     }
                 }
 
@@ -711,7 +707,7 @@ impl Viewer {
                 let handled = self.plugins.try_handle_event(&mut self.scene, &mut self.runner, &event);
 
                 if !handled {
-                    info!("Neither Gloss nor any of the plugin could load the dropped file {:?}", path);
+                    info!("Neither Gloss nor any of the plugin could load the dropped file {path:?}");
                     return false;
                 }
 
@@ -1240,8 +1236,9 @@ impl Viewer {
 
     /// # Panics
     /// Will panic if the `gpu_resources` have not been created
-    pub fn wait_gpu_finish(&self) -> wgpu::MaintainResult {
-        self.gpu_res.as_ref().unwrap().gpu.device().poll(wgpu::Maintain::Wait)
+    #[allow(clippy::missing_errors_doc)]
+    pub fn wait_gpu_finish(&self) -> Result<wgpu::PollStatus, wgpu::PollError> {
+        self.gpu_res.as_ref().unwrap().gpu.device().poll(wgpu::PollType::Wait)
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1343,7 +1340,7 @@ pub fn supported_backends() -> wgpu::Backends {
         wgpu::Backends::GL
     } else {
         // For Native
-        wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
+        wgpu::Backends::from_env().unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
     }
 }
 
@@ -1361,7 +1358,7 @@ pub fn get_adapter(instance: &wgpu::Instance, surface: Option<&wgpu::Surface>) -
             vec.len()
         );
 
-        info!("Selecting adapter with idx {}", idx);
+        info!("Selecting adapter with idx {idx}");
         vec.remove(idx)
     }
 

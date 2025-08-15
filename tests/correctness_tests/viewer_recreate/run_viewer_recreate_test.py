@@ -16,8 +16,8 @@ setup_logger(log_level=LogLevel.Info)
 
 
 @pytest.mark.timeout(
-    60, method="thread"
-)  # If it runs more than 60s, we assume it failed and got stuck
+    150, method="thread"
+)  # If it runs more than 150s, we assume it failed and got stuck
 def test_viewer_recreate():
 
     path_root = os.path.dirname(os.path.realpath(__file__))

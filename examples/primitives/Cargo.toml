@@ -7,7 +7,7 @@ publish = false
 doc = false
 
 [dependencies]
-gloss-renderer = { path = "../../../gloss/crates/gloss_renderer", default-features = false }
+gloss-renderer = { path = "../../crates/gloss_renderer", default-features = false }
 
 # Third Party
 nalgebra.workspace=true

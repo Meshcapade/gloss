@@ -111,6 +111,7 @@ allow = [
     "Unicode-DFS-2016",               # https://spdx.org/licenses/Unicode-DFS-2016.html
     "Unicode-3.0",                    # https://spdx.org/licenses/Unicode-3.0.html
     "Zlib",                           # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
+    "Ubuntu-font-1.0",                # https://ubuntu.com/legal/font-licence
 ]
 # The confidence threshold for detecting a license from license text.
 # The higher the value, the more closely the license text must be to the
@@ -239,6 +240,9 @@ skip-tree = [
     { name = "cfg_aliases" }, # 2 different depedencies of burn pull 2 different versions of this  
     { name = "bit-vec" }, # 2 different depedencies of include-wgsl-oil pull 2 different versions of this
     { name = "bit-set" }, # 2 different depedencies of include-wgsl-oil pull 2 different versions of this
+    { name = "gemm" }, #burn pulls many versions of this dependency
+    { name = "naga" }, #include-wgsl-oil pulls this dependency which conflicts with the one that wgpu pulls
+    { name = "windows" },           #re-memory pull windows 0.52 but wgpu-hal->gpu-allcator pull windows 0.58.
 ]
 # This section is considered when running `cargo deny check sources`.
 # More documentation about the 'sources' section can be found here:

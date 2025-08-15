@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use easy_wgpu::{
-    bind_group::{BindGroupDesc, BindGroupEntry, BindGroupWrapper},
+    bind_group::{BindGroupDesc, BindGroupWrapper},
     bind_group_layout::BindGroupLayoutDesc,
     buffer::Buffer,
     gpu::Gpu,
@@ -18,7 +18,7 @@ pub trait BindGroupCollection {
     fn new(gpu: &Gpu) -> Self;
     fn build_layout_desc() -> BindGroupLayoutDesc;
 
-    fn update_if_stale(&mut self, ent_name: &str, entries: SmallVec<[BindGroupEntry<'_>; 16]>, offset_in_ubo: u32, gpu: &Gpu) {
+    fn update_if_stale(&mut self, ent_name: &str, entries: SmallVec<[wgpu::BindGroupEntry<'_>; 16]>, offset_in_ubo: u32, gpu: &Gpu) {
         //if there is no entry for the bind group or if the current one is stale, we
         // recreate it
         if !self.get_mut_entity2binds().contains_key(ent_name) || self.get_mut_entity2binds()[ent_name].0.is_stale(&entries) {

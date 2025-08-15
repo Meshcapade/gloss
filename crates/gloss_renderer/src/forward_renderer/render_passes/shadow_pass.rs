@@ -1,5 +1,3 @@
-extern crate nalgebra as na;
-
 use crate::{
     components::{FacesGPU, LightEmit, ModelMatrix, Name, PosLookat, Renderable, ShadowCaster, ShadowMap, ShadowMapDirty, VertsGPU, VisMesh},
     scene::Scene,
@@ -74,7 +72,7 @@ impl ShadowPass {
 
     fn render_shadows(&mut self, gpu: &Gpu, per_frame_uniforms: &PerFrameUniforms, scene: &Scene) {
         let shadow_map_requires_update = self.check_shadow_maps_dirty(scene);
-        debug!("shadow_map_requires_update {}", shadow_map_requires_update);
+        debug!("shadow_map_requires_update {shadow_map_requires_update}");
         if !shadow_map_requires_update {
             return; //nothing to do
         }

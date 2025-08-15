@@ -135,14 +135,14 @@ impl Texture {
         let texture = device.create_texture(&desc);
 
         queue.write_texture(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 aspect: wgpu::TextureAspect::All,
                 texture: &texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
             &rgba,
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(4 * dimensions.0),
                 rows_per_image: Some(dimensions.1),
@@ -396,7 +396,7 @@ impl Texture {
                 let mip_size = desc.mip_level_size(mip_lvl).unwrap();
                 let prev_img_mip = if mip_lvl == 1 { img } else { &img_mip };
                 img_mip = prev_img_mip.resize_exact(mip_size.width, mip_size.height, FilterType::Triangle);
-                debug!("mip lvl {} has size {:?}", mip_lvl, mip_size);
+                debug!("mip lvl {mip_lvl} has size {mip_size:?}");
 
                 let img_mip_vec;
                 let img_mip_buf = match nr_channels {
@@ -513,7 +513,7 @@ impl Texture {
                 buffer_slice.map_async(wgpu::MapMode::Write, move |result| {
                     tx.send(result).unwrap();
                 });
-                device.poll(wgpu::Maintain::Wait);
+                let _ = device.poll(wgpu::PollType::Wait);
                 rx.block_on().unwrap().unwrap();
                 let mut buf_data = buffer_slice.get_mapped_range_mut();
 
@@ -527,15 +527,15 @@ impl Texture {
             //copy from buffer to texture
             let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
             encoder.copy_buffer_to_texture(
-                wgpu::ImageCopyBuffer {
+                wgpu::TexelCopyBufferInfo {
                     buffer: &staging_buffer.buffer,
-                    layout: wgpu::ImageDataLayout {
+                    layout: wgpu::TexelCopyBufferLayout {
                         offset: 0,
                         bytes_per_row: Some(bytes_per_row_padded),
                         rows_per_image: Some(mip_size.height),
                     },
                 },
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     aspect: wgpu::TextureAspect::All,
                     texture,
                     mip_level: mip,
@@ -552,19 +552,19 @@ impl Texture {
             //wait to finish because we might be reusing the staging buffer for
             // something else later TODO maybe this is not needed
             // since the mapping will block either way if the buffer is still in
-            // use device.poll(wgpu::Maintain::Wait);
+            // use device.poll(wgpu::PollType::Wait);
         } else {
             //Use wgpu write_texture which schedules internally the transfer to happen
             // later
             queue.write_texture(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture,
                     mip_level: mip,
                     origin: wgpu::Origin3d { x: 0, y: 0, z: 0 },
                     aspect: wgpu::TextureAspect::All,
                 },
                 data,
-                wgpu::ImageDataLayout {
+                wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
                     rows_per_image: Some(height_blocks),
@@ -646,7 +646,7 @@ impl Texture {
                         buffer_slice.map_async(wgpu::MapMode::Write, move |result| {
                             tx.send(result).unwrap();
                         });
-                        device.poll(wgpu::Maintain::Wait);
+                        let _ = device.poll(wgpu::PollType::Wait);
                         rx.block_on().unwrap().unwrap();
                         let mut buf_data = buffer_slice.get_mapped_range_mut();
 
@@ -660,15 +660,15 @@ impl Texture {
                     //copy from buffer to texture
                     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
                     encoder.copy_buffer_to_texture(
-                        wgpu::ImageCopyBuffer {
+                        wgpu::TexelCopyBufferInfo {
                             buffer: &staging_buffer.buffer,
-                            layout: wgpu::ImageDataLayout {
+                            layout: wgpu::TexelCopyBufferLayout {
                                 offset: 0,
                                 bytes_per_row: Some(bytes_per_row_padded),
                                 rows_per_image: Some(mip_size.height),
                             },
                         },
-                        wgpu::ImageCopyTexture {
+                        wgpu::TexelCopyTextureInfo {
                             aspect: wgpu::TextureAspect::All,
                             texture,
                             mip_level: mip,
@@ -686,19 +686,19 @@ impl Texture {
                     // buffer for something else later
                     // TODO maybe this is not needed since the mapping will
                     // block either way if the buffer is still in use
-                    // device.poll(wgpu::Maintain::Wait);
+                    // device.poll(wgpu::PollType::Wait);
                 } else {
                     //Use wgpu write_texture which schedules internally the transfer to happen
                     // later
                     queue.write_texture(
-                        wgpu::ImageCopyTexture {
+                        wgpu::TexelCopyTextureInfo {
                             texture,
                             mip_level: mip,
                             origin: wgpu::Origin3d { x: 0, y: 0, z: layer },
                             aspect: wgpu::TextureAspect::All,
                         },
                         &data[binary_offset..end_offset],
-                        wgpu::ImageDataLayout {
+                        wgpu::TexelCopyBufferLayout {
                             offset: 0,
                             bytes_per_row: Some(bytes_per_row),
                             rows_per_image: Some(height_blocks),
@@ -733,7 +733,7 @@ impl Texture {
             buffer_slice.map_async(wgpu::MapMode::Write, move |result| {
                 tx.send(result).unwrap();
             });
-            device.poll(wgpu::Maintain::Wait);
+            let _ = device.poll(wgpu::PollType::Wait);
             rx.block_on().unwrap().unwrap();
             let mut buf_data = buffer_slice.get_mapped_range_mut();
 
@@ -751,15 +751,15 @@ impl Texture {
         //copy from buffer to texture
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_texture(
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &staging_buffer.buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row_padded),
                     rows_per_image: Some(mip_size.height),
                 },
             },
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 aspect: wgpu::TextureAspect::All,
                 texture,
                 mip_level: mip_lvl,
@@ -775,7 +775,7 @@ impl Texture {
 
         //wait to finish because we might be reusing the staging buffer for something
         // else later
-        device.poll(wgpu::Maintain::Wait);
+        let _ = device.poll(wgpu::PollType::Wait);
     }
 
     /// This functions downloads the texture to the cpu and returns a `DynImage`
@@ -801,15 +801,15 @@ impl Texture {
         //copy from texture to buffer
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 aspect,
                 texture: &self.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &output_buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row_padded),
                     rows_per_image: Some(self.height()),
@@ -844,7 +844,7 @@ impl Texture {
             buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                 tx.send(result).unwrap();
             });
-            device.poll(wgpu::Maintain::Wait);
+            let _ = device.poll(wgpu::PollType::Wait);
             rx.receive().await.unwrap().unwrap();
 
             let data = buffer_slice.get_mapped_range();
@@ -897,15 +897,15 @@ impl Texture {
         // let scaled_y = y / self.tex_params.scale_factor;
 
         encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
+            wgpu::TexelCopyTextureInfo {
                 aspect,
                 texture: &self.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d { x, y, z: 0 },
             },
-            wgpu::ImageCopyBuffer {
+            wgpu::TexelCopyBufferInfo {
                 buffer: &output_buffer,
-                layout: wgpu::ImageDataLayout {
+                layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: None,
                     rows_per_image: None,
@@ -927,7 +927,7 @@ impl Texture {
             buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                 tx.send(result).unwrap();
             });
-            device.poll(wgpu::Maintain::Wait);
+            let _ = device.poll(wgpu::PollType::Wait);
             rx.receive().await.unwrap().unwrap();
 
             let data = buffer_slice.get_mapped_range();

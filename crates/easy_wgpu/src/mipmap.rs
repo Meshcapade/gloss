@@ -56,7 +56,7 @@ fn to_sample_type(format: TextureFormat) -> TextureSampleType {
         | TextureFormat::Bgra8Unorm
         | TextureFormat::Bgra8UnormSrgb
         | TextureFormat::Rgb10a2Unorm
-        | TextureFormat::Rg11b10Float
+        | TextureFormat::Rg11b10Ufloat
         | TextureFormat::Rg32Float
         | TextureFormat::Rgba16Float
         | TextureFormat::Rgba32Float
@@ -205,7 +205,7 @@ impl RenderMipmapGenerator {
                         layout: Some(&layout),
                         vertex: VertexState {
                             module: &vertex_module,
-                            entry_point: "main",
+                            entry_point: Some("main"),
                             buffers: &[],
                             compilation_options: wgpu::PipelineCompilationOptions::default(),
                         },
@@ -223,7 +223,7 @@ impl RenderMipmapGenerator {
                         },
                         fragment: Some(FragmentState {
                             module: fragment_module,
-                            entry_point: "main",
+                            entry_point: Some("main"),
                             targets: &[Some(wgpu::ColorTargetState {
                                 format: *format,
                                 blend: None,
@@ -236,7 +236,7 @@ impl RenderMipmapGenerator {
                     });
                     pipeline_cache.insert(*format, pipeline);
                 } else {
-                    log::warn!("RenderMipmapGenerator does not support requested format {:?}", format);
+                    log::warn!("RenderMipmapGenerator does not support requested format {format:?}");
                     continue;
                 }
             }
@@ -327,6 +327,7 @@ impl RenderMipmapGenerator {
                     mip_level_count: Some(1),
                     array_layer_count: None,
                     base_array_layer: 0,
+                    usage: None, //corresponds to all the usages of the texture
                 })
             })
             .collect::<Vec<_>>();

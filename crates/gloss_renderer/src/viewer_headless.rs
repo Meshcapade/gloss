@@ -128,11 +128,10 @@ impl ViewerHeadless {
         //expensive but useful
         re_memory::accounting_allocator::set_tracking_callstacks(config.core.enable_memory_profiling_callstacks);
 
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: supported_backends(),
-            dx12_shader_compiler: wgpu::Dx12Compiler::default(),
             flags: wgpu::InstanceFlags::default(),
-            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
+            backend_options: wgpu::BackendOptions::default(),
         });
 
         //if we are on wasm we cannot enumerate adapter so we skip this at compile time
@@ -190,15 +189,13 @@ impl ViewerHeadless {
         }
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    required_features,
-                    required_limits: limits_to_request,
-                    memory_hints,
-                },
-                None, // Trace path
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: None,
+                required_features,
+                required_limits: limits_to_request,
+                memory_hints,
+                trace: wgpu::Trace::Off,
+            })
             .block_on()
             .expect("A device and queue could not be created. Maybe there's a driver issue on your machine?");
 

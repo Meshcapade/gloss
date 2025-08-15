@@ -716,7 +716,7 @@ impl DynamicMatrixOps<f32, 2> for DynamicTensorFloat2D {
                 DynamicTensorFloat2D::Candle(tensor)
             }
             id if id == std::any::TypeId::of::<Wgpu>() => {
-                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                let tensor = array.to_burn(&WgpuDevice::default());
                 DynamicTensorFloat2D::Wgpu(tensor)
             }
             _ => panic!("Unsupported backend!"),
@@ -750,7 +750,7 @@ impl DynamicMatrixOps<f32, 2> for DynamicTensorFloat2D {
                 DynamicTensorFloat2D::Candle(tensor)
             }
             id if id == std::any::TypeId::of::<Wgpu>() => {
-                let tensor = matrix.to_burn(&WgpuDevice::BestAvailable);
+                let tensor = matrix.to_burn(&WgpuDevice::DefaultDevice);
                 DynamicTensorFloat2D::Wgpu(tensor)
             }
             _ => panic!("Unsupported backend!"),
@@ -787,7 +787,7 @@ impl DynamicMatrixOps<f32, 3> for DynamicTensorFloat3D {
                 DynamicTensorFloat3D::Candle(tensor)
             }
             id if id == std::any::TypeId::of::<Wgpu>() => {
-                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                let tensor = array.to_burn(&WgpuDevice::default());
                 DynamicTensorFloat3D::Wgpu(tensor)
             }
             _ => panic!("Unsupported backend!"),
@@ -836,7 +836,7 @@ impl DynamicMatrixOps<u32, 2> for DynamicTensorInt2D {
                 DynamicTensorInt2D::Candle(tensor)
             }
             id if id == std::any::TypeId::of::<Wgpu>() => {
-                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                let tensor = array.to_burn(&WgpuDevice::default());
                 DynamicTensorInt2D::Wgpu(tensor)
             }
             _ => panic!("Unsupported backend!"),
@@ -870,7 +870,7 @@ impl DynamicMatrixOps<u32, 2> for DynamicTensorInt2D {
                 DynamicTensorInt2D::Candle(tensor)
             }
             id if id == std::any::TypeId::of::<Wgpu>() => {
-                let tensor = matrix.to_burn(&WgpuDevice::BestAvailable);
+                let tensor = matrix.to_burn(&WgpuDevice::DefaultDevice);
                 DynamicTensorInt2D::Wgpu(tensor)
             }
             _ => panic!("Unsupported backend!"),
@@ -907,7 +907,7 @@ impl DynamicMatrixOps<u32, 3> for DynamicTensorInt3D {
                 DynamicTensorInt3D::Candle(tensor)
             }
             id if id == std::any::TypeId::of::<Wgpu>() => {
-                let tensor = array.to_burn(&WgpuDevice::BestAvailable);
+                let tensor = array.to_burn(&WgpuDevice::default());
                 DynamicTensorInt3D::Wgpu(tensor)
             }
             _ => panic!("Unsupported backend!"),

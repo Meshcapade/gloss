@@ -20,7 +20,8 @@ crate-type = ["rlib"]
 
 [features]
 default = ["with-gui", "selector"]
-with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "dep:transform-gizmo", "easy-wgpu/with-gui"]
+# with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "dep:transform-gizmo", "easy-wgpu/with-gui"]
+with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "easy-wgpu/with-gui"]
 selector=[]
 
 [dependencies]
@@ -54,7 +55,7 @@ epaint={ workspace = true, optional = true }
 egui-winit = { workspace = true, optional = true }
 egui-wgpu = { workspace = true, optional = true }
 # egui-gizmo = { workspace = true, optional = true }
-transform-gizmo = { workspace = true, optional = true }
+# transform-gizmo = { workspace = true, optional = true }
 
 enum-map.workspace=true
 encase.workspace=true

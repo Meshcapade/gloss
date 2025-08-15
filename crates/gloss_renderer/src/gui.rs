@@ -18,7 +18,7 @@ use crate::{
     scene::{Scene, GLOSS_FLOOR_NAME},
 };
 
-use egui::style::TextCursorStyle;
+use egui::{style::TextCursorStyle, CornerRadius};
 use gloss_geometry::geom;
 use gloss_utils::string::float2string;
 use log::debug;
@@ -42,10 +42,11 @@ use winit::window::Window;
 use crate::plugin_manager::gui::widgets::Widgets as WidgetsFFI;
 use egui::{
     epaint,
+    epaint::AlphaFromCoverage,
     epaint::Shadow,
     scroll_area,
     style::{Interaction, Selection, Spacing, WidgetVisuals, Widgets},
-    Align, Align2, Color32, FontId, Layout, RichText, Rounding, ScrollArea, Slider, Stroke, Style, Ui, Vec2, Visuals,
+    Align, Align2, Color32, FontId, Layout, RichText, ScrollArea, Slider, Stroke, Style, Ui, Vec2, Visuals,
 };
 use egui_winit::{self, EventResponse};
 use epaint::Margin;
@@ -76,7 +77,7 @@ pub struct GuiMainWidget {
     pub selected_entity: Option<Entity>,
     pub selected_light_name: String,
     pub selected_light_entity: Option<Entity>,
-    pub wgputex_2_eguitex: HashMap<wgpu::Id<wgpu::Texture>, epaint::TextureId>,
+    pub wgputex_2_eguitex: HashMap<wgpu::Texture, epaint::TextureId>,
     pub hovered_diffuse_tex: bool,
     pub hovered_normal_tex: bool,
     pub hovered_roughness_tex: bool,
@@ -566,7 +567,7 @@ impl GuiMainWidget {
                                     WidgetsFFI::SelectableList(selectable_list) => {
                                         let mut draw_selectables = |ui: &mut Ui| {
                                             for item in selectable_list.items.iter() {
-                                                if ui.add(egui::SelectableLabel::new(item.is_selected, item.name.to_string())).clicked() {
+                                                if ui.add(egui::Button::selectable(item.is_selected, item.name.to_string())).clicked() {
                                                     (item.f_clicked)(&item.name, &selected_entity, scene);
                                                 }
                                             }
@@ -1117,19 +1118,16 @@ impl GuiMainWidget {
         ui.label("Diffuse");
         ui.separator();
         let diffuse_tex = scene.get_comp::<&DiffuseTex>(&entity).unwrap();
-        let (view, id) = if scene.world.has::<DiffuseImg>(entity).unwrap() {
-            let diffuse_id = diffuse_tex.0.texture.global_id();
-            (&diffuse_tex.0.view, diffuse_id)
-        } else {
-            let diffuse_tex = self.default_texture.as_ref().unwrap();
-            let diffuse_id = diffuse_tex.texture.global_id();
-            (&diffuse_tex.view, diffuse_id)
-        };
+        //if we have a CPU texture, we get the corresponding GPU texture, if not, we get a default GPU tex
+        let tex: &easy_wgpu::texture::Texture = scene
+            .world
+            .get::<&DiffuseImg>(entity)
+            .map_or_else(|_| self.default_texture.as_ref().unwrap(), |_| &diffuse_tex.0);
         //get egui textureid
         let diffuse_egui_tex_id = self
             .wgputex_2_eguitex
-            .entry(id)
-            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), view, wgpu::FilterMode::Linear));
+            .entry(tex.texture.clone())
+            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), &tex.view, wgpu::FilterMode::Linear));
         //show img
         let res = ui.add(egui::Image::from_texture((*diffuse_egui_tex_id, Vec2::new(120.0, 120.0))));
         self.hovered_diffuse_tex = res.hovered();
@@ -1138,40 +1136,34 @@ impl GuiMainWidget {
         ui.label("Normal");
         ui.separator();
         let normal_tex = scene.get_comp::<&NormalTex>(&entity).unwrap();
-        let (view, id) = if scene.world.has::<NormalImg>(entity).unwrap() {
-            let normal_id = normal_tex.0.texture.global_id();
-            (&normal_tex.0.view, normal_id)
-        } else {
-            let normal_tex = self.default_texture.as_ref().unwrap();
-            let normal_id = normal_tex.texture.global_id();
-            (&normal_tex.view, normal_id)
-        };
+        //if we have a CPU texture, we get the corresponding GPU texture, if not, we get a default GPU tex
+        let tex: &easy_wgpu::texture::Texture = scene
+            .world
+            .get::<&NormalImg>(entity)
+            .map_or_else(|_| self.default_texture.as_ref().unwrap(), |_| &normal_tex.0);
         //get egui textureid
         let normal_egui_tex_id = self
             .wgputex_2_eguitex
-            .entry(id)
-            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), view, wgpu::FilterMode::Linear));
+            .entry(tex.texture.clone())
+            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), &tex.view, wgpu::FilterMode::Linear));
         //show img
         let res = ui.add(egui::Image::from_texture((*normal_egui_tex_id, Vec2::new(120.0, 120.0))));
         self.hovered_normal_tex = res.hovered();
 
-        //get normal tex
+        //get roughness tex
         ui.label("Roughness");
         ui.separator();
         let roughness_tex = scene.get_comp::<&RoughnessTex>(&entity).unwrap();
-        let (view, id) = if scene.world.has::<RoughnessImg>(entity).unwrap() {
-            let roughness_id = roughness_tex.0.texture.global_id();
-            (&roughness_tex.0.view, roughness_id)
-        } else {
-            let roughness_tex = self.default_texture.as_ref().unwrap();
-            let roughness_id = roughness_tex.texture.global_id();
-            (&roughness_tex.view, roughness_id)
-        };
+        //if we have a CPU texture, we get the corresponding GPU texture, if not, we get a default GPU tex
+        let tex: &easy_wgpu::texture::Texture = scene
+            .world
+            .get::<&RoughnessImg>(entity)
+            .map_or_else(|_| self.default_texture.as_ref().unwrap(), |_| &roughness_tex.0);
         //get egui textureid
         let roughness_egui_tex_id = self
             .wgputex_2_eguitex
-            .entry(id)
-            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), view, wgpu::FilterMode::Linear));
+            .entry(tex.texture.clone())
+            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), &tex.view, wgpu::FilterMode::Linear));
         //show img
         let res = ui.add(egui::Image::from_texture((*roughness_egui_tex_id, Vec2::new(120.0, 120.0))));
         self.hovered_roughness_tex = res.hovered();
@@ -1856,7 +1848,7 @@ impl GuiMainWidget {
         let size_per_mb = 1.0;
         #[cfg(target_arch = "wasm32")]
         {
-            use egui::{epaint::RectShape, Sense, Shape};
+            use egui::{epaint::RectShape, Sense, Shape, StrokeKind};
             let unknown_mem = Color32::from_rgb(150, 150, 150);
             let allocated_mem = Color32::from_rgb(255, 10, 10);
 
@@ -1889,14 +1881,15 @@ impl GuiMainWidget {
                     for i in 0..(mb_resident as usize) {
                         let rect_size = egui::Vec2::new(size_per_mb, 10.0);
                         let rect = ui.allocate_exact_size(rect_size, Sense::click()).0;
-                        let rounding = Rounding::default();
+                        let rounding = CornerRadius::default();
                         let fill_color = if i < mb2color.len() {
                             mb2color[i]
                         } else {
                             egui::Color32::from_rgb(50, 0, 0)
                         };
                         let stroke = Stroke::default();
-                        let rect_shape = RectShape::new(rect, rounding, fill_color, stroke);
+                        let stroke_kind = StrokeKind::Inside;
+                        let rect_shape = RectShape::new(rect, rounding, fill_color, stroke, stroke_kind);
                         ui.painter().add(Shape::Rect(rect_shape));
                     }
                 });
@@ -1940,17 +1933,17 @@ pub fn style() -> Style {
         spacing: Spacing {
             item_spacing: Vec2 { x: 8.0, y: 3.0 },
             window_margin: Margin {
-                left: 6.0,
-                right: 6.0,
-                top: 6.0,
-                bottom: 6.0,
+                left: 6,
+                right: 6,
+                top: 6,
+                bottom: 6,
             },
             button_padding: Vec2 { x: 4.0, y: 1.0 },
             menu_margin: Margin {
-                left: 6.0,
-                right: 6.0,
-                top: 6.0,
-                bottom: 6.0,
+                left: 6,
+                right: 6,
+                top: 6,
+                bottom: 6,
             },
             indent: 18.0,
             interact_size: Vec2 { x: 40.0, y: 18.0 },
@@ -1990,12 +1983,7 @@ pub fn style() -> Style {
                         width: 1.0,
                         color: Color32::from_rgba_premultiplied(60, 60, 60, 255),
                     },
-                    rounding: Rounding {
-                        nw: 0.0,
-                        ne: 0.0,
-                        sw: 0.0,
-                        se: 0.0,
-                    },
+                    corner_radius: CornerRadius::ZERO,
                     fg_stroke: Stroke {
                         width: 1.0,
                         color: Color32::from_rgba_premultiplied(140, 140, 140, 255),
@@ -2009,12 +1997,7 @@ pub fn style() -> Style {
                         width: 0.0,
                         color: Color32::from_rgba_premultiplied(0, 0, 0, 0),
                     },
-                    rounding: Rounding {
-                        nw: 0.0,
-                        ne: 0.0,
-                        sw: 0.0,
-                        se: 0.0,
-                    },
+                    corner_radius: CornerRadius::ZERO,
                     fg_stroke: Stroke {
                         width: 1.0,
                         color: Color32::from_rgba_premultiplied(180, 180, 180, 255),
@@ -2028,12 +2011,7 @@ pub fn style() -> Style {
                         width: 1.0,
                         color: Color32::from_rgba_premultiplied(150, 150, 150, 255),
                     },
-                    rounding: Rounding {
-                        nw: 0.0,
-                        ne: 0.0,
-                        sw: 0.0,
-                        se: 0.0,
-                    },
+                    corner_radius: CornerRadius::ZERO,
                     fg_stroke: Stroke {
                         width: 1.5,
                         color: Color32::from_rgba_premultiplied(240, 240, 240, 255),
@@ -2047,12 +2025,7 @@ pub fn style() -> Style {
                         width: 1.0,
                         color: Color32::from_rgba_premultiplied(255, 255, 255, 255),
                     },
-                    rounding: Rounding {
-                        nw: 0.0,
-                        ne: 0.0,
-                        sw: 0.0,
-                        se: 0.0,
-                    },
+                    corner_radius: CornerRadius::ZERO,
                     fg_stroke: Stroke {
                         width: 2.0,
                         color: Color32::from_rgba_premultiplied(255, 255, 255, 255),
@@ -2066,12 +2039,7 @@ pub fn style() -> Style {
                         width: 1.0,
                         color: Color32::from_rgba_premultiplied(60, 60, 60, 255),
                     },
-                    rounding: Rounding {
-                        nw: 0.0,
-                        ne: 0.0,
-                        sw: 0.0,
-                        se: 0.0,
-                    },
+                    corner_radius: CornerRadius::ZERO,
                     fg_stroke: Stroke {
                         width: 1.0,
                         color: Color32::from_rgba_premultiplied(210, 210, 210, 255),
@@ -2092,12 +2060,7 @@ pub fn style() -> Style {
             code_bg_color: Color32::from_rgba_premultiplied(64, 64, 64, 255),
             warn_fg_color: Color32::from_rgba_premultiplied(255, 143, 0, 255),
             error_fg_color: Color32::from_rgba_premultiplied(255, 0, 0, 255),
-            window_rounding: Rounding {
-                nw: 0.0,
-                ne: 0.0,
-                sw: 0.0,
-                se: 0.0,
-            },
+            window_corner_radius: CornerRadius::ZERO,
             window_shadow: Shadow {
                 // extrusion: 5.0,
                 color: Color32::from_rgba_premultiplied(0, 0, 0, 96),
@@ -2108,12 +2071,7 @@ pub fn style() -> Style {
                 width: 0.0,
                 color: Color32::from_rgba_premultiplied(71, 71, 71, 255),
             },
-            menu_rounding: Rounding {
-                nw: 6.0,
-                ne: 6.0,
-                sw: 6.0,
-                se: 6.0,
-            },
+            menu_corner_radius: CornerRadius::ZERO,
             panel_fill: Color32::from_rgba_premultiplied(20, 20, 20, 255),
             popup_shadow: Shadow {
                 // extrusion: 16.0,
@@ -2135,6 +2093,11 @@ pub fn style() -> Style {
             interact_cursor: None,
             image_loading_spinners: true,
             numeric_color_space: NumericColorSpace::GammaByte,
+            text_alpha_from_coverage: AlphaFromCoverage::DARK_MODE_DEFAULT,
+            weak_text_alpha: 0.6,
+            weak_text_color: None,
+            text_edit_bg_color: None, // use `extreme_bg_color` by default
+            disabled_alpha: 0.5,
         },
         animation_time: 0.08333,
         explanation_tooltips: false,

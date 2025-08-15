@@ -9,12 +9,13 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-gloss-renderer = { path = "../../../gloss/crates/gloss_renderer", default-features = false , features = ["with-gui"] }
+gloss-renderer = { path = "../../crates/gloss_renderer", default-features = false , features = ["with-gui"] }
 
 # Third party
 pollster.workspace=true
 nalgebra.workspace=true
-getrandom.workspace=true
+getrandom02.workspace=true
+getrandom03.workspace=true
 burn.workspace=true
 
 # More dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web

@@ -7,13 +7,13 @@ use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorI
 use log::debug;
 use nalgebra_glm::{Vec2, Vec3};
 
-extern crate nalgebra as na;
 use crate::components::{Faces, ModelMatrix, Normals, UVs, Verts};
 use core::f32;
 use gloss_utils::io::FileType;
 #[allow(unused_imports)]
 use log::{error, info, warn};
 use na::DMatrix;
+use nalgebra as na;
 use std::path::Path;
 use tobj;
 
@@ -344,7 +344,7 @@ pub fn build_from_file(path: &str) -> EntityBuilder {
         FileType::Obj => build_from_obj(Path::new(path)),
         FileType::Ply => build_from_ply(Path::new(path)),
         FileType::Unknown => {
-            error!("Could not read file {:?}", path);
+            error!("Could not read file {path:?}");
             EntityBuilder::new() //empty builder
         }
     }
@@ -514,7 +514,7 @@ fn build_from_ply(path: &Path) -> EntityBuilder {
                 // (k, _) => panic!("Vertex: Unexpected key/value combination: key: {}", k),
                 // (k, prop) => {println!("unknown key {} of type {:?}", k, prop)},
                 (k, prop) => {
-                    warn!("unknown key {} of type {:?}", k, prop);
+                    warn!("unknown key {k} of type {prop:?}");
                 }
             }
         }

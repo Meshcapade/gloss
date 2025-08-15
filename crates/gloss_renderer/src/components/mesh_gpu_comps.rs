@@ -6,7 +6,6 @@ use easy_wgpu::texture::TexParams;
 use ktx2;
 use wgpu;
 
-extern crate nalgebra as na;
 #[derive(Debug)]
 pub struct VertsGPU {
     pub buf: wgpu::Buffer,

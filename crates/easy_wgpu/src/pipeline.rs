@@ -146,7 +146,7 @@ impl RenderPipelineDesc {
         } else {
             Some(wgpu::FragmentState {
                 module: shader_frag,
-                entry_point: DEFAULT_FS_SHADER_ENTRY_POINT,
+                entry_point: Some(DEFAULT_FS_SHADER_ENTRY_POINT),
                 targets: self.render_targets.as_slice(),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             })
@@ -158,7 +158,7 @@ impl RenderPipelineDesc {
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: shader_vert,
-                entry_point: DEFAULT_VS_SHADER_ENTRY_POINT,
+                entry_point: Some(DEFAULT_VS_SHADER_ENTRY_POINT),
                 buffers: self.vertex_buffers_layouts.as_slice(),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },

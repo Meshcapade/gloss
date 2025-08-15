@@ -44,8 +44,8 @@ ash = "0.37"
 libc = "0.2"
 lazy_static = "1.4.0"
 softbuffer = "0.3.0" #for winit run_return
-winit = { version = "0.30.5", default-features = false, features = ["rwh_06", "x11"] } 
-wgpu       = { version = "22.1.0",  default-features = false, features = ["wgsl", "spirv", "webgl", "metal"] } 
+winit = { version = "0.30.7", default-features = false, features = ["rwh_06", "x11"] } 
+wgpu       = { version = "25.0.0",  default-features = false, features = ["wgsl", "spirv", "webgl", "metal"] } 
 num-traits     = { version = "0.2", default-features = false }
 image = { version= "=0.25.5", default-features = false, features=["jpeg", "png", "tiff"] } #TODO maybe replace it with zune-image
 image-webp = "=0.2.0"
@@ -59,15 +59,15 @@ relative-path = "1.8"
 futures = "0.3"
 futures-intrusive = "0.5"
 time = { version = "0.3", features = ["wasm-bindgen"]}
-burn = { version = "0.14", default-features = false, features=["ndarray", "wgpu", "candle", "autotune"]}
+burn = { version = "0.18", default-features = false, features=["ndarray", "wgpu", "candle", "autotune"]}
 async-trait = "0.1"
 png = "0.17.14" # Pinned to this because otherwise image crate pull png=0.17.13 which makes png pull miniz_oxide=0.8.0 which causes duplicate
 flate2=  "1.0.34" # Pinned to this because otherwise image crate pull flate2=1.0.33 which makes png pull miniz_oxide=0.8.0 which causes duplicate
-egui = {version = "0.29", default-features = false, features= ["default_fonts"]}
-egui-wgpu = {version = "0.29.1", default-features = false}
-egui-winit = {version = "0.29", default-features = false, features = ["x11"] } #disabled arboard feature because it doesn't work on wasm
-epaint = {version = "0.29", default-features = false, features =["bytemuck"]}
-transform-gizmo = { version = "0.4.0", default-features = false}
+egui = {version = "0.32", default-features = false, features= ["default_fonts"]}
+egui-wgpu = {version = "0.32", default-features = false}
+egui-winit = {version = "0.32", default-features = false, features = ["x11"] } #disabled arboard feature because it doesn't work on wasm
+epaint = {version = "0.32", default-features = false, features =["bytemuck"]}
+# transform-gizmo = { version = "0.4.0", default-features = false}
 tuple-conv = "1.0.1"
 enum-map = "2.6.0"
 smallvec = "1.11"
@@ -90,15 +90,19 @@ memory-stats = "1.1"
 itertools = "0.12"
 ahash = "0.8"
 nohash-hasher = "0.2"
-sysinfo = { version = "0.30.1", default-features = false }
 peak_alloc = "0.2.0"
-getrandom = { version = "0.2", features = ["js"] } # used by ahash/egui
+# getrandom = { version = "0.2", features = ["js"] } # used by ahash/egui
+#egui and half" pull different versions of the getrandom crate transitivelly. And I want to enable the js feature for both:
+# 1) Alias the 0.2.x instance of getrandom, disable default features, turn on "js"
+getrandom02 = { package = "getrandom", version = "0.2", default-features = false, features = ["js"] }
+# 2) Alias the 0.3.x instance of getrandom, disable default features, turn on "js"
+getrandom03 = { package = "getrandom", version = "0.3", default-features = false, features = ["wasm_js"] }
 static_assertions = "1.1.0"
 abi_stable = "0.11.3"
-re_memory = "0.20"
-bincode_derive = "=2.0.0-rc.3"
-bincode = "=2.0.0-rc.3"
-half = "=2.4.1"
+re_memory = "0.24"
+bincode_derive = "=2.0.1" #from burn cargo.toml
+bincode = "=2.0.1" #from burn cargo.toml
+half = "=2.6.0" #from burn cargo.toml
 zerofrom = "=0.1.5"
 # =====================================================================
 # Dependencies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web

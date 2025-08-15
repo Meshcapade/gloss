@@ -7,3 +7,8 @@ gloss = "run --package gloss_renderer --"
 # gloss-web = "run --release --package gloss_wasm --bin gloss_renderer --"
 run-wasm = "run --release --package gloss_wasm --"
 
+# `getrandom_backend="wasm_js"` is required to enable the `getrandom` crate to use the `wasm_js` backend.
+# https://docs.rs/getrandom/latest/getrandom/#webassembly-support
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg=getrandom_backend="wasm_js"']
+

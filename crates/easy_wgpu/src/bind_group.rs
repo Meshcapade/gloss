@@ -7,39 +7,44 @@ pub fn align(size: usize, alignment: usize) -> usize {
     size.div_ceil(alignment) * alignment
 }
 
-/// Since we want the `BindGroupWrapper` to keep a vector of the ids and the ids
-/// are all typed, we use an enum to deal with heterogeneous types
+/// Since we want the `BindGroupWrapper` to keep a vector of the types of resources that are bound,
+/// we use an enum to deal with heterogeneous types
 #[derive(PartialEq, Clone)]
-pub enum BgEntriesId {
-    Tex(wgpu::Id<wgpu::Texture>),
-    Buf(wgpu::Id<wgpu::Buffer>),
-    Sampler(wgpu::Id<wgpu::Sampler>),
+pub enum BgResource {
+    TexView(wgpu::TextureView),
+    Buf(wgpu::Buffer),
+    Sampler(wgpu::Sampler),
 }
 
-/// Wrapper for a bind group that also keeps the ids of the entries. This helps
+/// Wrapper for a bind group that also keep a handle on the resources in the bingroup. This helps
 /// with keeping track if the textures in the entries have changed and the bind
 /// group needs to be recreated
 pub struct BindGroupWrapper {
     bind_group: wgpu::BindGroup,
-    ids: SmallVec<[BgEntriesId; 16]>,
+    resources: SmallVec<[BgResource; 16]>,
 }
 impl BindGroupWrapper {
-    fn new(bind_group: wgpu::BindGroup, ids: SmallVec<[BgEntriesId; 16]>) -> Self {
-        Self { bind_group, ids }
+    fn new(bind_group: wgpu::BindGroup, resources: SmallVec<[BgResource; 16]>) -> Self {
+        Self { bind_group, resources }
     }
     pub fn bg(&self) -> &wgpu::BindGroup {
         &self.bind_group
     }
-    pub fn is_stale(&self, entries: &SmallVec<[BindGroupEntry; 16]>) -> bool {
-        if self.ids.len() != entries.len() {
+    pub fn is_stale(&self, entries: &SmallVec<[wgpu::BindGroupEntry; 16]>) -> bool {
+        if self.resources.len() != entries.len() {
             return true;
         }
 
-        for it in entries.iter().zip(self.ids.iter()) {
-            let (entry, id) = it;
-            //if the ids don't match we return true because the binding group needs to be
-            // recreated
-            if entry.id != *id {
+        for it in entries.iter().zip(self.resources.iter()) {
+            let (entry, res) = it;
+            let is_different = match &entry.resource {
+                wgpu::BindingResource::Buffer(buffer_binding) => BgResource::Buf(buffer_binding.buffer.clone()) != *res,
+                wgpu::BindingResource::Sampler(sampler) => BgResource::Sampler((*sampler).clone()) != *res,
+                wgpu::BindingResource::TextureView(view) => BgResource::TexView((*view).clone()) != *res,
+                _ => unimplemented!("other binding types"),
+            };
+
+            if is_different {
                 return true;
             }
         }
@@ -48,18 +53,10 @@ impl BindGroupWrapper {
     }
 }
 
-/// Stores both an entry and the ``global_id`` of the resources it points to in
-/// order to track if the bind group is stale Required wgpu to enable the
-/// expose-ids feature
-pub struct BindGroupEntry<'a> {
-    pub entry: wgpu::BindGroupEntry<'a>,
-    pub id: BgEntriesId,
-}
-
 /// Describes a bind group a series of entries
 pub struct BindGroupDesc<'a> {
     pub label: Option<String>,
-    pub bind_group_entries: SmallVec<[BindGroupEntry<'a>; 16]>,
+    pub bind_group_entries: SmallVec<[wgpu::BindGroupEntry<'a>; 16]>,
     last_binding_number: u32,
 }
 impl Default for BindGroupDesc<'_> {
@@ -72,7 +69,7 @@ impl Default for BindGroupDesc<'_> {
     }
 }
 impl<'a> BindGroupDesc<'a> {
-    pub fn new(label: &str, entries: SmallVec<[BindGroupEntry<'a>; 16]>) -> Self {
+    pub fn new(label: &str, entries: SmallVec<[wgpu::BindGroupEntry<'a>; 16]>) -> Self {
         Self {
             label: Some(String::from(label)),
             bind_group_entries: entries,
@@ -80,23 +77,24 @@ impl<'a> BindGroupDesc<'a> {
         }
     }
     pub fn into_bind_group_wrapper(self, device: &wgpu::Device, layout: &wgpu::BindGroupLayout) -> BindGroupWrapper {
-        //make the vector of bg entries
-        let mut vec_entries: SmallVec<[wgpu::BindGroupEntry; 16]> = SmallVec::new();
-        let mut ids: SmallVec<[BgEntriesId; 16]> = SmallVec::new();
-        for bg_entry in self.bind_group_entries {
-            //moves self.bg_entries and invalidates them
-            vec_entries.push(bg_entry.entry);
-            ids.push(bg_entry.id);
-        }
         //create bg
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout,
-            // entries: self.bind_group_entries.as_slice(),
-            entries: vec_entries.as_slice(),
+            entries: self.bind_group_entries.as_slice(),
             label: self.label.as_deref(),
         });
-        BindGroupWrapper::new(bind_group, ids) //TODO add the ids of the
-                                               // texture entries
+        //create some owned resources by cloning the texture,buffers,etc. Since its all Arc<> it's actually just a reference count
+        let mut bg_resources = SmallVec::new();
+        for res in self.bind_group_entries {
+            match res.resource {
+                wgpu::BindingResource::Buffer(buffer_binding) => bg_resources.push(BgResource::Buf(buffer_binding.buffer.clone())),
+                wgpu::BindingResource::Sampler(sampler) => bg_resources.push(BgResource::Sampler(sampler.clone())),
+                wgpu::BindingResource::TextureView(texture_view) => bg_resources.push(BgResource::TexView(texture_view.clone())),
+                _ => todo!(),
+            }
+        }
+        BindGroupWrapper::new(bind_group, bg_resources)
+        // texture entries
     }
 }
 
@@ -141,13 +139,10 @@ impl<'a> BindGroupBuilder<'a> {
         //each entry we add will have sequential binding_indices
         //this should correspond with the binding in the shader
         let binding_number = self.bind_group_desc.as_ref().unwrap().last_binding_number;
-        //entry and id
-        let entry = BindGroupEntry {
-            entry: wgpu::BindGroupEntry {
-                binding: binding_number,
-                resource: wgpu::BindingResource::TextureView(&tex.view),
-            },
-            id: BgEntriesId::Tex(tex.texture.global_id()),
+        //entry
+        let entry = wgpu::BindGroupEntry {
+            binding: binding_number,
+            resource: wgpu::BindingResource::TextureView(&tex.view),
         };
         //add
         self.bind_group_desc.as_mut().unwrap().bind_group_entries.push(entry);
@@ -162,13 +157,10 @@ impl<'a> BindGroupBuilder<'a> {
         //each entry we add will have sequential binding_indices
         //this should correspond with the binding in the shader
         let binding_number = self.bind_group_desc.as_ref().unwrap().last_binding_number;
-        //entry and id
-        let entry = BindGroupEntry {
-            entry: wgpu::BindGroupEntry {
-                binding: binding_number,
-                resource: buffer.as_entire_binding(),
-            },
-            id: BgEntriesId::Buf(buffer.global_id()),
+        //entry
+        let entry = wgpu::BindGroupEntry {
+            binding: binding_number,
+            resource: buffer.as_entire_binding(),
         };
         //add
         self.bind_group_desc.as_mut().unwrap().bind_group_entries.push(entry);
@@ -189,13 +181,10 @@ impl<'a> BindGroupBuilder<'a> {
             offset: 0,
             size: wgpu::BufferSize::new(u64::try_from(align(std::mem::size_of::<T>(), 256)).unwrap()),
         };
-        //entry and id
-        let entry = BindGroupEntry {
-            entry: wgpu::BindGroupEntry {
-                binding: binding_number,
-                resource: wgpu::BindingResource::Buffer(binding),
-            },
-            id: BgEntriesId::Buf(buffer.global_id()),
+        //entry
+        let entry = wgpu::BindGroupEntry {
+            binding: binding_number,
+            resource: wgpu::BindingResource::Buffer(binding),
         };
         //add
         self.bind_group_desc.as_mut().unwrap().bind_group_entries.push(entry);
@@ -210,13 +199,10 @@ impl<'a> BindGroupBuilder<'a> {
         //each entry we add will have sequential binding_indices
         //this should correspond with the binding in the shader
         let binding_number = self.bind_group_desc.as_ref().unwrap().last_binding_number;
-        //entry and id
-        let entry = BindGroupEntry {
-            entry: wgpu::BindGroupEntry {
-                binding: binding_number,
-                resource: wgpu::BindingResource::Sampler(sampler),
-            },
-            id: BgEntriesId::Sampler(sampler.global_id()),
+        //entry
+        let entry = wgpu::BindGroupEntry {
+            binding: binding_number,
+            resource: wgpu::BindingResource::Sampler(sampler),
         };
         // add
         self.bind_group_desc.as_mut().unwrap().bind_group_entries.push(entry);
@@ -257,7 +243,7 @@ impl<'a> BindGroupBuilder<'a> {
 
     /// # Panics
     /// Will panic if the builder was not constructed with ``new()``
-    pub fn build_entries(&mut self) -> SmallVec<[BindGroupEntry<'a>; 16]> {
+    pub fn build_entries(&mut self) -> SmallVec<[wgpu::BindGroupEntry<'a>; 16]> {
         self.bind_group_desc.take().unwrap().bind_group_entries
     }
 }
