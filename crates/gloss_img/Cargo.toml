@@ -81,12 +81,8 @@ qoi = ["image/qoi"]
 
 #workspace third-party
 image.workspace=true
-png.workspace=true
-flate2.workspace=true
 bytemuck.workspace=true
 num-traits.workspace=true
-half.workspace=true
-image-webp.workspace=true
 
 #optional dependencies from image-rs
 #KEEP IN SYNC to the image-rs version

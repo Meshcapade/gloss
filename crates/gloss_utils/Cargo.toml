@@ -20,32 +20,25 @@ log_with_time =[]
 
 [dependencies]
 #local to package
-strum = "0.26.3"
-strum_macros = "0.26.3"
+
 
 #workspace internal gloss
 
 #workspace third-party
+strum.workspace=true
+strum_macros.workspace=true
 log.workspace=true
 env_logger.workspace=true
 nalgebra.workspace=true
 config.workspace=true
-serde.workspace=true
 toml.workspace=true
 bytemuck.workspace=true
-image.workspace=true
-wgpu.workspace=true
 burn.workspace=true
-async-trait.workspace=true
-pollster.workspace=true
 ndarray.workspace=true
-num-traits = "^0.2"
+num-traits.workspace=true
 re_memory.workspace=true
 smallvec.workspace=true
-bincode_derive.workspace=true
-bincode.workspace=true
-zerofrom.workspace=true
-half.workspace=true
+
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 abi_stable.workspace=true
@@ -58,10 +51,7 @@ wasm-bindgen.workspace=true
 wasm-bindgen-futures.workspace=true
 web-sys.workspace=true
 js-sys.workspace=true
-parking_lot.workspace=true
-once_cell.workspace=true
 
-# paste = "1.0"
 
 [lints]
 workspace = true

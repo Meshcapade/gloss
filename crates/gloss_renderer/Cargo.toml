@@ -38,7 +38,6 @@ bytemuck.workspace=true
 env_logger.workspace=true
 log.workspace=true
 pollster.workspace=true
-num-traits.workspace=true
 burn.workspace=true
 winit.workspace=true
 wgpu.workspace=true
@@ -46,8 +45,6 @@ nalgebra.workspace=true
 nalgebra-glm.workspace=true
 image.workspace=true
 tobj.workspace=true
-obj-exporter.workspace=true
-time.workspace=true
 
 # gui stuff
 egui = { workspace = true, optional = true }
@@ -65,16 +62,12 @@ ktx2.workspace=true
 config.workspace=true
 serde.workspace=true
 toml.workspace=true
-indexmap.workspace=true
 smallvec.workspace=true
 ply-rs.workspace=true
 static_assertions.workspace=true
 itertools.workspace=true
 re_memory.workspace=true
-futures.workspace=true
 
-[target.'cfg(any(target_os = "windows"))'.dependencies]
-winapi = "0.3.9"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 abi_stable.workspace=true
@@ -85,19 +78,9 @@ console_error_panic_hook.workspace=true
 console_log.workspace=true
 wasm-bindgen.workspace=true
 wasm-bindgen-futures.workspace=true
-web-sys = { version = "0.3", features = [
-    "Request",
-    "RequestInit",
-    "RequestMode",
-    "Response",
-    "Document",
-    "Window",
-    "Element",
-    "HtmlCanvasElement",
-    "console",
-]}
-js-sys = "0.3"
-# wasm-log = "0.3"
+web-sys.workspace=true
+js-sys.workspace=true
+
 [target.x86_64-unknown-linux-gnu] #slightly faster linking
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 

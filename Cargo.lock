@@ -215,17 +215,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-trait"
-version = "0.1.86"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "644dd749086bf3771a2fbc5f256fdb982d53f011c7d5d560304eafeecebce79d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.104",
-]
-
-[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -270,18 +259,8 @@ version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36eaf5d7b090263e8150820482d5d93cd964a81e4019913c972f4edcc6edb740"
 dependencies = [
- "bincode_derive",
  "serde",
  "unty",
-]
-
-[[package]]
-name = "bincode_derive"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf95709a440f45e986983918d0e8a1f30a9b1df04918fc828670606804ac3c09"
-dependencies = [
- "virtue",
 ]
 
 [[package]]
@@ -1315,15 +1294,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
-name = "deranged"
-version = "0.3.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b42b6fa04a440b495c8b04d0e71b707c585f83cb9cb28cf8cd0d976c315e31b4"
-dependencies = [
- "powerfmt",
-]
-
-[[package]]
 name = "derive-new"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2287,27 +2257,17 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 name = "gloss-geometry"
 version = "0.7.0"
 dependencies = [
- "abi_stable",
  "burn",
- "console_error_panic_hook",
- "console_log",
  "gloss-img",
  "gloss-utils",
  "image",
  "itertools 0.12.1",
- "js-sys",
  "log",
  "nalgebra",
  "obj-exporter",
- "once_cell",
- "parking_lot 0.12.3",
  "ply-rs",
  "strum",
  "strum_macros",
- "tobj",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -2344,12 +2304,8 @@ name = "gloss-img"
 version = "0.7.0"
 dependencies = [
  "bytemuck",
- "flate2",
- "half",
  "image",
- "image-webp",
  "num-traits",
- "png",
 ]
 
 [[package]]
@@ -2371,29 +2327,24 @@ dependencies = [
  "enum-map",
  "env_logger",
  "epaint",
- "futures",
  "gloss-geometry",
  "gloss-hecs",
  "gloss-img",
  "gloss-utils",
  "image",
  "include-wgsl-oil",
- "indexmap",
  "itertools 0.12.1",
  "js-sys",
  "ktx2",
  "log",
  "nalgebra",
  "nalgebra-glm",
- "num-traits",
- "obj-exporter",
  "ply-rs",
  "pollster",
  "re_memory",
  "serde",
  "smallvec",
  "static_assertions",
- "time",
  "tobj",
  "toml 0.8.20",
  "wasm-bindgen",
@@ -2401,7 +2352,6 @@ dependencies = [
  "wasm-timer",
  "web-sys",
  "wgpu",
- "winapi",
  "winit",
 ]
 
@@ -2421,27 +2371,18 @@ name = "gloss-utils"
 version = "0.7.0"
 dependencies = [
  "abi_stable",
- "async-trait",
- "bincode",
- "bincode_derive",
  "burn",
  "bytemuck",
  "config",
  "console_error_panic_hook",
  "console_log",
  "env_logger",
- "half",
- "image",
  "js-sys",
  "log",
  "nalgebra",
  "ndarray",
  "num-traits",
- "once_cell",
- "parking_lot 0.12.3",
- "pollster",
  "re_memory",
- "serde",
  "smallvec",
  "strum",
  "strum_macros",
@@ -2449,8 +2390,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu",
- "zerofrom",
 ]
 
 [[package]]
@@ -3326,12 +3265,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-conv"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
-
-[[package]]
 name = "num-integer"
 version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3911,12 +3844,6 @@ checksum = "d8a2f0d8d040d7848a709caf78912debcc3f33ee4b3cac47d73d1e1069e83507"
 dependencies = [
  "portable-atomic",
 ]
-
-[[package]]
-name = "powerfmt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
 
 [[package]]
 name = "pp-rs"
@@ -4793,6 +4720,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tensor_router"
+version = "0.1.0"
+dependencies = [
+ "gloss-renderer",
+ "nalgebra",
+ "ndarray",
+ "wgpu",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4872,26 +4809,6 @@ dependencies = [
  "jpeg-decoder",
  "weezl",
 ]
-
-[[package]]
-name = "time"
-version = "0.3.37"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35e7868883861bd0e56d9ac6efcaaca0d6d5d82a2a7ec8209ff492c07cf37b21"
-dependencies = [
- "deranged",
- "js-sys",
- "num-conv",
- "powerfmt",
- "serde",
- "time-core",
-]
-
-[[package]]
-name = "time-core"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef927ca75afb808a4d64dd374f00a2adf8d0fcff8e7b184af886c3c87ec4a3f3"
 
 [[package]]
 name = "tobj"
@@ -5149,12 +5066,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "virtue"
-version = "0.0.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "051eb1abcf10076295e815102942cc58f9d5e3b4560e46e53c21e8ff6f3af7b1"
 
 [[package]]
 name = "void"

@@ -16,13 +16,13 @@ default = ["with-gui"]
 with-gui=["dep:epaint"]
 
 [dependencies]
-type-map = "0.5.0" #needed for egui_renderer
-thiserror = "1.0"
 
 #workspace internal gloss
 gloss-utils.workspace=true
 gloss-img.workspace=true
 
+type-map.workspace=true #needed for egui_renderer
+thiserror.workspace=true
 log.workspace=true
 wgpu.workspace=true
 image.workspace=true

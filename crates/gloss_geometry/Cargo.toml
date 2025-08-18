@@ -15,8 +15,7 @@ repository.workspace = true
 
 [dependencies]
 #local to package
-strum = "0.26.3"
-strum_macros = "0.26.3"
+
 
 #workspace internal gloss
 gloss-utils.workspace=true
@@ -26,27 +25,14 @@ gloss-img.workspace=true
 log.workspace=true
 nalgebra.workspace=true
 burn.workspace=true
-tobj.workspace=true
 obj-exporter.workspace=true
 ply-rs.workspace=true
 image.workspace=true
 itertools.workspace=true
+strum.workspace=true
+strum_macros.workspace=true
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-abi_stable.workspace=true
 
-#more dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook.workspace=true
-console_log.workspace=true
-wasm-bindgen.workspace=true
-wasm-bindgen-futures.workspace=true
-web-sys.workspace=true
-js-sys.workspace=true
-parking_lot.workspace=true
-once_cell.workspace=true
-
-# paste = "1.0"
 
 [lints]
 workspace = true
