@@ -30,6 +30,7 @@ gloss-utils = { path = "crates/gloss_utils", version = "0.7"}
 gloss-img = { path = "crates/gloss_img", version = "0.7"}
 gloss-hecs = { path = "crates/gloss_hecs", version = "0.7", features = ["macros"]}
 gloss-geometry = { path = "crates/gloss_geometry", version = "0.7"}
+gloss-burn-multibackend = { path = "crates/gloss_burn_multibackend", version = "0.7"}
 
 # =====================================================================
 # Third-Party crates

@@ -2254,6 +2254,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
+name = "gloss-burn-multibackend"
+version = "0.7.0"
+dependencies = [
+ "burn",
+]
+
+[[package]]
 name = "gloss-geometry"
 version = "0.7.0"
 dependencies = [
@@ -4723,6 +4730,7 @@ dependencies = [
 name = "tensor_router"
 version = "0.1.0"
 dependencies = [
+ "burn",
  "gloss-renderer",
  "nalgebra",
  "ndarray",

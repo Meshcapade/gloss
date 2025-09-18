@@ -1,0 +1,32 @@
+[package]
+name = "gloss-burn-multibackend"
+authors.workspace = true
+description = "Small library for a backend for Burn that can dynamically change between backends"
+edition.workspace = true
+publish = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+readme = "README.md"
+documentation = "https://docs.rs/gloss-burn-multibackend"
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#local to package
+
+
+#workspace internal gloss
+# gloss-utils.workspace=true
+# gloss-img.workspace=true
+
+#workspace third-party
+burn.workspace=true
+
+
+[lints]
+workspace = true
+
+
+
