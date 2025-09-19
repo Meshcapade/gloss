@@ -2258,6 +2258,7 @@ name = "gloss-burn-multibackend"
 version = "0.7.0"
 dependencies = [
  "burn",
+ "wgpu-burn-global-device",
 ]
 
 [[package]]
@@ -2265,6 +2266,9 @@ name = "gloss-geometry"
 version = "0.7.0"
 dependencies = [
  "burn",
+ "burn-cubecl",
+ "cubecl",
+ "gloss-burn-multibackend",
  "gloss-img",
  "gloss-utils",
  "image",
@@ -2273,8 +2277,10 @@ dependencies = [
  "nalgebra",
  "obj-exporter",
  "ply-rs",
+ "pollster",
  "strum",
  "strum_macros",
+ "wgpu",
 ]
 
 [[package]]
@@ -2326,6 +2332,7 @@ dependencies = [
  "config",
  "console_error_panic_hook",
  "console_log",
+ "cubecl",
  "easy-wgpu",
  "egui",
  "egui-wgpu",
@@ -2346,6 +2353,7 @@ dependencies = [
  "log",
  "nalgebra",
  "nalgebra-glm",
+ "once_cell",
  "ply-rs",
  "pollster",
  "re_memory",
@@ -2359,6 +2367,7 @@ dependencies = [
  "wasm-timer",
  "web-sys",
  "wgpu",
+ "wgpu-burn-global-device",
  "winit",
 ]
 
@@ -5250,6 +5259,29 @@ dependencies = [
  "wgpu-core",
  "wgpu-hal",
  "wgpu-types",
+]
+
+[[package]]
+name = "wgpu-burn-global-device"
+version = "0.7.0"
+dependencies = [
+ "burn",
+ "burn-cubecl",
+ "cubecl",
+ "once_cell",
+ "wgpu",
+]
+
+[[package]]
+name = "wgpu-burn-interop"
+version = "0.7.0"
+dependencies = [
+ "burn",
+ "burn-cubecl",
+ "cubecl",
+ "gloss-burn-multibackend",
+ "once_cell",
+ "wgpu",
 ]
 
 [[package]]

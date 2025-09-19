@@ -260,8 +260,4 @@ impl IntTensorOps<Self> for MultiBackend {
     fn bitwise_right_shift_scalar(lhs: MultiIntTensor, rhs: i32) -> MultiIntTensor {
         unimplemented!()
     }
-
-    // fn int_cast(tensor: MultiIntTensor, dtype: DType) -> MultiIntTensor {
-    //     unimplemented!()
-    // }
 }

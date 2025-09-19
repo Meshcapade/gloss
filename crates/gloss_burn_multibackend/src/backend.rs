@@ -1,5 +1,4 @@
 use burn::{
-    backend::wgpu::WgpuDevice,
     prelude::Backend,
     tensor::{backend::DeviceOps, ops::Device},
 };
@@ -62,7 +61,9 @@ pub enum MultiDevice {
 impl Default for MultiDevice {
     fn default() -> Self {
         // Self::NdArray(NdArrayDevice::default())
-        Self::Wgpu(WgpuDevice::default())
+        //If the viewer has already been initialized, we want to use the same wgpu device, if not we create a new one
+        let existing_wgpu_device = wgpu_burn_global_device::get_global_wgpu_device();
+        Self::Wgpu(existing_wgpu_device.unwrap_or_default())
     }
 }
 

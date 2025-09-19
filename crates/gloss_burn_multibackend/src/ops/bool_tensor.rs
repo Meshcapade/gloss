@@ -30,12 +30,6 @@ impl BoolTensorOps<Self> for MultiBackend {
     fn bool_empty(shape: Shape, device: &MultiDevice) -> MultiBoolTensor {
         unimplemented!()
     }
-    // fn bool_zeros(shape: Shape, device: &MultiDevice) -> MultiIntTensor {
-    //     unimplemented!()
-    // }
-    // fn bool_ones(shape: Shape, device: &MultiDevice) -> MultiIntTensor {
-    //     unimplemented!()
-    // }
     fn bool_slice(tensor: MultiBoolTensor, ranges: &[Range<usize>]) -> MultiBoolTensor {
         unimplemented!()
     }

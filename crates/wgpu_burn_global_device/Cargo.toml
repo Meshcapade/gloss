@@ -1,14 +1,14 @@
 [package]
-name = "gloss-burn-multibackend"
+name = "wgpu-burn-global-device"
 authors.workspace = true
-description = "Small library for a backend for Burn that can dynamically change between backends"
+description = "Small library to establish a global wgpu device for use with burn"
 edition.workspace = true
 publish = true
 license.workspace = true
 rust-version.workspace = true
 version.workspace = true
 readme = "README.md"
-documentation = "https://docs.rs/gloss-burn-multibackend"
+documentation = "https://docs.rs/wgpu-burn-global-device"
 repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,10 +20,14 @@ repository.workspace = true
 #workspace internal gloss
 # gloss-utils.workspace=true
 # gloss-img.workspace=true
-wgpu-burn-global-device.workspace=true
+# gloss-burn-multibackend.workspace=true
 
 #workspace third-party
+cubecl.workspace=true
+wgpu.workspace=true
+once_cell.workspace=true
 burn.workspace=true
+burn-cubecl.workspace=true
 
 
 [lints]
