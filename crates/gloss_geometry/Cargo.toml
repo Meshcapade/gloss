@@ -20,11 +20,15 @@ repository.workspace = true
 #workspace internal gloss
 gloss-utils.workspace=true
 gloss-img.workspace=true
+gloss-burn-multibackend.workspace=true
 
 #workspace third-party
 log.workspace=true
 nalgebra.workspace=true
+wgpu.workspace=true
 burn.workspace=true
+burn-cubecl.workspace=true
+cubecl.workspace=true
 obj-exporter.workspace=true
 ply-rs.workspace=true
 image.workspace=true
