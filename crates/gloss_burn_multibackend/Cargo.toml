@@ -11,6 +11,13 @@ readme = "README.md"
 documentation = "https://docs.rs/gloss-burn-multibackend"
 repository.workspace = true
 
+[features]
+# default = ["burn-candle"]
+default = ["burn-candle","burn-wgpu"]
+burn-candle = []
+burn-ndarray = []
+burn-wgpu = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -24,6 +31,7 @@ wgpu-burn-global-device.workspace=true
 
 #workspace third-party
 burn.workspace=true
+once_cell.workspace=true
 
 
 [lints]

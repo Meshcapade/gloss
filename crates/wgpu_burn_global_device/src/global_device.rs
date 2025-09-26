@@ -21,7 +21,7 @@ pub fn init_global_device(instance: &Instance, adapter: &wgpu::Adapter, device: 
         adapter: adapter.clone(),
         device: device.clone(),
         queue: queue.clone(),
-        backend: wgpu::Backend::Vulkan, //TODO parametrize this
+        backend: adapter.get_info().backend,
     };
     let runtime_options = cubecl::wgpu::RuntimeOptions::default();
     let cubecl_device = cubecl::wgpu::init_device(wgpu_setup, runtime_options);

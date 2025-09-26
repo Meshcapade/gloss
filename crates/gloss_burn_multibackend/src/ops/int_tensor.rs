@@ -1,15 +1,31 @@
+#![allow(unreachable_patterns)]
+
 use std::ops::Range;
 
 use burn::tensor::{ops::IntTensorOps, Distribution, Shape, TensorData};
 
+#[cfg(feature = "burn-candle")]
+use crate::backend::CandleBackend;
+#[cfg(feature = "burn-ndarray")]
+use crate::backend::NdArrayBackend;
+#[cfg(feature = "burn-wgpu")]
+use crate::backend::WgpuBackend;
 use crate::{
-    backend::{MultiBackend, MultiDevice, NdArrayBackend, WgpuBackend},
+    backend::{MultiBackend, MultiDevice},
     tensor::{MultiBoolTensor, MultiFloatTensor, MultiIntTensor},
 };
 
 #[allow(unused_variables)]
 impl IntTensorOps<Self> for MultiBackend {
     fn int_from_data(data: TensorData, device: &MultiDevice) -> MultiIntTensor {
+        let data = match device {
+            #[cfg(feature = "burn-candle")]
+            MultiDevice::Candle(dev) => data.convert_dtype(burn::tensor::DType::I64),
+            #[cfg(feature = "burn-ndarray")]
+            MultiDevice::NdArray(d) => data.convert_dtype(burn::tensor::DType::I32),
+            #[cfg(feature = "burn-wgpu")]
+            MultiDevice::Wgpu(d) => data.convert_dtype(burn::tensor::DType::I32),
+        };
         ops_rest_device!(int(data ; device) => int_from_data)
     }
     fn int_repeat_dim(tensor: MultiIntTensor, dim: usize, times: usize) -> MultiIntTensor {
@@ -17,7 +33,11 @@ impl IntTensorOps<Self> for MultiBackend {
     }
     async fn int_into_data(tensor: MultiIntTensor) -> TensorData {
         match tensor {
+            #[cfg(feature = "burn-candle")]
+            MultiIntTensor::Candle(t) => <CandleBackend as IntTensorOps<CandleBackend>>::int_into_data(t).await,
+            #[cfg(feature = "burn-ndarray")]
             MultiIntTensor::NdArray(t) => <NdArrayBackend as IntTensorOps<NdArrayBackend>>::int_into_data(t).await,
+            #[cfg(feature = "burn-wgpu")]
             MultiIntTensor::Wgpu(t) => <WgpuBackend as IntTensorOps<WgpuBackend>>::int_into_data(t).await,
         }
     }
@@ -29,7 +49,11 @@ impl IntTensorOps<Self> for MultiBackend {
     }
     fn int_device(tensor: &MultiIntTensor) -> MultiDevice {
         match tensor {
+            #[cfg(feature = "burn-candle")]
+            MultiIntTensor::Candle(t) => MultiDevice::Candle(<CandleBackend as IntTensorOps<CandleBackend>>::int_device(t)),
+            #[cfg(feature = "burn-ndarray")]
             MultiIntTensor::NdArray(t) => MultiDevice::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::int_device(t)),
+            #[cfg(feature = "burn-wgpu")]
             MultiIntTensor::Wgpu(t) => MultiDevice::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::int_device(t)),
         }
     }

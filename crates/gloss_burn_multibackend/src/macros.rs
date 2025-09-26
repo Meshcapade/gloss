@@ -1,3 +1,5 @@
+#![allow(unreachable_patterns)]
+
 macro_rules! ops_tensor_tensor {
     (float($($t:ident),*) => $op:ident) => {
         ops_tensor_tensor!($($t),* | FloatTensorOps | $op | MultiFloatTensor)
@@ -9,11 +11,21 @@ macro_rules! ops_tensor_tensor {
 
     ($($t:ident),* | $trait:ident | $op:ident | $tensor:ident) => {
         match ($($t,)*) {
+            #[cfg(feature = "burn-candle")]
+            ($($tensor::Candle($t),)*) => {
+                use crate::backend::CandleBackend;
+
+                $tensor::Candle(<CandleBackend as $trait<CandleBackend>>::$op($($t,)*))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             ($($tensor::NdArray($t),)*) => {
                 use crate::backend::NdArrayBackend;
 
                 $tensor::NdArray(<NdArrayBackend as $trait<NdArrayBackend>>::$op($($t,)*))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             ($($tensor::Wgpu($t),)*) => {
                 use crate::backend::WgpuBackend;
 
@@ -39,11 +51,22 @@ macro_rules! ops_tensor {
     // Implementation that handles the actual dispatching
     (@impl $tensor:ident, $trait:ident, $op:ident, $tensor_type:ident) => {
         match $tensor {
+            #[cfg(feature = "burn-candle")]
+            $tensor_type::Candle(t) => {
+                use crate::backend::CandleBackend;
+
+                $tensor_type::Candle(<CandleBackend as $trait<CandleBackend>>::$op(t))
+            }
+
+
+            #[cfg(feature = "burn-ndarray")]
             $tensor_type::NdArray(t) => {
                 use crate::backend::NdArrayBackend;
 
                 $tensor_type::NdArray(<NdArrayBackend as $trait<NdArrayBackend>>::$op(t))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             $tensor_type::Wgpu(t) => {
                 use crate::backend::WgpuBackend;
 
@@ -64,15 +87,25 @@ macro_rules! ops_tensor_scalar {
 
     (($t:ident, $s:ident) | $trait:ident | $op:ident | $tensor:ident) => {
         match ($t, $s) {
+            #[cfg(feature = "burn-candle")]
+            ($tensor::Candle($t), $s) => {
+                use crate::backend::CandleBackend;
+
+                $tensor::Candle(<CandleBackend as $trait<CandleBackend>>::$op($t, $s.try_into().unwrap()))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             ($tensor::NdArray($t), $s) => {
                 use crate::backend::NdArrayBackend;
 
                 $tensor::NdArray(<NdArrayBackend as $trait<NdArrayBackend>>::$op($t, $s.into()))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             ($tensor::Wgpu($t), $s) => {
                 use crate::backend::WgpuBackend;
 
-                $tensor::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op($t, $s))
+                $tensor::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op($t, $s.try_into().unwrap()))
             } // _ => panic!("Invalid device."),
         }
     };
@@ -92,11 +125,21 @@ macro_rules! ops_tensor_rest {
     // Implementation that handles the actual dispatching
     (@impl $tensor:ident, $trait:ident, $op:ident, $tensor_type:ident $(, $rest:expr)*) => {
         match $tensor {
+            #[cfg(feature = "burn-candle")]
+            $tensor_type::Candle(t) => {
+                use crate::backend::CandleBackend;
+
+                $tensor_type::Candle(<CandleBackend as $trait<CandleBackend>>::$op(t $(, $rest)*))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             $tensor_type::NdArray(t) => {
                 use crate::backend::NdArrayBackend;
 
                 $tensor_type::NdArray(<NdArrayBackend as $trait<NdArrayBackend>>::$op(t $(, $rest)*))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             $tensor_type::Wgpu(t) => {
                 use crate::backend::WgpuBackend;
 
@@ -110,11 +153,21 @@ macro_rules! ops_rest_device {
     // Entry point for float operations - explicit device parameter
     (float($($args:expr),* ; $device:expr) => $op:ident) => {
         match $device {
+            #[cfg(feature = "burn-candle")]
+            MultiDevice::Candle(device) => {
+                use crate::backend::CandleBackend;
+
+                MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::$op($($args),*, device))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             MultiDevice::NdArray(device) => {
                 use crate::backend::NdArrayBackend;
 
                 MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::$op($($args),*, device))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             MultiDevice::Wgpu(device) => {
                 use crate::backend::WgpuBackend;
 
@@ -126,11 +179,21 @@ macro_rules! ops_rest_device {
     // Entry point for int operations - explicit device parameter
     (int($($args:expr),* ; $device:expr) => $op:ident) => {
         match $device {
+            #[cfg(feature = "burn-candle")]
+            MultiDevice::Candle(device) => {
+                use crate::backend::CandleBackend;
+
+                MultiIntTensor::Candle(<CandleBackend as IntTensorOps<CandleBackend>>::$op($($args),*, device))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             MultiDevice::NdArray(device) => {
                 use crate::backend::NdArrayBackend;
 
                 MultiIntTensor::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::$op($($args),*, device))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             MultiDevice::Wgpu(device) => {
                 use crate::backend::WgpuBackend;
 
@@ -144,10 +207,19 @@ macro_rules! ops_dim_tensor_indices {
     // For float tensors
     (float($dim:expr, $tensor:ident, $indices:ident) => $op:ident) => {
         match ($tensor, $indices) {
+            #[cfg(feature = "burn-candle")]
+            (MultiFloatTensor::Candle(t), MultiIntTensor::Candle(i)) => {
+                use crate::backend::CandleBackend;
+                MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::$op($dim, t, i))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiFloatTensor::NdArray(t), MultiIntTensor::NdArray(i)) => {
                 use crate::backend::NdArrayBackend;
                 MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::$op($dim, t, i))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiFloatTensor::Wgpu(t), MultiIntTensor::Wgpu(i)) => {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op($dim, t, i))
@@ -158,10 +230,19 @@ macro_rules! ops_dim_tensor_indices {
     // For int tensors
     (int($dim:expr, $tensor:ident, $indices:ident) => $op:ident) => {
         match ($tensor, $indices) {
+            #[cfg(feature = "burn-candle")]
+            (MultiIntTensor::Candle(t), MultiIntTensor::Candle(i)) => {
+                use crate::backend::CandleBackend;
+                MultiIntTensor::Candle(<CandleBackend as IntTensorOps<CandleBackend>>::$op($dim, t, i))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiIntTensor::NdArray(t), MultiIntTensor::NdArray(i)) => {
                 use crate::backend::NdArrayBackend;
                 MultiIntTensor::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::$op($dim, t, i))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op($dim, t, i))
@@ -175,10 +256,19 @@ macro_rules! ops_dim_tensor_indices_values {
     // For float tensors
     (float($dim:expr, $tensor:ident, $indices:ident, $value:ident) => $op:ident) => {
         match ($tensor, $indices, $value) {
+            #[cfg(feature = "burn-candle")]
+            (MultiFloatTensor::Candle(t), MultiIntTensor::Candle(i), MultiFloatTensor::Candle(v)) => {
+                use crate::backend::CandleBackend;
+                MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::$op($dim, t, i, v))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiFloatTensor::NdArray(t), MultiIntTensor::NdArray(i), MultiFloatTensor::NdArray(v)) => {
                 use crate::backend::NdArrayBackend;
                 MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::$op($dim, t, i, v))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiFloatTensor::Wgpu(t), MultiIntTensor::Wgpu(i), MultiFloatTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op($dim, t, i, v))
@@ -189,10 +279,19 @@ macro_rules! ops_dim_tensor_indices_values {
     // For int tensors
     (int($dim:expr, $tensor:ident, $indices:ident, $value:ident) => $op:ident) => {
         match (tensor, $indices, $value) {
+            #[cfg(feature = "burn-candle")]
+            (MultiIntTensor::Candle(t), MultiIntTensor::Candle(i), MultiIntTensor::Candle(v)) => {
+                use crate::backend::CandleBackend;
+                MultiIntTensor::Candle(<CandleBackend as IntTensorOps<CandleBackend>>::$op($dim, t, i, v))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiIntTensor::NdArray(t), MultiIntTensor::NdArray(i), MultiIntTensor::NdArray(v)) => {
                 use crate::backend::NdArrayBackend;
                 MultiIntTensor::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::$op($dim, t, i, v))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i), MultiIntTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op($dim, t, i, v))
@@ -206,10 +305,19 @@ macro_rules! ops_tensor_dim_indices {
     // For float tensors
     (float($tensor:ident, $dim:expr, $indices:ident) => $op:ident) => {
         match ($tensor, $indices) {
+            #[cfg(feature = "burn-candle")]
+            (MultiFloatTensor::Candle(t), MultiIntTensor::Candle(i)) => {
+                use crate::backend::CandleBackend;
+                MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::$op(t, $dim, i))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiFloatTensor::NdArray(t), MultiIntTensor::NdArray(i)) => {
                 use crate::backend::NdArrayBackend;
                 MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::$op(t, $dim, i))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiFloatTensor::Wgpu(t), MultiIntTensor::Wgpu(i)) => {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op(t, $dim, i))
@@ -220,10 +328,19 @@ macro_rules! ops_tensor_dim_indices {
     // For int tensors
     (int($tensor:ident, $dim:expr, $indices:ident) => $op:ident) => {
         match ($tensor, $indices) {
+            #[cfg(feature = "burn-candle")]
+            (MultiIntTensor::Candle(t), MultiIntTensor::Candle(i)) => {
+                use crate::backend::CandleBackend;
+                MultiIntTensor::Candle(<CandleBackend as IntTensorOps<CandleBackend>>::$op(t, $dim, i))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiIntTensor::NdArray(t), MultiIntTensor::NdArray(i)) => {
                 use crate::backend::NdArrayBackend;
                 MultiIntTensor::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::$op(t, $dim, i))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op(t, $dim, i))
@@ -237,10 +354,19 @@ macro_rules! ops_tensor_dim_indices_values {
     // For float tensors
     (float($tensor:ident, $dim:expr, $indices:ident, $value:ident) => $op:ident) => {
         match ($tensor, $indices, $value) {
+            #[cfg(feature = "burn-candle")]
+            (MultiFloatTensor::Candle(t), MultiIntTensor::Candle(i), MultiFloatTensor::Candle(v)) => {
+                use crate::backend::CandleBackend;
+                MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::$op(t, $dim, i, v))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiFloatTensor::NdArray(t), MultiIntTensor::NdArray(i), MultiFloatTensor::NdArray(v)) => {
                 use crate::backend::NdArrayBackend;
                 MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::$op(t, $dim, i, v))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiFloatTensor::Wgpu(t), MultiIntTensor::Wgpu(i), MultiFloatTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op(t, $dim, i, v))
@@ -251,10 +377,19 @@ macro_rules! ops_tensor_dim_indices_values {
     // For int tensors
     (int($tensor:ident, $dim:expr, $indices:ident, $value:ident) => $op:ident) => {
         match ($tensor, $indices, $value) {
+            #[cfg(feature = "burn-candle")]
+            (MultiIntTensor::Candle(t), MultiIntTensor::Candle(i), MultiIntTensor::Candle(v)) => {
+                use crate::backend::CandleBackend;
+                MultiIntTensor::Candle(<CandleBackend as IntTensorOps<CandleBackend>>::$op(t, $dim, i, v))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiIntTensor::NdArray(t), MultiIntTensor::NdArray(i), MultiIntTensor::NdArray(v)) => {
                 use crate::backend::NdArrayBackend;
                 MultiIntTensor::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::$op(t, $dim, i, v))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i), MultiIntTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op(t, $dim, i, v))
@@ -268,10 +403,19 @@ macro_rules! ops_tensor_other_values {
     // For float tensors
     (float($tensor:ident, $other:ident, $value:ident) => $op:ident) => {
         match ($tensor, $value) {
+            #[cfg(feature = "burn-candle")]
+            (MultiFloatTensor::Candle(t), MultiFloatTensor::Candle(v)) => {
+                use crate::backend::CandleBackend;
+                MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::$op(t, $other, v))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiFloatTensor::NdArray(t), MultiFloatTensor::NdArray(v)) => {
                 use crate::backend::NdArrayBackend;
                 MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::$op(t, $other, v))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiFloatTensor::Wgpu(t), MultiFloatTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op(t, $other, v))
@@ -282,10 +426,19 @@ macro_rules! ops_tensor_other_values {
     // For int tensors
     (int($tensor:ident, $other:ident, $value:ident) => $op:ident) => {
         match ($tensor, $value) {
+            #[cfg(feature = "burn-candle")]
+            (MultiIntTensor::Candle(t), MultiIntTensor::Candle(v)) => {
+                use crate::backend::CandleBackend;
+                MultiIntTensor::Candle(<CandleBackend as IntTensorOps<CandleBackend>>::$op(t, $other, v))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             (MultiIntTensor::NdArray(t), MultiIntTensor::NdArray(v)) => {
                 use crate::backend::NdArrayBackend;
                 MultiIntTensor::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::$op(t, $other, v))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op(t, $other, v))
@@ -310,11 +463,21 @@ macro_rules! ops_tensor_rest_ret_bool {
     // Implementation that handles the actual dispatching
     (@impl $tensor:ident, $trait:ident, $op:ident, $tensor_type:ident $(, $rest:expr)*) => {
         match $tensor {
+            #[cfg(feature = "burn-candle")]
+            $tensor_type::Candle(t) => {
+                use crate::backend::CandleBackend;
+
+                MultiBoolTensor::Candle(<CandleBackend as $trait<CandleBackend>>::$op(t $(, $rest)*))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             $tensor_type::NdArray(t) => {
                 use crate::backend::NdArrayBackend;
 
                 MultiBoolTensor::NdArray(<NdArrayBackend as $trait<NdArrayBackend>>::$op(t $(, $rest)*))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             $tensor_type::Wgpu(t) => {
                 use crate::backend::WgpuBackend;
 
@@ -343,11 +506,21 @@ macro_rules! ops_tensor_ret_float {
     // Implementation that handles the actual dispatching
     (@impl $tensor:ident, $trait:ident, $op:ident, $tensor_type:ident) => {
         match $tensor {
+            #[cfg(feature = "burn-candle")]
+            $tensor_type::Candle(t) => {
+                use crate::backend::CandleBackend;
+
+                MultiFloatTensor::Candle(<CandleBackend as $trait<CandleBackend>>::$op(t))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             $tensor_type::NdArray(t) => {
                 use crate::backend::NdArrayBackend;
 
                 MultiFloatTensor::NdArray(<NdArrayBackend as $trait<NdArrayBackend>>::$op(t))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             $tensor_type::Wgpu(t) => {
                 use crate::backend::WgpuBackend;
 

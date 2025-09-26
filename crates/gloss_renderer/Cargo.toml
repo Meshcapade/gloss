@@ -31,6 +31,7 @@ gloss-utils.workspace=true
 gloss-img.workspace=true
 gloss-hecs.workspace=true
 gloss-geometry.workspace=true
+wgpu-burn-global-device.workspace=true
 
 # workspace third-party
 cfg-if.workspace=true
@@ -39,12 +40,14 @@ env_logger.workspace=true
 log.workspace=true
 pollster.workspace=true
 burn.workspace=true
+cubecl.workspace=true
 winit.workspace=true
 wgpu.workspace=true
 nalgebra.workspace=true
 nalgebra-glm.workspace=true
 image.workspace=true
 tobj.workspace=true
+once_cell.workspace=true
 
 # gui stuff
 egui = { workspace = true, optional = true }

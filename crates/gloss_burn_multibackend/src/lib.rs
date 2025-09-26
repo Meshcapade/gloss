@@ -4,5 +4,6 @@
 pub mod macros;
 
 pub mod backend;
+pub mod global_backend;
 pub mod ops;
 pub mod tensor;

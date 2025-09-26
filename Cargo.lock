@@ -2258,6 +2258,7 @@ name = "gloss-burn-multibackend"
 version = "0.7.0"
 dependencies = [
  "burn",
+ "once_cell",
  "wgpu-burn-global-device",
 ]
 
@@ -2427,6 +2428,7 @@ name = "gloss_py"
 version = "0.7.0"
 dependencies = [
  "easy-wgpu",
+ "gloss-burn-multibackend",
  "gloss-geometry",
  "gloss-hecs",
  "gloss-img",

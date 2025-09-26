@@ -67,21 +67,23 @@ fn fetch_shadow(light: GlobalTypes::Light,  pos_world: vec3<f32>, normal_world: 
 
 
     var visibility=0.0; 
+    //need to perform shadow sampling for all fragments since it samples from a texture and if we do in an if else webgpu complains about non-uniform control flow
+    if params.shadow_filter_method==0{
+        visibility=ShadowSampling::sample_shadow_map_hardware(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
+    }else if (params.shadow_filter_method==1){
+        visibility=ShadowSampling::sample_shadow_map_castano_thirteen(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
+    }
+
+    // Check if we are behind the light or outside the shadow map bounds
     if (pos_light_space.w <= 0.0) { //if we are behind the light we are visible 
         visibility=1.0;
     }else if shadow_map_coords.x < 0.0 || shadow_map_coords.y < 0.0 || shadow_map_coords.x > 1.0 || shadow_map_coords.y > 1.0 {
         //if we are outside the bounds of the lights
         visibility=1.0;
-    }else{
-        if params.shadow_filter_method==0{
-            visibility=ShadowSampling::sample_shadow_map_hardware(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
-        }else if (params.shadow_filter_method==1){
-            visibility=ShadowSampling::sample_shadow_map_castano_thirteen(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
-        }
-        // visibility=ShadowSampling::sample_shadow_map_pcf_3x3(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
-        // visibility=ShadowSampling::sample_shadow_map_castano_thirteen(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
     }
 
+        // visibility=ShadowSampling::sample_shadow_map_pcf_3x3(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
+        // visibility=ShadowSampling::sample_shadow_map_castano_thirteen(shadow_map_coords, shadow_map, cur_frag_z, sampler_shadow_map);
 
     return visibility;
 }

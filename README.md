@@ -116,7 +116,7 @@ To run the web example, we can create a dummy web server by opening another term
 $ cd gloss/examples/web
 $ python -m http.server 
 ```
-Finally, navigate to `http://0.0.0.0:8000/gloss_webpage/` in your browser of choice.
+Finally, navigate to `http://localhost:8000/gloss_webpage/` in your browser of choice.
 
 <!-- ## Examples
 

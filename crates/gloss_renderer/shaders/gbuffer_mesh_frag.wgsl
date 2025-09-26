@@ -59,10 +59,10 @@ fn fs_main(in: VertShader::VertexOutput) -> @location(0) vec4<f32> {
     // http://www.thetenthplanet.de/archives/1180
     //https://www.geeks3d.com/20130122/normal-mapping-without-precomputed-tangent-space-vectors/
     let dims_n = vec2<f32>(textureDimensions(t_normal));
-    let tangent_finite = tangent_world.x==tangent_world.x; //nans are not equal to any other nan
+    // let tangent_finite = tangent_world.x==tangent_world.x; //nans are not equal to any other nan
     let normal_world_not_perturbed=normal_world;
-    if dims_n.x>4.0 &&dims_n.y>4.0 && tangent_finite{ //makes it so we don't run this for the dummy normalmap which is 4x4. TODO However this is a bit of a hacky solution, ideally we would pass a boolean flag
-        normal_world = NormalUtils::apply_tbn( normal_world, tangent_world, bitangent_world, t_normal, in.tex_coords, GlobalBinds::sampler_linear );
+    if dims_n.x>4.0 &&dims_n.y>4.0{ //makes it so we don't run this for the dummy normalmap which is 4x4. TODO However this is a bit of a hacky solution, ideally we would pass a boolean flag
+            normal_world = NormalUtils::apply_tbn( normal_world, tangent_world, bitangent_world, t_normal, in.tex_coords, GlobalBinds::sampler_linear );
     }
 
     //roughness
@@ -95,20 +95,24 @@ fn fs_main(in: VertShader::VertexOutput) -> @location(0) vec4<f32> {
         fog_factor = NumUtils::map(dist_center, GlobalBinds::params.distance_fade_start, GlobalBinds::params.distance_fade_end, 0.0, 1.0);
         fog_factor = num_utils::smootherstep(0.0, 1.0, fog_factor);
     }
+
+    //need to apply lighting for all fragments, even if later they are set to the gray background color. 
+    // we cannot do this shading in an if-else because the compiler complains about non-uniform control flow
+    color_linear = PbrFunc::apply_pbr_lighting(pbr);
+
+
     if(locals.is_floor>0u){
-        //if fog is very high there is no reason to compute pbr color
+        //if fog is very high so we just use the background color
         if fog_factor>0.999{
             color_linear=GlobalBinds::params.bg_color;
-        }else{
-            color_linear = PbrFunc::apply_pbr_lighting(pbr);
+        }else{  
             //blend
             color_linear = color_linear*(1.0-fog_factor) + GlobalBinds::params.bg_color*fog_factor;
             //debanding https://blog.frost.kiwi/GLSL-noise-and-radial-gradient/
             color_linear += (1.0 / 255.0) * NoiseUtils::gradient_noise(in.clip_position.xy) - (0.5 / 255.0);
         }
-    }else{
-        color_linear = PbrFunc::apply_pbr_lighting(pbr);
     }
+
 
     // Linear pre tonemapping grading
     var color = max(color_linear.rgb, vec3(0.0));

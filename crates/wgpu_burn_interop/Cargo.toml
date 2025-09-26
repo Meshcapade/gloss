@@ -20,7 +20,7 @@ repository.workspace = true
 #workspace internal gloss
 # gloss-utils.workspace=true
 # gloss-img.workspace=true
-gloss-burn-multibackend.workspace=true
+gloss-burn-multibackend={workspace=true, features = ["burn-wgpu"] }
 
 #workspace third-party
 cubecl.workspace=true

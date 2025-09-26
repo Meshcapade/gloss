@@ -56,11 +56,11 @@ fn set_panic_hook() {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(move |info| {
-                web_sys::console::error_1(&format!("PANICKED: Will print memory usage info:").into());
+                // web_sys::console::error_1(&format!("PANICKED: Will print memory usage info:").into());
                 // MemoryUse::capture().print_memory_usage_info(log::Level::Error);
                 // accounting_allocator::print_memory_usage_info(false, log::Level::Error);
-                print_memory_usage_info(MemoryUse::capture(), log::Level::Error);
-                aa_print_memory_usage_info(false, log::Level::Error);
+                // print_memory_usage_info(MemoryUse::capture(), log::Level::Error);
+                // aa_print_memory_usage_info(false, log::Level::Error);
                 console_error_panic_hook::hook(info);
             }));
         }else{

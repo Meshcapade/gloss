@@ -1,9 +1,17 @@
+#![allow(unreachable_patterns)]
+
 use std::ops::Range;
 
 use burn::tensor::{ops::FloatTensorOps, Distribution, FloatDType, Shape, TensorData};
 
+#[cfg(feature = "burn-candle")]
+use crate::backend::CandleBackend;
+#[cfg(feature = "burn-ndarray")]
+use crate::backend::NdArrayBackend;
+#[cfg(feature = "burn-wgpu")]
+use crate::backend::WgpuBackend;
 use crate::{
-    backend::{MultiBackend, MultiDevice, NdArrayBackend, WgpuBackend},
+    backend::{MultiBackend, MultiDevice},
     tensor::{MultiBoolTensor, MultiFloatTensor, MultiIntTensor},
 };
 
@@ -27,24 +35,63 @@ impl FloatTensorOps<Self> for MultiBackend {
     async fn float_into_data(tensor: MultiFloatTensor) -> TensorData {
         // ops_tensor!(float(tensor) => float_into_data)
         match tensor {
+            #[cfg(feature = "burn-candle")]
+            MultiFloatTensor::Candle(t) => <CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t).await,
+            #[cfg(feature = "burn-ndarray")]
             MultiFloatTensor::NdArray(t) => <NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t).await,
+            #[cfg(feature = "burn-wgpu")]
             MultiFloatTensor::Wgpu(t) => <WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t).await,
         }
     }
     fn float_device(tensor: &MultiFloatTensor) -> MultiDevice {
         match tensor {
+            #[cfg(feature = "burn-candle")]
+            MultiFloatTensor::Candle(t) => MultiDevice::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::float_device(t)),
+            #[cfg(feature = "burn-ndarray")]
             MultiFloatTensor::NdArray(t) => MultiDevice::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_device(t)),
+            #[cfg(feature = "burn-wgpu")]
             MultiFloatTensor::Wgpu(t) => MultiDevice::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_device(t)),
         }
     }
     fn float_to_device(tensor: MultiFloatTensor, device: &MultiDevice) -> MultiFloatTensor {
         match tensor {
+            //current tensor is on candle
+            #[cfg(feature = "burn-candle")]
+            MultiFloatTensor::Candle(ref t) => match device {
+                MultiDevice::Candle(_) => {
+                    // No need to move anything
+                    tensor.clone()
+                }
+                #[cfg(feature = "burn-wgpu")]
+                MultiDevice::Wgpu(d) => {
+                    //need to move ndarray to wgpu
+                    let data = burn::tensor::try_read_sync(<CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t.clone())).expect(
+                        "Failed to read tensor data synchronously.
+        This can happen on platforms that don't support blocking futures like WASM.
+        If possible, try using into_data_async instead.",
+                    );
+                    MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_from_data(data, d))
+                }
+                #[cfg(feature = "burn-ndarray")]
+                MultiDevice::NdArray(d) => {
+                    //need to move candle to ndarray
+                    let data = burn::tensor::try_read_sync(<CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t.clone())).expect(
+                        "Failed to read tensor data synchronously.
+        This can happen on platforms that don't support blocking futures like WASM.
+        If possible, try using into_data_async instead.",
+                    );
+                    MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_from_data(data, d))
+                }
+            },
+
             //current tensor is on ndarray
+            #[cfg(feature = "burn-ndarray")]
             MultiFloatTensor::NdArray(ref t) => match device {
                 MultiDevice::NdArray(_) => {
                     // No need to move anything
                     tensor.clone()
                 }
+                #[cfg(feature = "burn-wgpu")]
                 MultiDevice::Wgpu(d) => {
                     //need to move ndarray to wgpu
                     let data = burn::tensor::try_read_sync(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t.clone())).expect(
@@ -54,13 +101,26 @@ impl FloatTensorOps<Self> for MultiBackend {
                     );
                     MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_from_data(data, d))
                 }
+                #[cfg(feature = "burn-candle")]
+                MultiDevice::Candle(d) => {
+                    //need to move ndarray to candle
+                    let data = burn::tensor::try_read_sync(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t.clone())).expect(
+                        "Failed to read tensor data synchronously.
+        This can happen on platforms that don't support blocking futures like WASM.
+        If possible, try using into_data_async instead.",
+                    );
+                    MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::float_from_data(data, d))
+                }
             },
+
             //current tensor is on wgpu
+            #[cfg(feature = "burn-wgpu")]
             MultiFloatTensor::Wgpu(ref t) => match device {
                 MultiDevice::Wgpu(_) => {
                     // No need to move anything
                     tensor.clone()
                 }
+                #[cfg(feature = "burn-ndarray")]
                 MultiDevice::NdArray(d) => {
                     //need to move wgpu to ndarray
                     let data = burn::tensor::try_read_sync(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t.clone())).expect(
@@ -69,6 +129,16 @@ impl FloatTensorOps<Self> for MultiBackend {
         If possible, try using into_data_async instead.",
                     );
                     MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_from_data(data, d))
+                }
+                #[cfg(feature = "burn-candle")]
+                MultiDevice::Candle(d) => {
+                    //need to move wgpu to candle
+                    let data = burn::tensor::try_read_sync(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t.clone())).expect(
+                        "Failed to read tensor data synchronously.
+        This can happen on platforms that don't support blocking futures like WASM.
+        If possible, try using into_data_async instead.",
+                    );
+                    MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::float_from_data(data, d))
                 }
             },
         }
@@ -250,9 +320,24 @@ impl FloatTensorOps<Self> for MultiBackend {
     fn float_erf(tensor: MultiFloatTensor) -> MultiFloatTensor {
         ops_tensor!(float(tensor) => float_erf)
     }
+    #[allow(clippy::match_wildcard_for_single_variants)]
     fn float_cat(tensors: Vec<MultiFloatTensor>, dim: usize) -> MultiFloatTensor {
         assert!(!tensors.is_empty(), "Cannot concatenate an empty list of tensors");
         match &tensors[0] {
+            #[cfg(feature = "burn-candle")]
+            MultiFloatTensor::Candle(_) => {
+                use crate::backend::CandleBackend;
+                let inner: Vec<_> = tensors
+                    .into_iter()
+                    .map(|t| match t {
+                        MultiFloatTensor::Candle(inner) => inner,
+                        _ => panic!("Mismatched tensor backends in float_cat: expected Candle"),
+                    })
+                    .collect();
+                MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::float_cat(inner, dim))
+            }
+
+            #[cfg(feature = "burn-ndarray")]
             MultiFloatTensor::NdArray(_) => {
                 use crate::backend::NdArrayBackend;
                 let inner: Vec<_> = tensors
@@ -264,6 +349,8 @@ impl FloatTensorOps<Self> for MultiBackend {
                     .collect();
                 MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_cat(inner, dim))
             }
+
+            #[cfg(feature = "burn-wgpu")]
             MultiFloatTensor::Wgpu(_) => {
                 use crate::backend::WgpuBackend;
                 let inner: Vec<_> = tensors

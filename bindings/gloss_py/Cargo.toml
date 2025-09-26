@@ -47,6 +47,7 @@ easy-wgpu.workspace=true
 gloss-utils.workspace=true
 gloss-img.workspace=true
 gloss-geometry.workspace=true
+gloss-burn-multibackend.workspace=true
 
 # workspace third-party
 pollster.workspace=true

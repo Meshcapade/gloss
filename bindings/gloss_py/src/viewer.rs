@@ -4,6 +4,7 @@ use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, plugin::PyPlu
 
 use gloss_renderer::{camera::Camera, config::Config, plugin_manager::Plugins, scene::Scene, viewer::Viewer};
 
+use crate::gpu::PyGpu;
 use easy_wgpu::texture::Texture;
 use numpy::PyUntypedArray;
 use pyo3::prelude::*;
@@ -75,6 +76,15 @@ impl PyViewer {
     pub fn get_queue(&mut self) -> PyQueue {
         let obj_ptr: *const wgpu::Queue = self.0.gpu_res.as_ref().unwrap().gpu.queue();
         PyQueue::new(obj_ptr)
+    }
+    #[pyo3(text_signature = "($self) -> Gpu")]
+    pub fn get_gpu(&mut self) -> PyGpu {
+        let obj_ptr: *const easy_wgpu::gpu::Gpu = &self.0.gpu_res.as_ref().unwrap().gpu;
+        PyGpu::new(obj_ptr)
+    }
+    pub fn get_ptr_gpu(&mut self) -> u64 {
+        let obj_ptr: *const easy_wgpu::gpu::Gpu = &self.0.gpu_res.as_ref().unwrap().gpu;
+        obj_ptr as u64
     }
     #[pyo3(text_signature = "($self) -> Scene")]
     pub fn get_scene(&mut self) -> PyScene {

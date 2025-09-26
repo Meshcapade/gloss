@@ -6,27 +6,42 @@ use burn_cubecl::tensor::CubeTensor;
 use cubecl::wgpu::WgpuRuntime;
 use gloss_burn_multibackend::{backend::MultiBackend, tensor::MultiFloatTensor, tensor::MultiIntTensor};
 
-pub fn tensor_float2wgpu_buffer(tensor: Tensor<MultiBackend, 2>, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Buffer {
+pub fn tensor_float2wgpu_buffer(
+    tensor: Tensor<MultiBackend, 2>,
+    usages: wgpu::BufferUsages,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+) -> wgpu::Buffer {
     // Get underlying cube tensor.
     let cube_tensor = tensor.into_primitive().tensor();
     let MultiFloatTensor::Wgpu(cube_tensor) = cube_tensor else {
         panic!("Expected wgpu tensor got {:?}", cube_tensor.dtype())
     };
 
-    cubewgpu_tensor2wgpu_buffer(cube_tensor, device, queue)
+    cubewgpu_tensor2wgpu_buffer(cube_tensor, usages, device, queue)
 }
 
-pub fn tensor_int2wgpu_buffer(tensor: Tensor<MultiBackend, 2, Int>, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Buffer {
+pub fn tensor_int2wgpu_buffer(
+    tensor: Tensor<MultiBackend, 2, Int>,
+    usages: wgpu::BufferUsages,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+) -> wgpu::Buffer {
     // Get underlying cube tensor.
     let cube_tensor = tensor.into_primitive();
     let MultiIntTensor::Wgpu(cube_tensor) = cube_tensor else {
         panic!("Expected wgpu tensor got {:?}", cube_tensor.dtype())
     };
 
-    cubewgpu_tensor2wgpu_buffer(cube_tensor, device, queue)
+    cubewgpu_tensor2wgpu_buffer(cube_tensor, usages, device, queue)
 }
 
-fn cubewgpu_tensor2wgpu_buffer(tensor: CubeTensor<WgpuRuntime>, device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Buffer {
+fn cubewgpu_tensor2wgpu_buffer(
+    tensor: CubeTensor<WgpuRuntime>,
+    usages: wgpu::BufferUsages,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+) -> wgpu::Buffer {
     // Get the 'resource' from the client
     let client = tensor.client;
     let binding = client.get_resource(tensor.handle.clone().binding());
@@ -48,7 +63,7 @@ fn cubewgpu_tensor2wgpu_buffer(tensor: CubeTensor<WgpuRuntime>, device: &wgpu::D
     let dst_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("tensor2wgpu_buffer_dst"),
         size,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::VERTEX,
+        usage: wgpu::BufferUsages::COPY_DST | usages,
         mapped_at_creation: false,
     });
 

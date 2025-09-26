@@ -1,6 +1,6 @@
 /// Convenience function for passing around gpu-related data liek device and
 /// queue
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Gpu {
     // The order of properties in a struct is the order in which items are dropped.
     // wgpu seems to require that the device be dropped last, otherwise there is a resouce

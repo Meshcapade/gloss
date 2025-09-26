@@ -30,6 +30,8 @@ pub mod components;
 pub mod device;
 pub mod entity_builder;
 pub mod geom;
+pub mod global_backend;
+pub mod gpu;
 pub mod img;
 pub mod logger;
 pub mod plugin;
@@ -44,6 +46,7 @@ use actor::PyActorMut;
 use camera::PyCamera;
 use device::PyDevice;
 use geom::{PyGeom, PyIndirRemovalPolicy, PySplatType};
+pub use gpu::PyGpu;
 use logger::{gloss_setup_logger, gloss_setup_logger_from_config_file, PyLogLevel, PyLogLevelCaps};
 use queue::PyQueue;
 use scene::PyScene;
@@ -54,6 +57,8 @@ use viewer_headless::PyViewerHeadless;
 
 use crate::builders::PyBuilders;
 
+use crate::global_backend::init_global_burn_backend;
+
 /// A Python module implemented in Rust using tch to manipulate PyTorch
 /// objects.
 #[pymodule]
@@ -62,6 +67,7 @@ use crate::builders::PyBuilders;
 pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Create submodules
     let log_module = PyModule::new_bound(_py, "log")?;
+    let backend_module = PyModule::new_bound(_py, "backend")?;
     let components_module = PyModule::new_bound(_py, "components")?;
     let types_module = PyModule::new_bound(_py, "types")?;
     let builders_module = PyModule::new_bound(_py, "builders")?;
@@ -74,6 +80,7 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyCamera>()?;
     m.add_class::<PyScene>()?;
     m.add_class::<PyDevice>()?;
+    m.add_class::<PyGpu>()?;
     m.add_class::<PyQueue>()?;
     m.add_class::<PyPluginList>()?;
     m.add_class::<PyActorMut>()?;
@@ -82,6 +89,7 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Initialize submodules
     add_submod_log(_py, &log_module)?;
+    add_submod_backend(_py, &backend_module)?;
     add_submod_components_sm(_py, &components_module)?;
     add_submod_types(_py, &types_module)?;
     add_submod_builders(_py, &builders_module)?;
@@ -89,6 +97,7 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register submodules in sys.modules
     let sys = _py.import_bound("sys")?.getattr("modules")?;
     sys.set_item("gloss.log", log_module.as_ref())?;
+    sys.set_item("gloss.backend", backend_module.as_ref())?;
     sys.set_item("gloss.components", components_module.as_ref())?;
     sys.set_item("gloss.types", types_module.as_ref())?;
     sys.set_item("gloss.builders", builders_module.as_ref())?;
@@ -108,6 +117,12 @@ fn add_submod_log(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyLogLevelCaps>()?;
     m.add_function(wrap_pyfunction!(gloss_setup_logger, m)?)?;
     m.add_function(wrap_pyfunction!(gloss_setup_logger_from_config_file, m)?)?;
+    Ok(())
+}
+
+#[pymodule]
+fn add_submod_backend(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(init_global_burn_backend, m)?)?;
     Ok(())
 }
 

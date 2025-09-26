@@ -15,7 +15,8 @@ use gloss_renderer::components::VisOutline;
 #[allow(unused_mut)]
 #[allow(clippy::unused_async)]
 async fn start() {
-    gloss_setup_logger(LogLevel::Warn, None); //call only once per process
+    gloss_setup_logger(LogLevel::Info, None); //call only once per process
+
     let mut config = Config::default();
     config.core.canvas_id = Some(String::from("viewer-canvas"));
     config.core.enable_gui = true;

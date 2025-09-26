@@ -20,6 +20,8 @@ use crate::{
     selector::SelectorPlugin,
     set_panic_hook,
 };
+#[cfg(target_arch = "wasm32")]
+use std::sync::mpsc;
 
 use easy_wgpu::gpu::Gpu;
 use easy_wgpu::texture::Texture;
@@ -27,7 +29,7 @@ use easy_wgpu::texture::Texture;
 use egui_winit::EventResponse;
 use gloss_utils::abi_stable_aliases::std_types::{RString, Tuple2};
 use log::{debug, warn};
-use wgpu::BackendOptions;
+use wgpu::{util::is_browser_webgpu_supported, BackendOptions};
 use winit::{
     dpi::PhysicalSize,
     event::TouchPhase,
@@ -39,6 +41,7 @@ use winit::{
 use core::time::Duration;
 use gloss_utils::io::FileType;
 use log::{error, info};
+#[cfg(not(target_arch = "wasm32"))]
 use pollster::FutureExt;
 use std::{error::Error, sync::Arc};
 
@@ -81,18 +84,23 @@ pub struct GpuResources {
 #[allow(clippy::too_many_lines)]
 #[allow(unused)]
 impl GpuResources {
-    pub fn new(
+    pub async fn new(
         event_loop: &ActiveEventLoop,
         event_loop_proxy: &EventLoopProxy<CustomEvent>,
         canvas_id_parsed: Option<&String>,
         config: &Config,
     ) -> Self {
-        // The instance is a handle to our GPU
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        if cfg!(target_arch = "wasm32") {
+            let webgpu_capable = is_browser_webgpu_supported().await;
+            info!("Is browser webgpu supported: {webgpu_capable}");
+        }
+
+        let instance = wgpu::util::new_instance_with_webgpu_detection(&wgpu::InstanceDescriptor {
             backends: supported_backends(),
             flags: wgpu::InstanceFlags::default(),
             backend_options: BackendOptions::default(),
-        });
+        })
+        .await;
 
         let window = Viewer::create_window(event_loop, event_loop_proxy, canvas_id_parsed).expect("failed to create initial window");
 
@@ -106,11 +114,11 @@ impl GpuResources {
                 let adapters = enumerate_adapters(&instance);
                 info!("Number of possible adapters: {:?}", adapters.len());
                 for (i, adapter) in adapters.iter().enumerate() {
-                    info!("Adapter option {:?}: {:?}", i + 1, adapter.get_info());
+                    info!("Adapter option {:?}: {:?}", i, adapter.get_info());
                 }
             }
         }
-        let adapter = get_adapter(&instance, Some(&surface));
+        let adapter = get_adapter(&instance, Some(&surface)).await;
         info!("Selected adapter: {:?}", adapter.get_info());
 
         //TODO if the adapter is not a discrete Nvidia gpu, disable the wgpu to pytorch
@@ -135,6 +143,11 @@ impl GpuResources {
         /* -------------------------------------------------------------------------- */
         let mut required_features = adapter.features().intersection(desired_features); //only take the features that are actually supported
         required_features = required_features.union(wgpu::Features::DEPTH32FLOAT_STENCIL8);
+        //for cubecl
+        if cfg!(not(target_arch = "wasm32")) {
+            required_features = required_features.union(wgpu::Features::SUBGROUP);
+            required_features = required_features.union(wgpu::Features::SHADER_INT64);
+        }
 
         //dealing with wasm putting 2048 as maximum texture size
         //https://github.com/gfx-rs/wgpu/discussions/2952
@@ -164,7 +177,7 @@ impl GpuResources {
                 memory_hints,
                 trace: wgpu::Trace::Off,
             })
-            .block_on()
+            .await
             .expect("A device and queue could not be created. Maybe there's a driver issue on your machine?");
         let gpu = Gpu::new(adapter, instance, device, queue);
 
@@ -212,6 +225,11 @@ impl GpuResources {
 
         let renderer = Renderer::new(&gpu, &config.render, Some(surface_format));
         let blit_pass = BlitPass::new(&gpu, &surface_format);
+
+        //interop with burn by making burn use the same wgpu device as the renderer
+        if cfg!(not(target_arch = "wasm32")) {
+            wgpu_burn_global_device::init_global_device(gpu.instance(), gpu.adapter(), gpu.device(), gpu.queue());
+        }
 
         Self {
             window,
@@ -334,6 +352,10 @@ pub struct Viewer {
 
     #[allow(private_interfaces)]
     pub internal_plugins: InternalPlugins,
+
+    //for wasm only, the gpu resources get created asynchronously so we need to wait for them to be ready. We will receive a message on this channel when they are ready
+    #[cfg(target_arch = "wasm32")]
+    gpu_res_receiver: Option<std::sync::mpsc::Receiver<GpuResources>>,
 }
 
 impl Viewer {
@@ -367,7 +389,8 @@ impl Viewer {
         let mut internal_plugins = InternalPlugins::new();
         internal_plugins.insert_plugin(&SelectorPlugin::new(true));
 
-        Self {
+        #[allow(unused_mut)]
+        let mut viewer = Self {
             gpu_res: None,
             runner,
             scene,
@@ -377,7 +400,18 @@ impl Viewer {
             canvas_id_parsed: canvas_id_parsed.clone(),
             config: config.clone(),
             window_size,
+            #[cfg(target_arch = "wasm32")]
+            gpu_res_receiver: None,
+        };
+
+        //if we are not on wasm, we render once to initialize the gpu resources and therefore the shared burn wgpu device
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            viewer.start_frame();
+            viewer.update();
         }
+
+        viewer
     }
 
     /// Makes the loop emit resize events when the Web canvas changes size. This
@@ -543,6 +577,13 @@ impl Viewer {
         match event {
             Event::UserEvent(CustomEvent::Resize(new_width, new_height)) => {
                 debug!("rs: handling resize canvas: {event:?}");
+
+                // Check if GPU resources are ready
+                if self.gpu_res.is_none() {
+                    debug!("GPU resources not ready yet, ignoring resize event");
+                    return true; // Event is handled (ignored)
+                }
+
                 let logical_size = winit::dpi::LogicalSize {
                     width: *new_width,
                     height: *new_height,
@@ -594,6 +635,27 @@ impl Viewer {
         match event {
             Event::UserEvent(event) => {
                 match event {
+                    #[cfg(target_arch = "wasm32")]
+                    CustomEvent::GpuResourcesReady => {
+                        info!("rs: handling GPU resources ready");
+
+                        // Try to receive the GPU resources
+                        if let Some(receiver) = self.gpu_res_receiver.take() {
+                            if let Ok(gpu_res) = receiver.try_recv() {
+                                self.gpu_res = Some(gpu_res);
+
+                                // Now do the initialization that was previously in the non-WASM block
+                                self.scene.world.set_trackers_changed();
+                                self.gpu_res.as_mut().unwrap().request_redraw();
+                                self.scene.add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
+
+                                //we ignored the resize event until the gpu resource was ready so now we can issue it again
+                                #[cfg(target_arch = "wasm32")]
+                                self.resize_to_canvas();
+                            }
+                        }
+                        true
+                    }
                     CustomEvent::ResumeLoop => {
                         info!("rs: handling custom resume loop");
                         self.resume(event_loop);
@@ -821,6 +883,12 @@ impl Viewer {
 
     /// Processes all events from the event loop. These are all `WindowEvents`
     fn process_all_events(&mut self, event: &Event<CustomEvent>, event_loop: &ActiveEventLoop) {
+        // Check if GPU resources are ready
+        if self.gpu_res.is_none() {
+            debug!("GPU resources not ready yet, ignoring event {event:?}");
+            return;
+        }
+
         if !self.runner.is_running {
             // If we receive a draw event and the loop isn't running we basically ignore it
             // but we have to notify that we have no more draw event queued
@@ -1152,22 +1220,51 @@ impl Viewer {
     }
 
     fn resume(&mut self, event_loop: &ActiveEventLoop) {
-        // info!("RS: resume");
+        info!("RS: resume");
         self.runner.is_running = self.runner.autostart;
         if self.gpu_res.is_none() {
-            self.gpu_res = Some(GpuResources::new(
-                event_loop,
-                &self.runner.event_loop_proxy,
-                self.canvas_id_parsed.as_ref(),
-                &self.config,
-            ));
-            // We set all the components to changed because we want them to be reuploaded to
-            // gpu. Don't set them as added because some systems rely on components being
-            // added to run only once.
-            self.scene.world.set_trackers_changed(); //TODO set it to changed, and push hecs to github
+            //for non-wasm we create the gpu resources directly since we can use block_on
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.gpu_res =
+                    Some(GpuResources::new(event_loop, &self.runner.event_loop_proxy, self.canvas_id_parsed.as_ref(), &self.config).block_on());
 
-            // self.gpu_res.as_mut().unwrap().window.request_redraw();
-            self.gpu_res.as_mut().unwrap().request_redraw();
+                // We set all the components to changed because we want them to be reuploaded to
+                // gpu. Don't set them as added because some systems rely on components being
+                // added to run only once.
+                self.scene.world.set_trackers_changed(); //TODO set it to changed, and push hecs to github
+
+                self.gpu_res.as_mut().unwrap().request_redraw();
+
+                //add the GPU structure as a resource so systems in the ECS world can access it to schedule gpu based computations
+                self.scene.add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
+            }
+
+            //for wasm we have to create the gpu resources asynchronously
+            #[cfg(target_arch = "wasm32")]
+            {
+                let event_loop_proxy = self.runner.event_loop_proxy.clone();
+                let canvas_id = self.canvas_id_parsed.clone();
+                let config = self.config.clone();
+                let event_loop_ptr = event_loop as *const ActiveEventLoop;
+
+                // Create a channel to send the GPU resources back
+                let (sender, receiver) = mpsc::channel::<GpuResources>();
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    let event_loop_ref = unsafe { &*event_loop_ptr };
+                    let gpu_res = GpuResources::new(event_loop_ref, &event_loop_proxy, canvas_id.as_ref(), &config).await;
+
+                    // Send the GPU resources through the channel
+                    let _ = sender.send(gpu_res);
+
+                    // Notify that resources are ready
+                    let _ = event_loop_proxy.send_event(CustomEvent::GpuResourcesReady);
+                });
+
+                // Store the receiver
+                self.gpu_res_receiver = Some(receiver);
+            }
         }
         #[cfg(target_arch = "wasm32")]
         self.resize_to_canvas()
@@ -1306,9 +1403,6 @@ impl ApplicationHandler<CustomEvent> for Viewer {
         self.process_custom_other_event(&Event::UserEvent(event), event_loop);
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
-        if window_id != self.gpu_res.as_ref().unwrap().window.id() {
-            return;
-        }
         self.process_all_events(&Event::WindowEvent { window_id, event }, event_loop);
     }
     #[allow(unused_variables)]
@@ -1336,17 +1430,53 @@ impl ApplicationHandler<CustomEvent> for Viewer {
 /// native because that allows us to use the `PyTorch` and wgpu interoperability
 pub fn supported_backends() -> wgpu::Backends {
     if cfg!(target_arch = "wasm32") {
-        // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
-        wgpu::Backends::GL
+        if is_safari_browser() || is_firefox_browser() {
+            //for some reason firefox and safari sometimes tell that webgpu is available but then it fails to run with webgpu
+            wgpu::Backends::GL
+        } else {
+            wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+        }
     } else {
         // For Native
         wgpu::Backends::from_env().unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
     }
 }
 
+/// Are we running inside the Safari browser?
+pub fn is_safari_browser() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    fn is_safari_browser_inner() -> Option<bool> {
+        use web_sys::wasm_bindgen::JsValue;
+        let window = web_sys::window()?;
+        Some(window.has_own_property(&JsValue::from("safari")))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn is_safari_browser_inner() -> Option<bool> {
+        None
+    }
+
+    is_safari_browser_inner().unwrap_or(false)
+}
+
+/// Are we running inside the Firefox browser?
+pub fn is_firefox_browser() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        web_sys::window()
+            .and_then(|w| w.navigator().user_agent().ok())
+            .is_some_and(|ua| ua.to_lowercase().contains("firefox"))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        false
+    }
+}
+
 //get the adapter with the following priorities
 //if the WGPU_VISIBLE_DEVICES is set get the adaptor with that id, if not get the adaptor from CUDA_VISIBLE_DEVICES and finally if none are set just get whatever wgpu wants
-pub fn get_adapter(instance: &wgpu::Instance, surface: Option<&wgpu::Surface>) -> wgpu::Adapter {
+pub async fn get_adapter(instance: &wgpu::Instance, surface: Option<&wgpu::Surface<'_>>) -> wgpu::Adapter {
     #[cfg(not(target_arch = "wasm32"))]
     fn remove_from_vec(vec: &mut Vec<wgpu::Adapter>, idx_str: &str) -> wgpu::Adapter {
         let idx = idx_str.split(',').next().unwrap().parse::<usize>().unwrap(); //in the case we pass multiple indexes to CUDA_VISIBLE_DEVICES=0,1,2 we use the first index
@@ -1370,7 +1500,7 @@ pub fn get_adapter(instance: &wgpu::Instance, surface: Option<&wgpu::Surface>) -
                     compatible_surface: surface,
                     force_fallback_adapter: false,
                 })
-                .block_on()
+                .await
                 .expect("An adapter could not be found. Maybe there's a driver issue on your machine?")
         }else {
             let mut adapters = enumerate_adapters(instance);
@@ -1387,7 +1517,7 @@ pub fn get_adapter(instance: &wgpu::Instance, surface: Option<&wgpu::Surface>) -
                             compatible_surface: surface,
                             force_fallback_adapter: false,
                         })
-                        .block_on()
+                        .await
                         .expect("An adapter could not be found. Maybe there's a driver issue on your machine?"),
                 },
             }
@@ -1416,4 +1546,6 @@ pub enum CustomEvent {
     ContextRestored,
     ResumeLoop,
     StopLoop,
+    #[cfg(target_arch = "wasm32")]
+    GpuResourcesReady,
 }

@@ -144,7 +144,7 @@ impl ViewerHeadless {
                 }
             }
         }
-        let adapter = get_adapter(&instance, None);
+        let adapter = get_adapter(&instance, None).block_on();
         info!("Selected adapter: {:?}", adapter.get_info());
 
         // info!("{:?}", adapter.get_info());

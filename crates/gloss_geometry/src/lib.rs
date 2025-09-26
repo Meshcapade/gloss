@@ -12,6 +12,7 @@ pub mod cubecl {
     use core::panic;
     use gloss_burn_multibackend::{backend::MultiBackend, tensor::MultiFloatTensor, tensor::MultiIntTensor};
 
+    #[allow(clippy::match_wildcard_for_single_variants)]
     pub fn tensor2cube<const D: usize>(tensor: Tensor<MultiBackend, D>) -> CubeTensor<cubecl::wgpu::WgpuRuntime> {
         let prim = tensor.into_primitive();
         let TensorPrimitive::Float(t) = prim else {
@@ -19,10 +20,11 @@ pub mod cubecl {
         };
         match t {
             MultiFloatTensor::Wgpu(t) => t,
-            _ => panic!("Expected wgpu tensor got {:?}", t.dtype()),
+            _ => panic!("Expected wgpu tensor got tensor {:?} with type {:?}", t, t.dtype()),
         }
     }
 
+    #[allow(clippy::match_wildcard_for_single_variants)]
     pub fn tensor2cube_int<const D: usize>(tensor: Tensor<MultiBackend, D, Int>) -> CubeTensor<cubecl::wgpu::WgpuRuntime> {
         let prim = tensor.into_primitive();
         match prim {
