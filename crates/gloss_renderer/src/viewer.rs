@@ -409,6 +409,7 @@ impl Viewer {
         {
             viewer.start_frame();
             viewer.update();
+            viewer.runner.do_render = true;
         }
 
         viewer
@@ -1430,12 +1431,13 @@ impl ApplicationHandler<CustomEvent> for Viewer {
 /// native because that allows us to use the `PyTorch` and wgpu interoperability
 pub fn supported_backends() -> wgpu::Backends {
     if cfg!(target_arch = "wasm32") {
-        if is_safari_browser() || is_firefox_browser() {
-            //for some reason firefox and safari sometimes tell that webgpu is available but then it fails to run with webgpu
-            wgpu::Backends::GL
-        } else {
-            wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
-        }
+        // if is_safari_browser() || is_firefox_browser() {
+        //     //for some reason firefox and safari sometimes tell that webgpu is available but then it fails to run with webgpu
+        //     wgpu::Backends::GL
+        // } else {
+        //     wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+        // }
+        wgpu::Backends::GL
     } else {
         // For Native
         wgpu::Backends::from_env().unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
