@@ -15,25 +15,26 @@ use pyo3::prelude::*;
 #[pyclass(name = "Camera", module = "gloss", unsendable)]
 // it has to be unsendable because it does not implement Send: https://pyo3.rs/v0.19.1/class#must-be-send
 pub struct PyCamera {
-    obj_ptr: *mut Camera,
+    inner: Camera,
     py_scene: PyScene,
 }
 impl std::ops::Deref for PyCamera {
     type Target = Camera;
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.obj_ptr }
+        &self.inner
     }
 }
 impl std::ops::DerefMut for PyCamera {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.obj_ptr }
+        &mut self.inner
     }
 }
 impl PyCamera {
-    pub fn new(obj_ptr: *mut Camera, py_scene: PyScene) -> Self {
-        PyCamera { obj_ptr, py_scene }
+    pub fn new(inner: Camera, py_scene: PyScene) -> Self {
+        PyCamera { inner, py_scene }
     }
 }
+
 #[pymethods]
 impl PyCamera {
     #[pyo3(text_signature = "($self) -> Tuple[float, float]")]

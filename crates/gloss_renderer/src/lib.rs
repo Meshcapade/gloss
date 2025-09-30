@@ -5,10 +5,16 @@ extern crate static_assertions;
 
 use gloss_utils::string::float2string;
 use log::log;
-use re_memory::{AccountingAllocator, MemoryUse};
 
-#[global_allocator]
-static GLOBAL: AccountingAllocator<std::alloc::System> = AccountingAllocator::new(std::alloc::System);
+// use re_memory::AccountingAllocator;
+use re_memory::MemoryUse;
+
+// TODO seems to sometimes panic with
+// re_memory-0.24.1/src/lib.rs:88:9:
+// attempt to subtract with overflow
+// when using wgpu backend for burn, disabling for now
+// #[global_allocator]
+// static GLOBAL: AccountingAllocator<std::alloc::System> = AccountingAllocator::new(std::alloc::System);
 
 pub mod actor;
 pub mod builders;

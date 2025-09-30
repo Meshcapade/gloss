@@ -1,4 +1,5 @@
 use cubecl::wgpu::WgpuSetup;
+use log::warn;
 use once_cell::sync::OnceCell;
 use wgpu::Instance;
 
@@ -16,6 +17,10 @@ pub fn has_global_wgpu_device() -> bool {
 }
 
 pub fn init_global_device(instance: &Instance, adapter: &wgpu::Adapter, device: &wgpu::Device, queue: &wgpu::Queue) {
+    if has_global_wgpu_device() {
+        warn!("Global wgpu device for Burn has already been initialized, skipping initialization.");
+        return;
+    }
     let wgpu_setup = WgpuSetup {
         instance: instance.clone(),
         adapter: adapter.clone(),

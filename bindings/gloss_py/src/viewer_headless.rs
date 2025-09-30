@@ -1,6 +1,6 @@
 use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, queue::PyQueue, scene::PyScene, texture::PyTexture};
 
-use gloss_renderer::{camera::Camera, config::Config, plugin_manager::Plugins, scene::Scene, viewer_headless::ViewerHeadless};
+use gloss_renderer::{config::Config, plugin_manager::Plugins, scene::Scene, viewer_headless::ViewerHeadless};
 
 use easy_wgpu::texture::Texture;
 use numpy::PyUntypedArray;
@@ -56,8 +56,8 @@ impl PyViewerHeadless {
     }
     #[pyo3(text_signature = "($self) -> Camera")]
     pub fn get_camera(&mut self) -> PyCamera {
-        let obj_ptr: *mut Camera = &mut self.0.camera;
-        PyCamera::new(obj_ptr, self.get_scene())
+        let cam = self.0.camera.clone();
+        PyCamera::new(cam, self.get_scene())
     }
     #[pyo3(text_signature = "($self) -> None")]
     pub fn update(&mut self) {

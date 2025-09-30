@@ -61,6 +61,7 @@ impl Backend for MultiBackend {
 }
 
 #[allow(non_snake_case)]
+#[non_exhaustive]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MultiDevice {
     #[cfg(feature = "burn-candle")]

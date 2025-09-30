@@ -32,6 +32,7 @@ wgpu-burn-global-device.workspace=true
 #workspace third-party
 burn.workspace=true
 once_cell.workspace=true
+log.workspace=true
 
 
 [lints]

@@ -11,6 +11,7 @@ use burn::tensor::{
     DType, Shape, TensorMetadata,
 };
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum MultiFloatTensor {
     #[cfg(feature = "burn-candle")]
@@ -23,6 +24,7 @@ pub enum MultiFloatTensor {
     // Autodiff(FloatTensor<burn_autodiff::Autodiff<MultiBackend>>),
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum MultiIntTensor {
     #[cfg(feature = "burn-candle")]
@@ -35,6 +37,7 @@ pub enum MultiIntTensor {
     // Autodiff(IntTensor<burn_autodiff::Autodiff<MultiBackend>>),
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum MultiBoolTensor {
     #[cfg(feature = "burn-candle")]

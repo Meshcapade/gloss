@@ -8,7 +8,7 @@ fn main() {
 
     // Cube
     viewer
-        .scene
+        .scene()
         .get_or_create_entity("cube")
         .insert_builder(builders::build_cube(na::Point3::<f32>::new(0.0, 1.0, 0.0)))
         .insert(VisMesh {
@@ -18,7 +18,7 @@ fn main() {
 
     // Plane
     viewer
-        .scene
+        .scene()
         .get_or_create_entity("plane")
         .insert_builder(builders::build_plane(
             na::Point3::<f32>::new(0.0, 0.0, 0.0),

@@ -11,7 +11,9 @@ use pollster::FutureExt;
 fn main() {
     gloss_setup_logger(LogLevel::Info, None); // Call only once per process
     let mut viewer = Viewer::new(Some("./config/example_view_mesh.toml"));
+    println!("Viewer created");
     create_test_scene(&mut viewer).block_on();
+    println!("Scene created");
     viewer.run();
 }
 
@@ -22,7 +24,7 @@ async fn create_test_scene(viewer: &mut Viewer) {
     let name = "default_mesh";
 
     viewer
-        .scene
+        .scene()
         .get_or_create_entity(name)
         .insert_builder(builders::build_from_file(path_mesh))
         .insert(DiffuseImg::new_from_path_async(path_diffuse, &ImgConfig::default()).await)

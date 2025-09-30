@@ -2,7 +2,7 @@
 
 use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, plugin::PyPluginList, queue::PyQueue, scene::PyScene, texture::PyTexture};
 
-use gloss_renderer::{camera::Camera, config::Config, plugin_manager::Plugins, scene::Scene, viewer::Viewer};
+use gloss_renderer::{config::Config, plugin_manager::Plugins, scene::Scene, viewer::Viewer};
 
 use crate::gpu::PyGpu;
 use easy_wgpu::texture::Texture;
@@ -28,9 +28,9 @@ impl PyViewer {
     }
     #[pyo3(text_signature = "($self, name: str) -> Entity")]
     pub fn get_or_create_entity(&mut self, name: &str) -> PyActorMut {
-        let scene: &mut Scene = &mut self.0.scene;
+        let scene: &mut Scene = self.0.scene();
         let entity = scene.get_or_create_entity(name).entity();
-        PyActorMut::new(entity, &mut self.0.scene)
+        PyActorMut::new(entity, scene)
     }
     #[pyo3(text_signature = "($self, component: Any) -> None")]
     pub fn add_resource(&mut self, pycomp: Py<PyAny>) {
@@ -89,13 +89,13 @@ impl PyViewer {
     #[pyo3(text_signature = "($self) -> Scene")]
     pub fn get_scene(&mut self) -> PyScene {
         //attempt3 just with a weakptr
-        let obj_ptr: *mut Scene = &mut self.0.scene;
+        let obj_ptr: *mut Scene = &mut *self.0.scene();
         PyScene::new(obj_ptr)
     }
     #[pyo3(text_signature = "($self) -> Camera")]
     pub fn get_camera(&mut self) -> PyCamera {
-        let obj_ptr: *mut Camera = &mut self.0.camera;
-        PyCamera::new(obj_ptr, self.get_scene())
+        let cam = self.0.camera();
+        PyCamera::new(cam, self.get_scene())
     }
     #[pyo3(text_signature = "($self) -> None")]
     pub fn render_next_frame(&mut self) {
@@ -123,7 +123,7 @@ impl PyViewer {
     }
     #[pyo3(text_signature = "($self) -> NDArray[np.float32]")]
     pub fn get_linearised_depth(&mut self) -> Py<PyUntypedArray> {
-        let (znear, zfar) = self.0.camera.near_far(&mut self.0.scene);
+        let (znear, zfar) = self.0.camera().near_far(self.0.scene());
         self.get_final_depth().depth_linearize(&self.get_device(), &self.get_queue(), znear, zfar)
     }
     #[pyo3(text_signature = "($self) -> PluginList")]

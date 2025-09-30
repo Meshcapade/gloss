@@ -87,6 +87,8 @@ static_assertions = "1.1.0"
 abi_stable = "0.11.3"
 re_memory = "0.24"
 once_cell = "1.19"
+futures-lite="2.6"
+future="0.3"
 gltf = "1.4.0"
 # =====================================================================
 # Dependencies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web

@@ -48,6 +48,8 @@ nalgebra-glm.workspace=true
 image.workspace=true
 tobj.workspace=true
 once_cell.workspace=true
+futures-lite.workspace=true
+futures.workspace=true
 gltf.workspace=true
 
 # gui stuff

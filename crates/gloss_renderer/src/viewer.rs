@@ -16,10 +16,14 @@ use crate::{
         systems::{LogicSystem, SystemMetadata},
         InternalPlugins,
     },
-    scene::{Scene, GLOSS_CAM_NAME},
+    scene::Scene,
     selector::SelectorPlugin,
     set_panic_hook,
 };
+#[cfg(target_arch = "wasm32")]
+use std::future::Future;
+#[cfg(target_arch = "wasm32")]
+use std::pin::Pin;
 #[cfg(target_arch = "wasm32")]
 use std::sync::mpsc;
 
@@ -29,7 +33,9 @@ use easy_wgpu::texture::Texture;
 use egui_winit::EventResponse;
 use gloss_utils::abi_stable_aliases::std_types::{RString, Tuple2};
 use log::{debug, warn};
-use wgpu::{util::is_browser_webgpu_supported, BackendOptions};
+#[cfg(target_arch = "wasm32")]
+use wgpu::util::is_browser_webgpu_supported;
+use wgpu::BackendOptions;
 use winit::{
     dpi::PhysicalSize,
     event::TouchPhase,
@@ -57,6 +63,20 @@ use winit::{
     event_loop::EventLoop,
     window::Window,
 };
+
+#[cfg(target_arch = "wasm32")]
+use futures::future::poll_fn;
+#[cfg(target_arch = "wasm32")]
+use std::cell::RefCell;
+#[cfg(target_arch = "wasm32")]
+use std::rc::Rc;
+#[cfg(target_arch = "wasm32")]
+use std::task::{Poll, Waker};
+
+// Type alias for stored async init function
+// It takes ownership of Scene and returns a future that populates it and returns it back.
+#[cfg(target_arch = "wasm32")]
+type SceneInitFn = Box<dyn FnOnce(Scene) -> Pin<Box<dyn Future<Output = Scene> + 'static>> + 'static>;
 
 // #[cfg(not(target_arch = "wasm32"))]
 
@@ -90,9 +110,16 @@ impl GpuResources {
         canvas_id_parsed: Option<&String>,
         config: &Config,
     ) -> Self {
-        if cfg!(target_arch = "wasm32") {
-            let webgpu_capable = is_browser_webgpu_supported().await;
-            info!("Is browser webgpu supported: {webgpu_capable}");
+        cfg_if::cfg_if! {
+                if #[cfg(target_arch = "wasm32")]{
+                    let webgpu_capable = is_browser_webgpu_supported().await;
+                    info!("Is browser webgpu supported: {webgpu_capable}");
+            }
+        }
+        let mut can_use_cubecl = true;
+        #[cfg(target_arch = "wasm32")]
+        {
+            can_use_cubecl &= webgpu_capable;
         }
 
         let instance = wgpu::util::new_instance_with_webgpu_detection(&wgpu::InstanceDescriptor {
@@ -143,6 +170,9 @@ impl GpuResources {
         /* -------------------------------------------------------------------------- */
         let mut required_features = adapter.features().intersection(desired_features); //only take the features that are actually supported
         required_features = required_features.union(wgpu::Features::DEPTH32FLOAT_STENCIL8);
+        if can_use_cubecl {
+            required_features = required_features.union(wgpu::Features::TIMESTAMP_QUERY);
+        }
         //for cubecl
         if cfg!(not(target_arch = "wasm32")) {
             required_features = required_features.union(wgpu::Features::SUBGROUP);
@@ -227,11 +257,11 @@ impl GpuResources {
         let blit_pass = BlitPass::new(&gpu, &surface_format);
 
         //interop with burn by making burn use the same wgpu device as the renderer
-        if cfg!(not(target_arch = "wasm32")) {
+        if can_use_cubecl {
             wgpu_burn_global_device::init_global_device(gpu.instance(), gpu.adapter(), gpu.device(), gpu.queue());
         }
 
-        Self {
+        let mut gpu_res = Self {
             window,
             surface,
             surface_config,
@@ -241,7 +271,11 @@ impl GpuResources {
             gui,
             _blit_pass: blit_pass,
             redraw_requested: false,
-        }
+        };
+
+        Self::request_redraw(&mut gpu_res);
+
+        gpu_res
     }
     pub fn request_redraw(&mut self) {
         if self.redraw_requested {
@@ -338,8 +372,7 @@ pub struct Viewer {
     pub gpu_res: Option<GpuResources>,
 
     // Cpu resources
-    pub camera: Camera, //TODO pull the camera into the scene as just another entity
-    pub scene: Scene,
+    scene: Option<Scene>,
 
     window_size: winit::dpi::PhysicalSize<u32>, /* We need this because sometimes we need to recreate the window and we need to recreate it with
                                                  * this size */
@@ -356,6 +389,14 @@ pub struct Viewer {
     //for wasm only, the gpu resources get created asynchronously so we need to wait for them to be ready. We will receive a message on this channel when they are ready
     #[cfg(target_arch = "wasm32")]
     gpu_res_receiver: Option<std::sync::mpsc::Receiver<GpuResources>>,
+    #[cfg(target_arch = "wasm32")]
+    scene_receiver: Option<std::sync::mpsc::Receiver<Scene>>,
+    #[cfg(target_arch = "wasm32")]
+    // pub scene_init_fn: Option<Box<dyn FnOnce(&mut Scene) -> Pin<Box<dyn Future<Output = ()> + 'static>>>>,
+    pub scene_init_func: Option<SceneInitFn>,
+
+    #[cfg(target_arch = "wasm32")]
+    scene_waker: Rc<RefCell<Option<Waker>>>,
 }
 
 impl Viewer {
@@ -383,9 +424,6 @@ impl Viewer {
 
         let window_size = winit::dpi::PhysicalSize::new(100, 100);
 
-        let mut scene = Scene::new();
-        let camera = Camera::new(GLOSS_CAM_NAME, &mut scene, false); //TODO make it another entity inside the Scene
-
         let mut internal_plugins = InternalPlugins::new();
         internal_plugins.insert_plugin(&SelectorPlugin::new(true));
 
@@ -393,8 +431,7 @@ impl Viewer {
         let mut viewer = Self {
             gpu_res: None,
             runner,
-            scene,
-            camera,
+            scene: None,
             plugins: Plugins::new(),
             internal_plugins,
             canvas_id_parsed: canvas_id_parsed.clone(),
@@ -402,6 +439,12 @@ impl Viewer {
             window_size,
             #[cfg(target_arch = "wasm32")]
             gpu_res_receiver: None,
+            #[cfg(target_arch = "wasm32")]
+            scene_receiver: None,
+            #[cfg(target_arch = "wasm32")]
+            scene_init_func: None,
+            #[cfg(target_arch = "wasm32")]
+            scene_waker: Rc::new(RefCell::new(None)),
         };
 
         //if we are not on wasm, we render once to initialize the gpu resources and therefore the shared burn wgpu device
@@ -412,7 +455,46 @@ impl Viewer {
             viewer.runner.do_render = true;
         }
 
+        // #[cfg(target_arch = "wasm32")]
+        // {
+        //     // viewer.runner.event_loop_proxy.send_event(CustomEvent::ResumeLoop);
+
+        //     //run the eventloop so we get a activeevent loop and therefore a resume event
+        //     viewer.runner.is_bootstrap = true; //this is just a bootstrap event loop to initialize the gpu resources
+        //     viewer.run();
+        //     //create gpu resources asynchronously whenever the resume event comes
+        //     //when gpu resources are ready we stop the event loop and return from this function
+        // }
+        //await for the gpu toresources to be created
+        //todo make this function async
+
         viewer
+    }
+
+    pub fn scene(&mut self) -> &mut Scene {
+        assert!(self.scene.is_some(), "The scene has not been created yet. This typically happens on wasm environments because you are accessing the scene right after creating the viewer. You need to provide a deferred function for initializing the scene to the viewer.run() function rather than trying to fill the scene right after the creation of the viewer. Check the web examples of Gloss");
+        self.scene.as_mut().unwrap()
+    }
+
+    pub fn camera(&mut self) -> Camera {
+        assert!(self.scene().get_current_cam().is_some(), "The camera has not been created yet. This typically happens on wasm environments because you are accessing the camera right after creating the viewer. You need to provide a deferred function for initializing the camera to the viewer.run() function rather than trying to access the camera right after the creation of the viewer. Check the web examples of Gloss");
+        let scene = self.scene();
+        scene.get_current_cam().unwrap()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn is_scene_initialized(&self) {
+        poll_fn(|cx| {
+            if self.scene.is_some() {
+                info!("scene is initialized");
+                Poll::Ready(())
+            } else {
+                *self.scene_waker.borrow_mut() = Some(cx.waker().clone());
+                info!("scene is pending");
+                Poll::Pending
+            }
+        })
+        .await;
     }
 
     /// Makes the loop emit resize events when the Web canvas changes size. This
@@ -530,9 +612,13 @@ impl Viewer {
 
             //camera aspect ratio
             //camera has not yet been initialized so there is nothing to do
-            if self.scene.world.has::<Projection>(self.camera.entity).unwrap() {
-                self.camera
-                    .set_aspect_ratio(new_size.width as f32 / new_size.height as f32, &mut self.scene);
+            if self.scene.is_none() {
+                return;
+            }
+            let scene = self.scene.as_mut().unwrap();
+            let mut camera = scene.get_current_cam().unwrap();
+            if scene.world.has::<Projection>(camera.entity).unwrap() {
+                camera.set_aspect_ratio(new_size.width as f32 / new_size.height as f32, scene);
             }
 
             //gui
@@ -644,17 +730,59 @@ impl Viewer {
                         if let Some(receiver) = self.gpu_res_receiver.take() {
                             if let Ok(gpu_res) = receiver.try_recv() {
                                 self.gpu_res = Some(gpu_res);
-
-                                // Now do the initialization that was previously in the non-WASM block
-                                self.scene.world.set_trackers_changed();
-                                self.gpu_res.as_mut().unwrap().request_redraw();
-                                self.scene.add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
-
-                                //we ignored the resize event until the gpu resource was ready so now we can issue it again
-                                #[cfg(target_arch = "wasm32")]
-                                self.resize_to_canvas();
                             }
                         }
+
+                        //start the initialization of the scene
+                        if self.scene.is_none() {
+                            //for wasm we have to create the scene after the gpu resources are ready because scene init might do reading of files that contain burn buffers so we need a gpu for that
+                            let event_loop_proxy = self.runner.event_loop_proxy.clone();
+                            let scene_init_func = self.scene_init_func.take();
+
+                            // Create a channel to send the scene back
+                            let (sender, receiver) = mpsc::channel::<Scene>();
+                            wasm_bindgen_futures::spawn_local(async move {
+                                let scene = Self::create_scene();
+
+                                // Call the async function to initialize anything within the scene
+                                let scene = if let Some(init_func) = scene_init_func {
+                                    init_func(scene).await
+                                } else {
+                                    scene
+                                };
+
+                                // Send the scene through the channel
+                                let _ = sender.send(scene);
+
+                                // Notify that scene is ready
+                                let _ = event_loop_proxy.send_event(CustomEvent::SceneReady);
+                            });
+
+                            // Store the receiver
+                            self.scene_receiver = Some(receiver);
+                        }
+
+                        true
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    CustomEvent::SceneReady => {
+                        info!("rs: handling scene ready");
+
+                        // Try to receive the scene
+                        if let Some(receiver) = self.scene_receiver.take() {
+                            if let Ok(scene) = receiver.try_recv() {
+                                self.scene = Some(scene);
+                                self.finalize_scene();
+
+                                // Wake any pending is_scene_initialized() futures
+                                if let Some(waker) = self.scene_waker.borrow_mut().take() {
+                                    waker.wake();
+                                }
+                            }
+                        }
+                        self.resize_to_canvas(); //issue a resize event so that everything is properly resized after the scene is created
+                        self.gpu_res.as_mut().unwrap().request_redraw();
+
                         true
                     }
                     CustomEvent::ResumeLoop => {
@@ -732,9 +860,15 @@ impl Viewer {
                 info!("Dropped file {path_buf:?}");
                 let path = path_buf.to_str().unwrap();
 
+                if self.scene.is_none() {
+                    return true;
+                }
+
                 //do it so that we process the events we accumulated and actually get a proper
                 // mouse position for egui
                 self.render().ok();
+
+                let scene = self.scene.as_mut().unwrap();
 
                 //Gui tries to handle the drop file event
                 #[allow(unused_mut)]
@@ -743,7 +877,7 @@ impl Viewer {
                     let gpu_res = self.gpu_res.as_mut().unwrap();
                     let gui = gpu_res.gui.as_mut().unwrap();
                     if gui.is_hovering() {
-                        gui.on_drop(path_buf, &mut self.scene);
+                        gui.on_drop(path_buf, scene);
                         return true;
                     }
                 }
@@ -756,8 +890,8 @@ impl Viewer {
                 match filetype {
                     FileType::Obj | FileType::Ply | FileType::Gltf => {
                         let builder = builders::build_from_file(path);
-                        let name = self.scene.get_unused_name();
-                        self.scene.get_or_create_entity(&name).insert_builder(builder);
+                        let name = scene.get_unused_name();
+                        scene.get_or_create_entity(&name).insert_builder(builder);
                         return true;
                     }
                     FileType::Unknown => {
@@ -767,7 +901,7 @@ impl Viewer {
 
                 //try the plugins to see if they have an event for dropped file
                 let event = crate::plugin_manager::Event::DroppedFile(RString::from(path));
-                let handled = self.plugins.try_handle_event(&mut self.scene, &mut self.runner, &event);
+                let handled = self.plugins.try_handle_event(scene, &mut self.runner, &event);
 
                 if !handled {
                     info!("Neither Gloss nor any of the plugin could load the dropped file {path:?}");
@@ -806,7 +940,12 @@ impl Viewer {
             }
 
             WindowEvent::Occluded(_) => {
-                self.camera.reset_all_touch_presses(&mut self.scene);
+                if self.scene.is_none() {
+                    return true;
+                }
+                let scene = self.scene.as_mut().unwrap();
+                let mut camera = scene.get_current_cam().unwrap();
+                camera.reset_all_touch_presses(scene);
                 true
             }
             _ => false, //doesn't match any of the events, some other function will need to process this event
@@ -817,40 +956,44 @@ impl Viewer {
     /// events, returns true
     #[allow(clippy::cast_possible_truncation)]
     fn process_input_events(&mut self, event: &WindowEvent) -> bool {
+        if self.scene.is_none() {
+            return true;
+        }
+        let scene = self.scene.as_mut().unwrap();
+        let mut camera = scene.get_current_cam().unwrap();
+
         //camera has not yet been initialized so there is nothing to do
-        if !self.camera.is_initialized(&self.scene) {
+        if !camera.is_initialized(scene) {
             return false;
         }
 
         let consumed = match event {
             WindowEvent::MouseInput { button, state, .. } => {
                 if *state == ElementState::Pressed {
-                    self.camera.mouse_pressed(button, &mut self.scene);
+                    camera.mouse_pressed(button, scene);
                 } else {
-                    self.camera.mouse_released(&mut self.scene);
+                    camera.mouse_released(scene);
                 }
                 true
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                self.camera.process_mouse_scroll(delta, &mut self.scene);
+                camera.process_mouse_scroll(delta, scene);
                 true
             }
             WindowEvent::CursorMoved { position, .. } => {
-                self.camera
-                    .process_mouse_move(position.x, position.y, self.window_size.width, self.window_size.height, &mut self.scene);
+                camera.process_mouse_move(position.x, position.y, self.window_size.width, self.window_size.height, scene);
                 true
             }
             WindowEvent::Touch(touch) => {
                 #[allow(clippy::cast_sign_loss)]
                 if touch.phase == TouchPhase::Started {
-                    self.camera.touch_pressed(touch, &mut self.scene);
+                    camera.touch_pressed(touch, scene);
                 }
                 if touch.phase == TouchPhase::Ended || touch.phase == TouchPhase::Cancelled {
-                    self.camera.touch_released(touch, &mut self.scene);
+                    camera.touch_released(touch, scene);
                 }
                 if touch.phase == TouchPhase::Moved {
-                    self.camera
-                        .process_touch_move(touch, self.window_size.width, self.window_size.height, &mut self.scene);
+                    camera.process_touch_move(touch, self.window_size.width, self.window_size.height, scene);
                 }
                 true
             }
@@ -945,10 +1088,15 @@ impl Viewer {
                             self.process_input_events(event);
                         }
                         //HACK his is a hack to deal with the fact that clicking on the egui gizmos triggers a mouse press on the camera and then it gets locked there.
+                        if self.scene.is_none() {
+                            return;
+                        }
+                        let scene = self.scene.as_mut().unwrap();
+                        let mut camera = scene.get_current_cam().unwrap();
                         // if self.gpu_res.as_ref().unwrap().gui.wants_pointer_input() {
                         if let Some(ref gui) = self.gpu_res.as_mut().unwrap().gui {
                             if gui.wants_pointer_input() {
-                                self.camera.mouse_released(&mut self.scene);
+                                camera.mouse_released(scene);
                             }
                         }
                     }else{ //if we don't have a gui, we just process input events
@@ -1021,6 +1169,12 @@ impl Viewer {
         if !self.runner.frame_is_started {
             error!("The frame was not started so this might contain stale dt. Please use viewer.start_frame() before doing a v.render()");
         }
+        if self.scene.is_none() {
+            self.runner.frame_is_started = false;
+            return Ok(());
+        }
+        let scene = self.scene.as_mut().unwrap();
+        let mut camera = scene.get_current_cam().unwrap();
 
         // We actually take the init time as being the fist time we render, otherwise
         // the init time would be higher since some other processing might happen
@@ -1030,7 +1184,7 @@ impl Viewer {
         }
 
         let gpu_res = self.gpu_res.as_mut().unwrap();
-        self.plugins.run_logic_systems(gpu_res, &mut self.scene, &mut self.runner, true);
+        self.plugins.run_logic_systems(gpu_res, scene, &mut self.runner, true);
 
         // Get surface texture (which can fail and return an SurfaceError)
         let output = gpu_res.surface.get_current_texture()?;
@@ -1041,13 +1195,13 @@ impl Viewer {
         // Render to texture of the size of the surface
         let dt = self.runner.dt();
 
-        self.camera.on_window_resize(out_width, out_height, &mut self.scene);
+        camera.on_window_resize(out_width, out_height, scene);
 
         //TODO: Return the textured final so we can just plug it into blit pass without
         // doing renderer.rendered_tex
         gpu_res
             .renderer
-            .render_to_view(&out_view, &gpu_res.gpu, &mut self.camera, &mut self.scene, &mut self.config, dt);
+            .render_to_view(&out_view, &gpu_res.gpu, &mut camera, scene, &mut self.config, dt);
 
         // Render GUI
         //TODO: pass the whole renderer and the scene so we can do gui stuff on them
@@ -1058,16 +1212,16 @@ impl Viewer {
                 &gpu_res.gpu,
                 &gpu_res.renderer,
                 &self.runner,
-                &mut self.scene,
+                scene,
                 &self.plugins,
                 &mut self.config,
                 &out_view,
             );
         }
 
-        self.internal_plugins.run_gpu_systems(gpu_res, &mut self.scene, &mut self.runner, true);
+        self.internal_plugins.run_gpu_systems(gpu_res, scene, &mut self.runner, true);
         // Clear the click state once processed, so this doesnt keep running
-        self.scene.get_current_cam().unwrap().clear_click(&mut self.scene);
+        camera.clear_click(scene);
 
         //swap
         output.present();
@@ -1087,6 +1241,12 @@ impl Viewer {
             error!("The frame was not started so this might contain stale dt. Please use viewer.start_frame() before doing a v.render_to_texture()");
         }
 
+        if self.scene.is_none() {
+            return Ok(());
+        }
+        let scene = self.scene.as_mut().unwrap();
+        let mut camera = scene.get_current_cam().unwrap();
+
         //we actually take the init time as being the fist time we render, otherwise
         // the init time would be higher since some other processing might happen
         // between creating the viewer and actually rendering with it
@@ -1095,7 +1255,7 @@ impl Viewer {
         }
 
         let gpu_res = self.gpu_res.as_mut().unwrap();
-        self.plugins.run_logic_systems(gpu_res, &mut self.scene, &mut self.runner, true);
+        self.plugins.run_logic_systems(gpu_res, scene, &mut self.runner, true);
 
         //get surface texture (which can fail and return an SurfaceError)
         // let output = gpu_res.surface.get_current_texture()?;
@@ -1106,13 +1266,11 @@ impl Viewer {
         //render to_texture of the size of the surface
         let dt = self.runner.dt();
 
-        self.camera.on_window_resize(out_width, out_height, &mut self.scene);
+        camera.on_window_resize(out_width, out_height, scene);
 
         //TODO return the textured final so we can just plug it into blit pass without
         // doing renderer.rendered_tex
-        gpu_res
-            .renderer
-            .render_to_texture(&gpu_res.gpu, &mut self.camera, &mut self.scene, &mut self.config, dt);
+        gpu_res.renderer.render_to_texture(&gpu_res.gpu, &mut camera, scene, &mut self.config, dt);
 
         //render gui
         //TODO pass the whole renderer and the scene so we can do gui stuff on them
@@ -1124,16 +1282,16 @@ impl Viewer {
                 &gpu_res.gpu,
                 &gpu_res.renderer,
                 &self.runner,
-                &mut self.scene,
+                scene,
                 &self.plugins,
                 &mut self.config,
                 out_view,
             );
         }
 
-        self.internal_plugins.run_gpu_systems(gpu_res, &mut self.scene, &mut self.runner, true);
+        self.internal_plugins.run_gpu_systems(gpu_res, scene, &mut self.runner, true);
         // Clear the click state once processed, so this doesnt keep running
-        self.scene.get_current_cam().unwrap().clear_click(&mut self.scene);
+        camera.clear_click(scene);
 
         self.runner.first_time = false;
         self.runner.frame_is_started = false;
@@ -1176,8 +1334,24 @@ impl Viewer {
         let _ = event_loop.run_app(self);
     }
 
+    // #[cfg(target_arch = "wasm32")]
+    // pub fn run(mut self, scene_init_fn: Option<Box<dyn FnOnce(&mut Scene) -> Pin<Box<dyn Future<Output = ()> + 'static>>>>) {
+    //     self.scene_init_fn = scene_init_fn;
+    //     let event_loop = self.runner.event_loop.take().unwrap();
+    //     self.runner.is_running = self.runner.autostart;
+    //     let _ = event_loop.spawn_app(self);
+    // }
     #[cfg(target_arch = "wasm32")]
-    pub fn run(mut self) {
+    pub fn run<F, Fut>(mut self, f: F)
+    where
+        F: FnOnce(Scene) -> Fut + 'static,
+        Fut: Future<Output = Scene> + 'static,
+    {
+        // Create a wrapper that converts the user function to our expected type
+        let wrapper: SceneInitFn = Box::new(move |scene: Scene| Box::pin(f(scene)));
+
+        self.scene_init_func = Some(wrapper);
+
         let event_loop = self.runner.event_loop.take().unwrap();
         self.runner.is_running = self.runner.autostart;
         let _ = event_loop.spawn_app(self);
@@ -1220,6 +1394,25 @@ impl Viewer {
         self.runner.event_loop_proxy.send_event(event_stop).ok();
     }
 
+    fn create_scene() -> Scene {
+        let mut scene = Scene::new();
+        scene.create_camera();
+
+        // We set all the components to changed because we want them to be reuploaded to
+        // gpu. Don't set them as added because some systems rely on components being
+        // added to run only once.
+        scene.world.set_trackers_changed();
+        //add the GPU structure as a resource so systems in the ECS world can access it to schedule gpu based computations
+        // scene.add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
+
+        // self.scene = Some(scene);
+        scene
+    }
+
+    fn finalize_scene(&mut self) {
+        self.scene.as_mut().unwrap().add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
+    }
+
     fn resume(&mut self, event_loop: &ActiveEventLoop) {
         info!("RS: resume");
         self.runner.is_running = self.runner.autostart;
@@ -1233,12 +1426,15 @@ impl Viewer {
                 // We set all the components to changed because we want them to be reuploaded to
                 // gpu. Don't set them as added because some systems rely on components being
                 // added to run only once.
-                self.scene.world.set_trackers_changed(); //TODO set it to changed, and push hecs to github
+                // self.scene.world.set_trackers_changed(); //TODO set it to changed, and push hecs to github
 
-                self.gpu_res.as_mut().unwrap().request_redraw();
+                // self.gpu_res.as_mut().unwrap().request_redraw();
 
                 //add the GPU structure as a resource so systems in the ECS world can access it to schedule gpu based computations
-                self.scene.add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
+                // self.scene.add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
+
+                self.scene = Some(Self::create_scene());
+                self.finalize_scene();
             }
 
             //for wasm we have to create the gpu resources asynchronously
@@ -1276,9 +1472,14 @@ impl Viewer {
         // we lost it https://docs.rs/winit/latest/winit/event/enum.Event.html
         info!("RS: suspend");
         self.runner.is_running = false;
-        self.scene.remove_all_gpu_components();
+        if let Some(scene) = self.scene.as_mut() {
+            scene.remove_all_gpu_components();
+        }
         self.gpu_res.take();
-        self.camera.reset_all_touch_presses(&mut self.scene);
+        self.scene
+            .as_mut()
+            .map(|scene| scene.get_current_cam().map(|mut cam| cam.reset_all_touch_presses(scene)));
+        // self.camera.reset_all_touch_presses(&mut self.scene);
     }
 
     // First time we render will take longer since we have to possibly load a lot of
@@ -1315,9 +1516,13 @@ impl Viewer {
     #[allow(clippy::missing_panics_doc)]
     pub fn run_manual_plugins(&mut self) {
         {
+            if self.scene.is_none() {
+                return;
+            }
+            let scene = self.scene.as_mut().unwrap();
             // if self.gpu_res.is_some() {
             let gpu_res = self.gpu_res.as_mut().unwrap();
-            self.plugins.run_logic_systems(gpu_res, &mut self.scene, &mut self.runner, false);
+            self.plugins.run_logic_systems(gpu_res, scene, &mut self.runner, false);
             // }
         }
     }
@@ -1550,4 +1755,6 @@ pub enum CustomEvent {
     StopLoop,
     #[cfg(target_arch = "wasm32")]
     GpuResourcesReady,
+    #[cfg(target_arch = "wasm32")]
+    SceneReady,
 }

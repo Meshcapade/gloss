@@ -18,6 +18,7 @@ use gloss_hecs::Entity;
 /// manner. It contains a reference to the entity in the world so that changes
 /// done by the camera object will directly affect the entity.
 #[repr(C)]
+#[derive(Clone)]
 pub struct Camera {
     pub entity: Entity,
 }

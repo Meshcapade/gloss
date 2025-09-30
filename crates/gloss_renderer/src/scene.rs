@@ -673,6 +673,10 @@ impl Scene {
         self.name2entity.get(GLOSS_FLOOR_NAME).is_some()
     }
 
+    pub fn create_camera(&mut self) {
+        Camera::new(GLOSS_CAM_NAME, self, false);
+    }
+
     pub fn remove_all_gpu_components(&mut self) {
         //TODO this is very brittle, need to somehow mark the gpu components somehow
         let mut command_buffer = CommandBuffer::new();

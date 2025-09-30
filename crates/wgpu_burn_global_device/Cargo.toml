@@ -28,6 +28,7 @@ wgpu.workspace=true
 once_cell.workspace=true
 burn.workspace=true
 burn-cubecl.workspace=true
+log.workspace=true
 
 
 [lints]

@@ -2264,6 +2264,7 @@ name = "gloss-burn-multibackend"
 version = "0.7.0"
 dependencies = [
  "burn",
+ "log",
  "once_cell",
  "wgpu-burn-global-device",
 ]
@@ -2347,6 +2348,8 @@ dependencies = [
  "enum-map",
  "env_logger",
  "epaint",
+ "futures",
+ "futures-lite",
  "gloss-geometry",
  "gloss-hecs",
  "gloss-img",
@@ -2749,9 +2752,9 @@ dependencies = [
 
 [[package]]
 name = "indoc"
-version = "2.0.5"
+version = "2.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b248f5224d1d606005e02c97f5aa4e88eeb230488bcc03bc9ca4d7991399f2b5"
+checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
 
 [[package]]
 name = "inflections"
@@ -2770,9 +2773,9 @@ dependencies = [
 
 [[package]]
 name = "inventory"
-version = "0.3.19"
+version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54b12ebb6799019b044deaf431eadfe23245b259bba5a2c0796acec3943a3cdb"
+checksum = "bc61209c082fbeb19919bee74b176221b27223e27b65d781eb91af24eb1fb46e"
 dependencies = [
  "rustversion",
 ]
@@ -5104,9 +5107,9 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "unindent"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7de7d73e1754487cb58364ee906a499937a0dfabd86bcb980fa99ec8c8fa2ce"
+checksum = "7264e107f553ccae879d21fbea1d6724ac785e8c3bfc762137959b5802826ef3"
 
 [[package]]
 name = "unty"
@@ -5327,6 +5330,7 @@ dependencies = [
  "burn",
  "burn-cubecl",
  "cubecl",
+ "log",
  "once_cell",
  "wgpu",
 ]
