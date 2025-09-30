@@ -754,7 +754,7 @@ impl Viewer {
                     None => FileType::Unknown,
                 };
                 match filetype {
-                    FileType::Obj | FileType::Ply => {
+                    FileType::Obj | FileType::Ply | FileType::Gltf => {
                         let builder = builders::build_from_file(path);
                         let name = self.scene.get_unused_name();
                         self.scene.get_or_create_entity(&name).insert_builder(builder);

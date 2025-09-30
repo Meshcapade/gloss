@@ -368,6 +368,39 @@ impl GenericImg {
         }
     }
 
+    /// Creates a `GenericImg` from raw pixel data
+    /// # Panics
+    /// Will panic if the image cannot be created from the raw pixel data or if an invalid number of channels is provided.
+    pub fn new_from_raw_pixels(pixels: Vec<u8>, width: u32, height: u32, channels: u8, config: &ImgConfig) -> Self {
+        use image::{DynamicImage, GrayAlphaImage, GrayImage, RgbImage, RgbaImage};
+
+        let cpu_img = match channels {
+            1 => {
+                let gray_img = GrayImage::from_raw(width, height, pixels).expect("Failed to create grayscale image from raw pixels");
+                Some(DynamicImage::ImageLuma8(gray_img))
+            }
+            2 => {
+                let gray_alpha_img = GrayAlphaImage::from_raw(width, height, pixels).expect("Failed to create grayscale+alpha image from raw pixels");
+                Some(DynamicImage::ImageLumaA8(gray_alpha_img))
+            }
+            3 => {
+                let rgb_img = RgbImage::from_raw(width, height, pixels).expect("Failed to create RGB image from raw pixels");
+                Some(DynamicImage::ImageRgb8(rgb_img))
+            }
+            4 => {
+                let rgba_img = RgbaImage::from_raw(width, height, pixels).expect("Failed to create RGBA image from raw pixels");
+                Some(DynamicImage::ImageRgba8(rgba_img))
+            }
+            _ => panic!("Unsupported number of channels: {channels}. Supported: 1 (Luma), 2 (LumaA), 3 (RGB), 4 (RGBA)"),
+        };
+
+        Self {
+            path: None,
+            cpu_img: cpu_img.map(|v| v.try_into().unwrap()),
+            config: config.clone(),
+        }
+    }
+
     pub fn img_ref(&self) -> &DynImage {
         self.cpu_img.as_ref().unwrap()
     }
@@ -403,6 +436,11 @@ impl DiffuseImg {
         let generic_img = GenericImg::new_from_reader(reader, config);
         Self { generic_img }
     }
+
+    pub fn new_from_raw_pixels(pixels: Vec<u8>, width: u32, height: u32, channels: u8, config: &ImgConfig) -> Self {
+        let generic_img = GenericImg::new_from_raw_pixels(pixels, width, height, channels, config);
+        Self { generic_img }
+    }
 }
 
 /// Component which represents a normal img.
@@ -431,6 +469,11 @@ impl NormalImg {
         let generic_img = GenericImg::new_from_reader(reader, config);
         Self { generic_img }
     }
+
+    pub fn new_from_raw_pixels(pixels: Vec<u8>, width: u32, height: u32, channels: u8, config: &ImgConfig) -> Self {
+        let generic_img = GenericImg::new_from_raw_pixels(pixels, width, height, channels, config);
+        Self { generic_img }
+    }
 }
 
 /// Component which represents a metalness img.
@@ -455,6 +498,11 @@ impl MetalnessImg {
 
     pub fn new_from_reader<R: Read + Seek>(reader: R, config: &ImgConfig) -> Self {
         let generic_img = GenericImg::new_from_reader(reader, config);
+        Self { generic_img }
+    }
+
+    pub fn new_from_raw_pixels(pixels: Vec<u8>, width: u32, height: u32, channels: u8, config: &ImgConfig) -> Self {
+        let generic_img = GenericImg::new_from_raw_pixels(pixels, width, height, channels, config);
         Self { generic_img }
     }
 }
@@ -482,6 +530,11 @@ impl RoughnessImg {
 
     pub fn new_from_reader<R: Read + Seek>(reader: R, config: &ImgConfig) -> Self {
         let generic_img = GenericImg::new_from_reader(reader, config);
+        Self { generic_img }
+    }
+
+    pub fn new_from_raw_pixels(pixels: Vec<u8>, width: u32, height: u32, channels: u8, config: &ImgConfig) -> Self {
+        let generic_img = GenericImg::new_from_raw_pixels(pixels, width, height, channels, config);
         Self { generic_img }
     }
 }

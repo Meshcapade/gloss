@@ -80,6 +80,7 @@ use strum_macros::EnumIter;
 pub enum FileType {
     Obj,
     Ply,
+    Gltf,
     Unknown,
 }
 impl FileType {
@@ -87,6 +88,7 @@ impl FileType {
         match self {
             Self::Obj => &["obj"],
             Self::Ply => &["ply"],
+            Self::Gltf => &["gltf", "glb"],
             // Self::Ply => &["ply"],
             Self::Unknown => &[""],
         }

@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)] //a lot of operations require inserting or removing component from a entity but
                                       // the entity will for sure exists so it will never panic
 
-use crate::components::{Colors, Edges};
+use crate::components::{Colors, DiffuseImg, Edges, ImgConfig};
 use gloss_hecs::EntityBuilder;
 use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorInt2D};
 use log::debug;
@@ -343,6 +343,7 @@ pub fn build_from_file(path: &str) -> EntityBuilder {
     match filetype {
         FileType::Obj => build_from_obj(Path::new(path)),
         FileType::Ply => build_from_ply(Path::new(path)),
+        FileType::Gltf => build_from_gltf(Path::new(path)),
         FileType::Unknown => {
             error!("Could not read file {path:?}");
             EntityBuilder::new() //empty builder
@@ -638,4 +639,258 @@ fn build_from_ply(path: &Path) -> EntityBuilder {
     }
 
     builder
+}
+
+/// # Panics
+/// Will panic if the path cannot be opened
+#[allow(clippy::too_many_lines)]
+fn build_from_gltf(path: &Path) -> EntityBuilder {
+    info!("reading gltf from {path:?}");
+
+    let (gltf, buffers, images) = gltf::import(path).expect("Failed to load GLTF file");
+
+    let mut builder = EntityBuilder::new();
+
+    // Accumulate data from all meshes and primitives
+    let mut all_positions = Vec::new();
+    let mut all_indices = Vec::new();
+    let mut all_normals = Vec::new();
+    let mut all_tex_coords = Vec::new();
+    let mut all_colors = Vec::new();
+
+    // Track textures to ensure we only have one
+    let mut found_texture: Option<usize> = None;
+    let mut has_multiple_textures = false;
+
+    //since we are merging multiple meshes, we need to offset the face indices
+    let mut vertex_offset = 0u32;
+
+    // Process all nodes to find mesh instances with their transformations
+    for scene in gltf.scenes() {
+        for node in scene.nodes() {
+            process_gltf_node(
+                &node,
+                &na::Matrix4::identity(),
+                &buffers,
+                &mut all_positions,
+                &mut all_indices,
+                &mut all_normals,
+                &mut all_tex_coords,
+                &mut all_colors,
+                &mut vertex_offset,
+                &mut found_texture,
+                &mut has_multiple_textures,
+            );
+        }
+    }
+
+    // Add accumulated data to builder
+    let nr_verts = all_positions.len() / 3;
+    if !all_positions.is_empty() {
+        debug!("gltf: total nr positions {nr_verts}");
+
+        let verts = DMatrix::<f32>::from_row_slice(nr_verts, 3, &all_positions);
+        let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
+        builder.add(Verts(verts_tensor));
+    }
+
+    if !all_indices.is_empty() {
+        let nr_faces = all_indices.len() / 3;
+        debug!("gltf: total nr indices {}", all_indices.len());
+
+        let faces = DMatrix::<u32>::from_row_slice(nr_faces, 3, &all_indices);
+        let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
+        builder.add(Faces(faces_tensor));
+    }
+
+    if !all_normals.is_empty() {
+        let nr_normals = all_normals.len() / 3;
+        debug!("gltf: total nr normals {nr_normals}");
+
+        let normals_mat = DMatrix::<f32>::from_row_slice(nr_normals, 3, &all_normals);
+        let normals_tensor = DynamicTensorFloat2D::from_dmatrix(&normals_mat);
+        builder.add(Normals(normals_tensor));
+    }
+
+    if !all_tex_coords.is_empty() {
+        let nr_uvs = all_tex_coords.len() / 2;
+        debug!("gltf: total nr tex_coords {nr_uvs}");
+
+        let uvs = DMatrix::<f32>::from_row_slice(nr_uvs, 2, &all_tex_coords);
+        let uvs_tensor = DynamicTensorFloat2D::from_dmatrix(&uvs);
+        //if for some reason the number fo uvs does not match the number of vertices, we discard the uvs
+        if uvs.nrows() == nr_verts {
+            builder.add(UVs(uvs_tensor));
+        } else {
+            warn!(
+                "gltf: number of uvs {} does not match number of vertices {}, discarding uvs",
+                uvs.nrows(),
+                nr_verts
+            );
+        }
+    }
+
+    if !all_colors.is_empty() {
+        let nr_colors = all_colors.len() / 3;
+        debug!("gltf: total nr colors {nr_colors}");
+
+        let colors_mat = DMatrix::<f32>::from_row_slice(nr_colors, 3, &all_colors);
+        let colors_tensor = DynamicTensorFloat2D::from_dmatrix(&colors_mat);
+        builder.add(Colors(colors_tensor));
+    }
+
+    // Add texture if we found exactly one
+    if let Some(texture_index) = found_texture {
+        if !has_multiple_textures && texture_index < images.len() {
+            debug!("gltf: adding diffuse texture from image index {texture_index}");
+            let image_data = &images[texture_index];
+
+            // Convert the image data to the format expected by DiffuseImg
+            // Assuming DiffuseImg expects RGBA data
+            let img_data = match image_data.format {
+                gltf::image::Format::R8G8B8 => {
+                    // Convert RGB to RGBA by adding alpha channel
+                    let mut rgba_data = Vec::with_capacity(image_data.pixels.len() * 4 / 3);
+                    for chunk in image_data.pixels.chunks(3) {
+                        rgba_data.extend_from_slice(chunk);
+                        rgba_data.push(255); // Add full alpha
+                    }
+                    rgba_data
+                }
+                gltf::image::Format::R8G8B8A8 => image_data.pixels.clone(),
+                _ => {
+                    warn!("gltf: unsupported image format {:?}, skipping texture", image_data.format);
+                    Vec::new()
+                }
+            };
+
+            if !img_data.is_empty() {
+                let diffuse_img: DiffuseImg =
+                    DiffuseImg::new_from_raw_pixels(img_data, image_data.width, image_data.height, 4, &ImgConfig::default());
+                // don't flip the image but rather flip the uv coords
+                // diffuse_img.generic_img.cpu_img = Some(diffuse_img.generic_img.cpu_img.as_ref().unwrap().flipv());
+                builder.add(diffuse_img);
+            }
+        } else if has_multiple_textures {
+            warn!("gltf: multiple different textures found, discarding all textures");
+        }
+    }
+
+    builder
+}
+
+// Recursive function to process a GLTF node and its children, applying transformations and adding data to accumulator of position, indices, etc.
+#[allow(clippy::too_many_arguments)]
+fn process_gltf_node(
+    node: &gltf::Node,
+    parent_transform: &na::Matrix4<f32>,
+    buffers: &[gltf::buffer::Data],
+    all_positions: &mut Vec<f32>,
+    all_indices: &mut Vec<u32>,
+    all_normals: &mut Vec<f32>,
+    all_tex_coords: &mut Vec<f32>,
+    all_colors: &mut Vec<f32>,
+    vertex_offset: &mut u32,
+    found_texture: &mut Option<usize>,
+    has_multiple_textures: &mut bool,
+) {
+    // Get node transform - GLTF uses column-major matrices
+    let transform_array = node.transform().matrix();
+    let transform_slice: Vec<f32> = transform_array.iter().flatten().copied().collect();
+    let node_transform = na::Matrix4::from_column_slice(&transform_slice);
+    let combined_transform = parent_transform * node_transform;
+
+    // Process mesh if present
+    if let Some(mesh) = node.mesh() {
+        // info!("gltf: processing mesh {:?} with transform", mesh.name());
+
+        for primitive in mesh.primitives() {
+            let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+
+            // Check for diffuse texture
+            if let Some(base_color_texture) = primitive.material().pbr_metallic_roughness().base_color_texture() {
+                let texture_index = base_color_texture.texture().source().index();
+
+                match found_texture {
+                    None => {
+                        *found_texture = Some(texture_index);
+                        debug!("gltf: found first texture at index {texture_index}");
+                    }
+                    Some(existing_index) => {
+                        if *existing_index != texture_index {
+                            *has_multiple_textures = true;
+                            debug!("gltf: found different texture at index {texture_index}, marking as multiple textures");
+                        }
+                    }
+                }
+            }
+
+            // Read and transform vertices
+            if let Some(positions) = reader.read_positions() {
+                let positions: Vec<[f32; 3]> = positions.collect();
+                for pos in positions {
+                    let point = na::Point3::new(pos[0], pos[1], pos[2]);
+                    let transformed = combined_transform.transform_point(&point);
+                    all_positions.extend_from_slice(transformed.coords.as_slice());
+                }
+            }
+
+            // Read faces/indices with reindexing
+            if let Some(indices) = reader.read_indices() {
+                let indices: Vec<u32> = indices.into_u32().map(|i| i + *vertex_offset).collect();
+                all_indices.extend(indices);
+            }
+
+            // Read and transform normals
+            if let Some(normals) = reader.read_normals() {
+                let normals: Vec<[f32; 3]> = normals.collect();
+                // For normals, we use the inverse transpose of the transformation matrix
+                // to correctly handle non-uniform scaling, For uniform scaling the inverse and then the transpose will be the same as the original matrix
+                let normal_transform = combined_transform.try_inverse().unwrap_or(na::Matrix4::identity()).transpose();
+                for normal in normals {
+                    let n = na::Vector3::new(normal[0], normal[1], normal[2]);
+                    let transformed = (normal_transform * n.to_homogeneous()).xyz().normalize();
+                    all_normals.extend_from_slice(transformed.as_slice());
+                }
+            }
+
+            // Read UV coordinates (no transformation needed)
+            if let Some(tex_coords) = reader.read_tex_coords(0) {
+                let mut tex_coords: Vec<f32> = tex_coords.into_f32().flatten().collect();
+                //flip up down
+                tex_coords.chunks_exact_mut(2).for_each(|chunk| {
+                    chunk[1] = 1.0 - chunk[1];
+                });
+                all_tex_coords.extend(tex_coords);
+            }
+
+            // Read vertex colors
+            if let Some(colors) = reader.read_colors(0) {
+                let colors: Vec<f32> = colors.into_rgb_f32().flatten().collect();
+                all_colors.extend(colors);
+            }
+
+            // Update vertex offset for next primitive
+            if let Some(positions) = reader.read_positions() {
+                *vertex_offset += u32::try_from(positions.count()).unwrap();
+            }
+        }
+    }
+
+    // Recursively process child nodes
+    for child in node.children() {
+        process_gltf_node(
+            &child,
+            &combined_transform,
+            buffers,
+            all_positions,
+            all_indices,
+            all_normals,
+            all_tex_coords,
+            all_colors,
+            vertex_offset,
+            found_texture,
+            has_multiple_textures,
+        );
+    }
 }
