@@ -11,6 +11,7 @@ use gloss_utils::{
     tensor::{DynamicTensorFloat2D, DynamicTensorInt2D},
 };
 use image::ImageReader;
+use log::warn;
 use na::DMatrix;
 use std::io::{BufReader, Cursor, Read, Seek};
 // use burn::backend::{Candle, NdArray, Wgpu};
@@ -240,6 +241,20 @@ impl ModelMatrix {
         let mut mat = self;
         mat.0.append_rotation_mut(&na::Rotation3::from_euler_angles(e.x, e.y, e.z));
         mat
+    }
+    #[must_use]
+    pub fn interpolate(&self, other: &Self, other_weight: f32) -> Self {
+        if !(0.0..=1.0).contains(&other_weight) {
+            warn!("pose interpolation weight is outside the [0,1] range, will clamp. Weight is {other_weight}");
+        }
+        let other_weight = other_weight.clamp(0.0, 1.0);
+
+        let lerp_isometry = self.0.isometry.lerp_slerp(&other.0.isometry, other_weight);
+        let lerp_scaling = self.0.scaling() * (1.0 - other_weight) + other.0.scaling() * other_weight;
+
+        let lerp_similarity = na::SimilarityMatrix3::from_parts(lerp_isometry.translation, lerp_isometry.rotation, lerp_scaling);
+
+        ModelMatrix(lerp_similarity)
     }
 }
 
