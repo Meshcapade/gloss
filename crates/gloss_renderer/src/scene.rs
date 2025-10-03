@@ -8,9 +8,9 @@ use crate::{
     builders,
     camera::Camera,
     components::{
-        CamController, ColorsGPU, DiffuseImg, DiffuseTex, EdgesGPU, EnvironmentMapGpu, FacesGPU, ImgConfig, LightEmit, MeshColorType, MetalnessTex,
-        ModelMatrix, Name, NormalTex, NormalsGPU, PosLookat, Projection, ProjectionWithFov, Renderable, RoughnessTex, ShadowCaster, ShadowMap,
-        TangentsGPU, UVsGPU, Verts, VertsGPU, VisLines, VisMesh, VisPoints,
+        BoundingBox, CamController, ColorsGPU, DiffuseImg, DiffuseTex, EdgesGPU, EnvironmentMapGpu, FacesGPU, ImgConfig, LightEmit, MeshColorType,
+        MetalnessTex, ModelMatrix, Name, NormalTex, NormalsGPU, PosLookat, Projection, ProjectionWithFov, Renderable, RoughnessTex, ShadowCaster,
+        ShadowMap, TangentsGPU, UVsGPU, Verts, VertsGPU, VisLines, VisMesh, VisPoints,
     },
     config::{Config, FloorTexture, FloorType, LightConfig},
     light::Light,
@@ -333,6 +333,16 @@ impl Scene {
             max_point_global = max_point_global.sup(&max_point_w);
         }
 
+        //for entities that have no verts, but have a bounding box, we compute the bounding points based on that.
+        //this can happen for entities that are created directly on gpu, and they have only VertsGPU and no Verts components.
+        for (_entity, (bbox, name, _)) in self.world.query::<(&BoundingBox, &Name, &Renderable)>().without::<&Verts>().iter() {
+            if name.0 == GLOSS_FLOOR_NAME {
+                continue;
+            }
+            min_point_global = min_point_global.inf(&bbox.min);
+            max_point_global = max_point_global.sup(&bbox.max);
+        }
+
         (min_point_global, max_point_global)
     }
 
@@ -354,6 +364,15 @@ impl Scene {
             let v_world = geom::transform_verts(&verts.0.to_dmatrix(), &model_matrix.0);
             let min_y_cur = v_world.column(1).min();
             min_y_global = min_y_global.min(min_y_cur);
+        }
+
+        //for entities that have no verts, but have a bounding box, we compute the min_y based on that.
+        //this can happen for entities that are created directly on gpu, and they have only VertsGPU and no Verts components.
+        for (_entity, (bbox, name, _)) in self.world.query::<(&BoundingBox, &Name, &Renderable)>().without::<&Verts>().iter() {
+            if name.0 == GLOSS_FLOOR_NAME {
+                continue;
+            }
+            min_y_global = min_y_global.min(bbox.min.y);
         }
 
         min_y_global

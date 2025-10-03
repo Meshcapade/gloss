@@ -21,9 +21,9 @@ use ply_rs::{parser, ply};
 
 /// Creates a cube
 #[must_use]
-pub fn build_cube(center: na::Point3<f32>) -> EntityBuilder {
+pub fn build_cube(center: na::Point3<f32>, scale: f32) -> EntityBuilder {
     //makes a 1x1x1 vox in NDC. which has Z going into the screen
-    let verts = DMatrix::<f32>::from_row_slice(
+    let mut verts = DMatrix::<f32>::from_row_slice(
         8,
         3,
         &[
@@ -40,6 +40,7 @@ pub fn build_cube(center: na::Point3<f32>) -> EntityBuilder {
             -1.0, 1.0, 1.0, //top-left
         ],
     );
+    verts *= scale;
 
     //faces (2 triangles per faces, with 6 faces which makes 12 triangles)
     let faces = DMatrix::<u32>::from_row_slice(

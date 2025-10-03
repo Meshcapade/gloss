@@ -603,6 +603,35 @@ impl EnvironmentMap {
     }
 }
 
+/// Component for storing approximate bounding vertices around an object.
+/// Useful for computing scale of objects created on GPU directly which have only `VertsGPU` and no Verts component
+#[derive(Clone)]
+pub struct BoundingBox {
+    pub min: na::Point3<f32>,
+    pub max: na::Point3<f32>,
+}
+impl BoundingBox {
+    pub fn new(min: na::Point3<f32>, max: na::Point3<f32>) -> Self {
+        Self { min, max }
+    }
+    pub fn from_center_and_scale(center: &na::Point3<f32>, scale: &na::Vector3<f32>) -> Self {
+        let half_scale = scale / 2.0;
+        Self {
+            min: na::Point3::from(center.coords - half_scale),
+            max: na::Point3::from(center.coords + half_scale),
+        }
+    }
+    pub fn center(&self) -> na::Point3<f32> {
+        na::Point3::from((self.min.coords + self.max.coords) / 2.0)
+    }
+    pub fn size(&self) -> na::Vector3<f32> {
+        self.max.coords - self.min.coords
+    }
+    pub fn diagonal_length(&self) -> f32 {
+        (self.max.coords - self.min.coords).norm()
+    }
+}
+
 // /so we can use the Components inside the Mutex<Hashmap> in the scene and wasm
 // https://stackoverflow.com/a/73773940/22166964
 // shenanigans

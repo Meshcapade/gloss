@@ -10,7 +10,7 @@ fn main() {
     viewer
         .scene()
         .get_or_create_entity("cube")
-        .insert_builder(builders::build_cube(na::Point3::<f32>::new(0.0, 1.0, 0.0)))
+        .insert_builder(builders::build_cube(na::Point3::<f32>::new(0.0, 1.0, 0.0), 1.0))
         .insert(VisMesh {
             solid_color: na::Vector4::<f32>::new(1.0, 1.0, 0.0, 1.0),
             ..Default::default()

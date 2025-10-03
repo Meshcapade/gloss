@@ -18,7 +18,7 @@ if __name__ == "__main__":
     cam = visualiser.get_camera()
 
     cube = visualiser.get_or_create_entity(name="cube")
-    cube.insert_builder(builders.build_cube(center=[0, 0, 0]))
+    cube.insert_builder(builders.build_cube(center=[0, 0, 0], scale=1.0))
 
     model_matrix = (
         ModelMatrix.default()

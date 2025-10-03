@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # Create an empty entity, attach a cube builder to it, and add to Visualiser scene
     # ``name`` is a unique identifier for an entity
     cube = viewer.get_or_create_entity(name="Cube")
-    cube.insert_builder(builders.build_cube(center=[0, 1.0, 0]))
+    cube.insert_builder(builders.build_cube(center=[0, 1.0, 0], scale=1.0))
 
     # Set Camera parameters
     cam.set_position([1.0, 2.5, 5.0])  # xyz right-hand coordinate system
