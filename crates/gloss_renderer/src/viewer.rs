@@ -110,18 +110,6 @@ impl GpuResources {
         canvas_id_parsed: Option<&String>,
         config: &Config,
     ) -> Self {
-        cfg_if::cfg_if! {
-                if #[cfg(target_arch = "wasm32")]{
-                    let webgpu_capable = is_browser_webgpu_supported().await;
-                    info!("Is browser webgpu supported: {webgpu_capable}");
-            }
-        }
-        let mut can_use_cubecl = true;
-        #[cfg(target_arch = "wasm32")]
-        {
-            can_use_cubecl &= webgpu_capable;
-        }
-
         let instance = wgpu::util::new_instance_with_webgpu_detection(&wgpu::InstanceDescriptor {
             backends: supported_backends(),
             flags: wgpu::InstanceFlags::default(),
@@ -147,6 +135,15 @@ impl GpuResources {
         }
         let adapter = get_adapter(&instance, Some(&surface)).await;
         info!("Selected adapter: {:?}", adapter.get_info());
+
+        // Check if we are on wasm and if the browser supports webgpu and cubecl
+        let mut can_use_cubecl = adapter.get_info().backend != wgpu::Backend::Gl;
+        #[cfg(target_arch = "wasm32")]
+        {
+            let webgpu_capable = is_browser_webgpu_supported().await;
+            info!("Is browser webgpu supported: {webgpu_capable}");
+            can_use_cubecl &= webgpu_capable;
+        }
 
         //TODO if the adapter is not a discrete Nvidia gpu, disable the wgpu to pytorch
         // interop
