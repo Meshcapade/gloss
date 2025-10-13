@@ -237,8 +237,9 @@ impl FloatTensorOps<Self> for MultiBackend {
         unimplemented!()
     }
     fn float_lower_elem(lhs: MultiFloatTensor, rhs: f32) -> MultiBoolTensor {
-        unimplemented!()
+        ops_tensor_rest_ret_bool!(float(lhs, rhs) => float_lower_elem)
     }
+
     fn float_lower_equal(lhs: MultiFloatTensor, rhs: MultiFloatTensor) -> MultiBoolTensor {
         unimplemented!()
     }

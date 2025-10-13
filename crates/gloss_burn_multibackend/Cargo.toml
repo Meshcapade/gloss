@@ -13,7 +13,7 @@ repository.workspace = true
 
 [features]
 # default = ["burn-candle"]
-default = ["burn-candle","burn-wgpu"]
+default = ["burn-ndarray", "burn-candle","burn-wgpu"]
 burn-candle = []
 burn-ndarray = []
 burn-wgpu = []

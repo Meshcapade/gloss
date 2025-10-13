@@ -4795,7 +4795,6 @@ dependencies = [
 name = "tensor_router"
 version = "0.1.0"
 dependencies = [
- "burn",
  "gloss-renderer",
  "nalgebra",
  "ndarray",
