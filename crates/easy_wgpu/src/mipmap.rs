@@ -13,7 +13,7 @@ use wgpu::{
 };
 
 /// Generates mipmaps for textures with output attachment usage.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RenderMipmapGenerator {
     sampler: Sampler,
     layout_cache: HashMap<TextureSampleType, BindGroupLayout>,

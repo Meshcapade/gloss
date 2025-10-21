@@ -4,6 +4,7 @@
 
 use easy_wgpu::texture::TexParams;
 use ktx2;
+use pollster::FutureExt;
 use wgpu;
 
 #[derive(Debug)]
@@ -193,11 +194,60 @@ pub struct FacesGPU {
     pub nr_triangles: u32,
 }
 
+#[derive(Clone)]
 pub struct DiffuseTex(pub easy_wgpu::texture::Texture);
+
+#[derive(Clone)]
 pub struct NormalTex(pub easy_wgpu::texture::Texture);
+
+#[derive(Clone)]
 pub struct MetalnessTex(pub easy_wgpu::texture::Texture);
+
+#[derive(Clone)]
 pub struct RoughnessTex(pub easy_wgpu::texture::Texture);
 
+pub trait TextureGetter {
+    fn texture(&self) -> &easy_wgpu::texture::Texture;
+    fn texture_mut(&mut self) -> &mut easy_wgpu::texture::Texture;
+}
+
+impl TextureGetter for DiffuseTex {
+    fn texture_mut(&mut self) -> &mut easy_wgpu::texture::Texture {
+        &mut self.0
+    }
+    fn texture(&self) -> &easy_wgpu::texture::Texture {
+        &self.0
+    }
+}
+
+impl TextureGetter for NormalTex {
+    fn texture_mut(&mut self) -> &mut easy_wgpu::texture::Texture {
+        &mut self.0
+    }
+    fn texture(&self) -> &easy_wgpu::texture::Texture {
+        &self.0
+    }
+}
+
+impl TextureGetter for MetalnessTex {
+    fn texture_mut(&mut self) -> &mut easy_wgpu::texture::Texture {
+        &mut self.0
+    }
+    fn texture(&self) -> &easy_wgpu::texture::Texture {
+        &self.0
+    }
+}
+
+impl TextureGetter for RoughnessTex {
+    fn texture_mut(&mut self) -> &mut easy_wgpu::texture::Texture {
+        &mut self.0
+    }
+    fn texture(&self) -> &easy_wgpu::texture::Texture {
+        &self.0
+    }
+}
+
+#[derive(Clone)]
 pub struct EnvironmentMapGpu {
     pub diffuse_tex: easy_wgpu::texture::Texture,
     pub specular_tex: easy_wgpu::texture::Texture,
@@ -247,7 +297,9 @@ impl EnvironmentMapGpu {
         // Read iterator over slices of each mipmap level.
         let levels = reader.levels().collect::<Vec<_>>();
         for (mip, level_data) in levels.iter().enumerate() {
-            easy_wgpu::texture::Texture::upload_single_mip(&texture, device, queue, &desc, level_data, None, u32::try_from(mip).unwrap());
+            easy_wgpu::texture::Texture::upload_single_mip(&texture, device, queue, &desc, level_data, None, u32::try_from(mip).unwrap())
+                .block_on()
+                .unwrap();
         }
 
         //view and sampler

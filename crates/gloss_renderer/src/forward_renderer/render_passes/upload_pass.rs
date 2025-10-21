@@ -8,13 +8,15 @@ use crate::{
     camera::Camera,
     components::{
         Colors, ColorsGPU, DiffuseImg, DiffuseTex, Edges, EdgesV1, EdgesV1GPU, EdgesV2, EdgesV2GPU, EnvironmentMap, EnvironmentMapGpu, Faces,
-        FacesGPU, GpuAtrib, LightEmit, MeshColorType, Name, NormalImg, NormalTex, Normals, NormalsGPU, PosLookat, Projection, ProjectionWithFov,
-        Renderable, RoughnessImg, RoughnessTex, ShadowCaster, Tangents, TangentsGPU, UVs, UVsGPU, Verts, VertsGPU, VisMesh,
+        FacesGPU, GenericImageGetter, GpuAtrib, LightEmit, MeshColorType, Name, NormalImg, NormalTex, Normals, NormalsGPU, PosLookat, Projection,
+        ProjectionWithFov, Renderable, RoughnessImg, RoughnessTex, ShadowCaster, Tangents, TangentsGPU, TextureGetter, UVs, UVsGPU, Verts, VertsGPU,
+        VisMesh,
     },
     config::RenderConfig,
     scene::Scene,
 };
 
+// use abi_stable::reexports::SelfOps;
 use easy_wgpu::{
     bind_group::BindGroupBuilder,
     bind_group_layout::{BindGroupLayoutBuilder, BindGroupLayoutDesc},
@@ -28,13 +30,23 @@ use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorO
 use gloss_hecs::{Changed, CommandBuffer, Component, Entity};
 use gloss_utils::numerical::{align, align_usz};
 use log::{debug, info, warn};
+#[cfg(not(target_arch = "wasm32"))]
+use pollster::FutureExt;
 use std::collections::HashMap;
+#[cfg(target_arch = "wasm32")]
+use std::sync::mpsc;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_futures;
 use wgpu::util::DeviceExt;
 
 use encase;
 
 pub const MAX_NUM_LIGHTS: usize = 20; //lower than 20 causes wasm to throw error because the uniform is too small..
 pub const MAX_NUM_SHADOWS: usize = 3; //HAS to be lower than MAX_NUM_LIGHTS.
+
+// pub struct PendingDiffuseUpload;
+// pub struct PendingNormalUpload;
+// pub struct PendingRoughnessUpload;
 
 pub fn index_vertices_from_edges(matrix: &na::DMatrix<f32>, v_indices: &na::DMatrix<u32>, col_id: usize) -> na::DMatrix<f32> {
     let index_slice = v_indices.column(col_id).into_owned();
@@ -49,6 +61,83 @@ pub fn index_vertices_from_edges(matrix: &na::DMatrix<f32>, v_indices: &na::DMat
     na::DMatrix::from_rows(&selected_rows)
 }
 
+trait TextureUploadable {
+    type Img: Component + Clone + GenericImageGetter;
+    type Tex: Component + Clone + TextureGetter;
+
+    fn tex_name() -> &'static str;
+    fn new_tex(texture: Texture) -> Self::Tex;
+    fn is_srgb() -> bool;
+    #[cfg(target_arch = "wasm32")]
+    fn texture_receiver(upload_pass: &mut UploadPass) -> &mut Option<mpsc::Receiver<(Entity, Self::Tex)>>;
+}
+
+struct DiffuseUploadable;
+impl TextureUploadable for DiffuseUploadable {
+    type Img = DiffuseImg;
+    type Tex = DiffuseTex;
+
+    fn tex_name() -> &'static str {
+        "diffuse"
+    }
+    fn new_tex(texture: Texture) -> Self::Tex {
+        DiffuseTex(texture)
+    }
+
+    fn is_srgb() -> bool {
+        true
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn texture_receiver(upload_pass: &mut UploadPass) -> &mut Option<mpsc::Receiver<(Entity, Self::Tex)>> {
+        &mut upload_pass.diffuse_receiver
+    }
+}
+
+struct NormalUploadable;
+impl TextureUploadable for NormalUploadable {
+    type Img = NormalImg;
+    type Tex = NormalTex;
+
+    fn tex_name() -> &'static str {
+        "normal"
+    }
+    fn new_tex(texture: Texture) -> Self::Tex {
+        NormalTex(texture)
+    }
+
+    fn is_srgb() -> bool {
+        false
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn texture_receiver(upload_pass: &mut UploadPass) -> &mut Option<mpsc::Receiver<(Entity, Self::Tex)>> {
+        &mut upload_pass.normal_receiver
+    }
+}
+
+struct RoughnessUploadable;
+impl TextureUploadable for RoughnessUploadable {
+    type Img = RoughnessImg;
+    type Tex = RoughnessTex;
+
+    fn tex_name() -> &'static str {
+        "roughness"
+    }
+    fn new_tex(texture: Texture) -> Self::Tex {
+        RoughnessTex(texture)
+    }
+
+    fn is_srgb() -> bool {
+        false
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn texture_receiver(upload_pass: &mut UploadPass) -> &mut Option<mpsc::Receiver<(Entity, Self::Tex)>> {
+        &mut upload_pass.roughness_receiver
+    }
+}
+
 /// Upload pass which uploads to GPU any data that is necessary, like vertex
 /// buffers for meshes and camera parameters.
 pub struct UploadPass {
@@ -58,6 +147,12 @@ pub struct UploadPass {
     //the local stuff that changes from mesh to mesh is allocated by each pass, because each pass might need something different from the mesh
     pub command_buffer: CommandBuffer, //defer insertions and deletion of scene entities for whenever we apply this command buffer
     pub staging_buffer: Option<Buffer>,
+    #[cfg(target_arch = "wasm32")]
+    diffuse_receiver: Option<mpsc::Receiver<(Entity, DiffuseTex)>>,
+    #[cfg(target_arch = "wasm32")]
+    normal_receiver: Option<mpsc::Receiver<(Entity, NormalTex)>>,
+    #[cfg(target_arch = "wasm32")]
+    roughness_receiver: Option<mpsc::Receiver<(Entity, RoughnessTex)>>,
 }
 
 impl UploadPass {
@@ -69,21 +164,6 @@ impl UploadPass {
         const_assert!(std::mem::size_of::<PerFrameParamsCPU>() % 16 == 0);
 
         let per_frame_uniforms = PerFrameUniforms::new(gpu);
-
-        // cfg_if::cfg_if! {
-        //     if #[cfg(target_arch = "wasm32")] {
-        //         let mipmapper= None;
-        //     }else{
-        //         let mipmapper = Some(RenderMipmapGenerator::new_with_format_hints(
-        //             gpu.device(),
-        //             &[
-        //                 wgpu::TextureFormat::Rgba8Unorm, //for normal maps
-        //                 wgpu::TextureFormat::Rgba8UnormSrgb, //for diffuse maps
-        //                 wgpu::TextureFormat::R8Unorm, //for roughness maps
-        //             ],
-        //         ));
-        //     }
-        // }
 
         let mipmapper = Some(RenderMipmapGenerator::new_with_format_hints(
             gpu.device(),
@@ -116,6 +196,12 @@ impl UploadPass {
             mipmapper,
             command_buffer,
             staging_buffer,
+            #[cfg(target_arch = "wasm32")]
+            diffuse_receiver: None,
+            #[cfg(target_arch = "wasm32")]
+            normal_receiver: None,
+            #[cfg(target_arch = "wasm32")]
+            roughness_receiver: None,
         }
     }
 
@@ -139,9 +225,12 @@ impl UploadPass {
     }
 
     pub fn upload_textures(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        self.upload_diffuse_tex(gpu, scene);
-        self.upload_normal_tex(gpu, scene);
-        self.upload_roughness_tex(gpu, scene);
+        #[cfg(target_arch = "wasm32")]
+        self.process_completed_texture_uploads(scene);
+
+        self.upload_texture::<DiffuseUploadable>(gpu, scene);
+        self.upload_texture::<NormalUploadable>(gpu, scene);
+        self.upload_texture::<RoughnessUploadable>(gpu, scene);
         self.upload_environment_map(gpu, scene);
     }
 
@@ -295,26 +384,53 @@ impl UploadPass {
         self.command_buffer.run_on(&mut scene.world);
     }
 
-    fn upload_diffuse_tex(&mut self, gpu: &Gpu, scene: &mut Scene) {
+    #[cfg(target_arch = "wasm32")]
+    // Insert textures to entity once they are completed
+    fn process_completed_texture_uploads(&mut self, scene: &mut Scene) {
+        if let Some(receiver) = &self.diffuse_receiver {
+            while let Ok((entity, diffuse_tex)) = receiver.try_recv() {
+                self.command_buffer.insert_one(entity, diffuse_tex);
+                // let _ = scene.world.remove_one::<PendingDiffuseUpload>(entity);
+            }
+        }
+
+        if let Some(receiver) = &self.normal_receiver {
+            while let Ok((entity, normal_tex)) = receiver.try_recv() {
+                self.command_buffer.insert_one(entity, normal_tex);
+                // let _ = scene.world.remove_one::<PendingNormalUpload>(entity);
+            }
+        }
+
+        if let Some(receiver) = &self.roughness_receiver {
+            while let Ok((entity, roughness_tex)) = receiver.try_recv() {
+                self.command_buffer.insert_one(entity, roughness_tex);
+                // let _ = scene.world.remove_one::<PendingRoughnessUpload>(entity);
+            }
+        }
+        self.command_buffer.run_on(&mut scene.world);
+    }
+    #[allow(clippy::too_many_lines)]
+    fn upload_texture<T: TextureUploadable>(&mut self, gpu: &Gpu, scene: &mut Scene) {
         let mut modified_entities = Vec::new();
         {
             let mut query = scene
                 .world
-                .query::<(&mut DiffuseImg, Option<&mut DiffuseTex>, Changed<DiffuseImg>)>()
+                .query::<(&mut T::Img, Option<&mut T::Tex>, Changed<T::Img>)>()
                 .with::<&Renderable>();
+
             for (entity, (mut img, tex_opt, changed_img)) in query.iter() {
-                if changed_img && img.generic_img.cpu_img.is_some() {
-                    debug!("DiffuseImg changed for entity {entity:?}");
-                    let nr_channels = img.generic_img.img_ref().color().channel_count();
+                if changed_img && img.generic_img().cpu_img.is_some() {
+                    debug!("{} changed for entity {entity:?}", T::tex_name());
+                    let nr_channels = img.generic_img().img_ref().color().channel_count();
                     if nr_channels != 4 {
                         warn!("unoptimal use of memory: diffuse does not have 4 channels, it has {nr_channels}");
                     }
                     modified_entities.push(entity);
-                    let is_srgb = true; //only true for diffuse since they are in srgb space in the png but we want to
-                                        // sample linear colors
-                                        // let tex = Texture::from_path(&img.0, gpu.device(), gpu.queue(), is_srgb);
-                    let keep_on_cpu = img.generic_img.config.keep_on_cpu;
-                    let staging_buffer = if img.generic_img.config.fast_upload {
+                    let is_srgb = T::is_srgb(); //only true for diffuse since they are in srgb space in the png but we want to sample linear colors
+                    let keep_on_cpu = img.generic_img().config.keep_on_cpu;
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let staging_buffer = if img.generic_img().config.fast_upload {
                         None
                     } else {
                         //using slow upload through a preallocated staging buffer
@@ -326,44 +442,141 @@ impl UploadPass {
 
                     //either create a new tex or update the existing one
                     let mut tex_uploaded = false;
+                    #[allow(unused_mut)]
                     if let Some(mut existing_tex) = tex_opt {
-                        let new_tex_extent = Texture::extent_from_img(img.generic_img.img_ref());
-                        let new_tex_format = Texture::format_from_img(img.generic_img.img_ref(), is_srgb);
-                        let old_tex_extent = existing_tex.0.extent();
-                        let old_format = existing_tex.0.texture.format();
+                        let new_tex_extent = Texture::extent_from_img(img.generic_img().img_ref());
+                        let new_tex_format = Texture::format_from_img(img.generic_img().img_ref(), is_srgb);
+                        let old_tex_extent = existing_tex.texture().extent();
+                        let old_format = existing_tex.texture().texture.format();
                         if new_tex_format == old_format && new_tex_extent == old_tex_extent {
                             debug!("reusing diffuse tex");
-                            existing_tex.0.update_from_img(
-                                img.generic_img.img_ref(),
-                                gpu.device(),
-                                gpu.queue(),
-                                is_srgb,
-                                img.generic_img.config.generate_mipmaps,
-                                img.generic_img.config.mipmap_generation_cpu,
-                                staging_buffer,
-                                self.mipmapper.as_ref(),
-                            );
+
+                            #[cfg(not(target_arch = "wasm32"))]
+                            {
+                                existing_tex
+                                    .texture_mut()
+                                    .update_from_img(
+                                        img.generic_img().img_ref(),
+                                        gpu.device(),
+                                        gpu.queue(),
+                                        is_srgb,
+                                        img.generic_img().config.generate_mipmaps,
+                                        img.generic_img().config.mipmap_generation_cpu,
+                                        staging_buffer,
+                                        self.mipmapper.as_ref(),
+                                    )
+                                    .block_on()
+                                    .unwrap();
+                            }
+
+                            #[cfg(target_arch = "wasm32")]
+                            {
+                                let (_sender, receiver) = mpsc::channel();
+                                let texture_receiver = T::texture_receiver(self);
+                                if texture_receiver.is_none() {
+                                    *texture_receiver = Some(receiver);
+                                }
+                                // We can safely clone a lot of the wgpu types because internally they are behind arcs
+                                let img_clone = img.generic_img().img_ref().clone();
+                                let device = gpu.device().clone();
+                                let queue = gpu.queue().clone();
+                                let generate_mipmaps = img.generic_img().config.generate_mipmaps;
+                                let mipmap_generation_cpu = img.generic_img().config.mipmap_generation_cpu;
+                                let mipmapper_clone = self.mipmapper.clone();
+                                let mut existing_tex_clone = existing_tex.clone();
+
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    match existing_tex_clone
+                                        .texture_mut()
+                                        .update_from_img(
+                                            &img_clone,
+                                            &device,
+                                            &queue,
+                                            is_srgb,
+                                            generate_mipmaps,
+                                            mipmap_generation_cpu,
+                                            None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+                                            mipmapper_clone.as_ref(),
+                                        )
+                                        .await
+                                    {
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            log::error!("Texture update failed: {:?}", e);
+                                        }
+                                    }
+                                });
+
+                                // Mark entity as having pending upload
+                                // self.command_buffer.insert_one(entity, PendingDiffuseUpload);
+                            }
+
                             tex_uploaded = true;
                         }
                     }
                     //we create a new one if we couldn't update an existing one
                     if !tex_uploaded {
-                        let tex = Texture::from_img(
-                            img.generic_img.img_ref(),
-                            gpu.device(),
-                            gpu.queue(),
-                            is_srgb,
-                            img.generic_img.config.generate_mipmaps,
-                            img.generic_img.config.mipmap_generation_cpu,
-                            staging_buffer,
-                            self.mipmapper.as_ref(),
-                        );
-                        self.command_buffer.insert_one(entity, DiffuseTex(tex));
+                        #[cfg(not(target_arch = "wasm32"))]
+                        {
+                            let tex = Texture::from_img(
+                                img.generic_img().img_ref(),
+                                gpu.device(),
+                                gpu.queue(),
+                                is_srgb,
+                                img.generic_img().config.generate_mipmaps,
+                                img.generic_img().config.mipmap_generation_cpu,
+                                staging_buffer,
+                                self.mipmapper.as_ref(),
+                            )
+                            .block_on()
+                            .unwrap();
+                            self.command_buffer.insert_one(entity, T::new_tex(tex));
+                        }
+                        #[cfg(target_arch = "wasm32")]
+                        {
+                            let (sender, receiver) = mpsc::channel();
+                            let texture_receiver = T::texture_receiver(self);
+                            if texture_receiver.is_none() {
+                                *texture_receiver = Some(receiver);
+                            }
+
+                            let img_clone = img.generic_img().img_ref().clone();
+                            let device = gpu.device().clone();
+                            let queue = gpu.queue().clone();
+                            let generate_mipmaps = img.generic_img().config.generate_mipmaps;
+                            let mipmap_generation_cpu = img.generic_img().config.mipmap_generation_cpu;
+                            let mipmapper_clone = self.mipmapper.clone();
+
+                            wasm_bindgen_futures::spawn_local(async move {
+                                match Texture::from_img(
+                                    &img_clone,
+                                    &device,
+                                    &queue,
+                                    is_srgb,
+                                    generate_mipmaps,
+                                    mipmap_generation_cpu,
+                                    None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+                                    mipmapper_clone.as_ref(),
+                                )
+                                .await
+                                {
+                                    Ok(texture) => {
+                                        let _ = sender.send((entity, T::new_tex(texture)));
+                                    }
+                                    Err(e) => {
+                                        log::error!("Texture creation failed: {:?}", e);
+                                    }
+                                }
+                            });
+
+                            // Mark entity as having pending upload
+                            // self.command_buffer.insert_one(entity, PendingDiffuseUpload);
+                        }
                     }
 
                     if !keep_on_cpu {
                         // self.command_buffer.remove_one::<DiffuseImg>(entity);
-                        let _ = img.generic_img.cpu_img.take();
+                        let _ = img.generic_img_mut().cpu_img.take();
                     }
                 }
             }
@@ -381,175 +594,555 @@ impl UploadPass {
         self.command_buffer.run_on(&mut scene.world);
     }
 
-    fn upload_normal_tex(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let mut modified_entities = Vec::new();
-        {
-            let mut query = scene
-                .world
-                .query::<(&mut NormalImg, Option<&mut NormalTex>, Changed<NormalImg>)>()
-                .with::<&Renderable>();
-            for (entity, (mut img, tex_opt, changed_img)) in query.iter() {
-                if changed_img && img.generic_img.cpu_img.is_some() {
-                    debug!("NormalImg changed for entity {entity:?}");
-                    let nr_channels = img.generic_img.img_ref().color().channel_count();
-                    if nr_channels != 4 {
-                        warn!("unoptimal use of memory: normal does not have 4 channels, it has {nr_channels}");
-                    }
-                    modified_entities.push(entity);
-                    let is_srgb = false; //only true for diffuse since they are in srgb space in the png but we want to
-                                         // sample linear colors
-                    let keep_on_cpu = img.generic_img.config.keep_on_cpu;
-                    let staging_buffer = if img.generic_img.config.fast_upload {
-                        None
-                    } else {
-                        //using slow upload through a preallocated staging buffer
-                        if self.staging_buffer.is_none() {
-                            warn!("The normal image is set to slow upload which would require a preallocated staging buffer. However no bytes have been allocated for it. Check the config.toml for the preallocated_staging_buffer. Now we default to fast upload through wgpu staging buffer which might use more memory than necessary.");
-                        }
-                        self.staging_buffer.as_ref()
-                    };
+    // #[allow(clippy::too_many_lines)]
+    // fn upload_diffuse_tex(&mut self, gpu: &Gpu, scene: &mut Scene) {
+    //     let mut modified_entities = Vec::new();
+    //     {
+    //         let mut query = scene
+    //             .world
+    //             .query::<(&mut DiffuseImg, Option<&mut DiffuseTex>, Changed<DiffuseImg>)>()
+    //             .with::<&Renderable>();
 
-                    //either create a new tex or update the existing one
-                    let mut tex_uploaded = false;
-                    if let Some(mut existing_tex) = tex_opt {
-                        let new_tex_extent = Texture::extent_from_img(img.generic_img.img_ref());
-                        let new_tex_format = Texture::format_from_img(img.generic_img.img_ref(), is_srgb);
-                        let old_tex_extent = existing_tex.0.extent();
-                        let old_format = existing_tex.0.texture.format();
-                        if new_tex_format == old_format && new_tex_extent == old_tex_extent {
-                            debug!("reusing normal tex");
-                            existing_tex.0.update_from_img(
-                                img.generic_img.img_ref(),
-                                gpu.device(),
-                                gpu.queue(),
-                                is_srgb,
-                                img.generic_img.config.generate_mipmaps,
-                                img.generic_img.config.mipmap_generation_cpu,
-                                staging_buffer,
-                                self.mipmapper.as_ref(),
-                            );
-                            tex_uploaded = true;
-                        }
-                    }
-                    //we create a new one if we couldn't update an existing one
-                    if !tex_uploaded {
-                        let tex = Texture::from_img(
-                            img.generic_img.img_ref(),
-                            gpu.device(),
-                            gpu.queue(),
-                            is_srgb,
-                            img.generic_img.config.generate_mipmaps,
-                            img.generic_img.config.mipmap_generation_cpu,
-                            staging_buffer,
-                            self.mipmapper.as_ref(),
-                        );
-                        self.command_buffer.insert_one(entity, NormalTex(tex));
-                    }
+    //         for (entity, (mut img, tex_opt, changed_img)) in query.iter() {
+    //             if changed_img && img.generic_img.cpu_img.is_some() {
+    //                 debug!("DiffuseImg changed for entity {entity:?}");
+    //                 let nr_channels = img.generic_img.img_ref().color().channel_count();
+    //                 if nr_channels != 4 {
+    //                     warn!("unoptimal use of memory: diffuse does not have 4 channels, it has {nr_channels}");
+    //                 }
+    //                 modified_entities.push(entity);
+    //                 let is_srgb = true; //only true for diffuse since they are in srgb space in the png but we want to sample linear colors
+    //                 let keep_on_cpu = img.generic_img.config.keep_on_cpu;
 
-                    if !keep_on_cpu {
-                        // self.command_buffer.remove_one::<NormalImg>(entity);
-                        let _ = img.generic_img.cpu_img.take();
-                    }
-                }
-            }
+    //                 #[cfg(not(target_arch = "wasm32"))]
+    //                 let staging_buffer = if img.generic_img.config.fast_upload {
+    //                     None
+    //                 } else {
+    //                     //using slow upload through a preallocated staging buffer
+    //                     if self.staging_buffer.is_none() {
+    //                         warn!("The diffuse image is set to slow upload which would require a preallocated staging buffer. However no bytes have been allocated for it. Check the config.toml for the preallocated_staging_buffer. Now we default to fast upload through wgpu staging buffer which might use more memory than necessary.");
+    //                     }
+    //                     self.staging_buffer.as_ref()
+    //                 };
 
-            //set those meshes to actually visualize the mesh
-            for entity in modified_entities {
-                if let Ok(mut vis_mesh) = scene.get_comp::<&mut VisMesh>(&entity) {
-                    if vis_mesh.added_automatically {
-                        vis_mesh.color_type = MeshColorType::Texture;
-                    }
-                }
-            }
-        }
+    //                 //either create a new tex or update the existing one
+    //                 let mut tex_uploaded = false;
+    //                 #[allow(unused_mut)]
+    //                 if let Some(mut existing_tex) = tex_opt {
+    //                     let new_tex_extent = Texture::extent_from_img(img.generic_img.img_ref());
+    //                     let new_tex_format = Texture::format_from_img(img.generic_img.img_ref(), is_srgb);
+    //                     let old_tex_extent = existing_tex.0.extent();
+    //                     let old_format = existing_tex.0.texture.format();
+    //                     if new_tex_format == old_format && new_tex_extent == old_tex_extent {
+    //                         debug!("reusing diffuse tex");
 
-        self.command_buffer.run_on(&mut scene.world);
-    }
+    //                         #[cfg(not(target_arch = "wasm32"))]
+    //                         {
+    //                             existing_tex
+    //                                 .0
+    //                                 .update_from_img(
+    //                                     img.generic_img.img_ref(),
+    //                                     gpu.device(),
+    //                                     gpu.queue(),
+    //                                     is_srgb,
+    //                                     img.generic_img.config.generate_mipmaps,
+    //                                     img.generic_img.config.mipmap_generation_cpu,
+    //                                     staging_buffer,
+    //                                     self.mipmapper.as_ref(),
+    //                                 )
+    //                                 .block_on()
+    //                                 .unwrap();
+    //                         }
 
-    fn upload_roughness_tex(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let mut modified_entities = Vec::new();
-        {
-            let mut query = scene
-                .world
-                .query::<(&mut RoughnessImg, Option<&mut RoughnessTex>, Changed<RoughnessImg>)>()
-                .with::<&Renderable>();
-            for (entity, (mut img, tex_opt, changed_img)) in query.iter() {
-                if changed_img && img.generic_img.cpu_img.is_some() {
-                    debug!("RoughnessImg changed for entity {entity:?}");
-                    let nr_channels = img.generic_img.img_ref().color().channel_count();
-                    if nr_channels != 1 {
-                        warn!("unoptimal use of memory: roughness does not have 1 channels, it has {nr_channels}");
-                    }
-                    modified_entities.push(entity);
-                    let is_srgb = false; //only true for diffuse since they are in srgb space in the png but we want to
-                                         // sample linear colors
-                    let keep_on_cpu = img.generic_img.config.keep_on_cpu;
-                    let staging_buffer = if img.generic_img.config.fast_upload {
-                        None
-                    } else {
-                        //using slow upload through a preallocated staging buffer
-                        if self.staging_buffer.is_none() {
-                            warn!("The roughness image is set to slow upload which would require a preallocated staging buffer. However no bytes have been allocated for it. Check the config.toml for the preallocated_staging_buffer. Now we default to fast upload through wgpu staging buffer which might use more memory than necessary.");
-                        }
-                        self.staging_buffer.as_ref()
-                    };
+    //                         #[cfg(target_arch = "wasm32")]
+    //                         {
+    //                             let (_sender, receiver) = mpsc::channel();
+    //                             if self.diffuse_receiver.is_none() {
+    //                                 self.diffuse_receiver = Some(receiver);
+    //                             }
+    //                             // We can safely clone a lot of the wgpu types because internally they are behind arcs
+    //                             let img_clone = img.generic_img.img_ref().clone();
+    //                             let device = gpu.device().clone();
+    //                             let queue = gpu.queue().clone();
+    //                             let generate_mipmaps = img.generic_img.config.generate_mipmaps;
+    //                             let mipmap_generation_cpu = img.generic_img.config.mipmap_generation_cpu;
+    //                             let mipmapper_clone = self.mipmapper.clone();
+    //                             let mut existing_tex_clone = existing_tex.clone();
 
-                    //either create a new tex or update the existing one
-                    let mut tex_uploaded = false;
-                    if let Some(mut existing_tex) = tex_opt {
-                        let new_tex_extent = Texture::extent_from_img(img.generic_img.img_ref());
-                        let new_tex_format = Texture::format_from_img(img.generic_img.img_ref(), is_srgb);
-                        let old_tex_extent = existing_tex.0.extent();
-                        let old_format = existing_tex.0.texture.format();
-                        if new_tex_format == old_format && new_tex_extent == old_tex_extent {
-                            debug!("reusing roughness tex");
-                            existing_tex.0.update_from_img(
-                                img.generic_img.img_ref(),
-                                gpu.device(),
-                                gpu.queue(),
-                                is_srgb,
-                                img.generic_img.config.generate_mipmaps,
-                                img.generic_img.config.mipmap_generation_cpu,
-                                staging_buffer,
-                                self.mipmapper.as_ref(),
-                            );
-                            tex_uploaded = true;
-                        }
-                    }
-                    //we create a new one if we couldn't update an existing one
-                    if !tex_uploaded {
-                        let tex = Texture::from_img(
-                            img.generic_img.img_ref(),
-                            gpu.device(),
-                            gpu.queue(),
-                            is_srgb,
-                            img.generic_img.config.generate_mipmaps,
-                            img.generic_img.config.mipmap_generation_cpu,
-                            staging_buffer,
-                            self.mipmapper.as_ref(),
-                        );
-                        self.command_buffer.insert_one(entity, RoughnessTex(tex));
-                    }
+    //                             wasm_bindgen_futures::spawn_local(async move {
+    //                                 match existing_tex_clone
+    //                                     .0
+    //                                     .update_from_img(
+    //                                         &img_clone,
+    //                                         &device,
+    //                                         &queue,
+    //                                         is_srgb,
+    //                                         generate_mipmaps,
+    //                                         mipmap_generation_cpu,
+    //                                         None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+    //                                         mipmapper_clone.as_ref(),
+    //                                     )
+    //                                     .await
+    //                                 {
+    //                                     Ok(_) => {}
+    //                                     Err(e) => {
+    //                                         log::error!("Texture update failed: {:?}", e);
+    //                                     }
+    //                                 }
+    //                             });
 
-                    if !keep_on_cpu {
-                        // self.command_buffer.remove_one::<RoughnessImg>(entity);
-                        let _ = img.generic_img.cpu_img.take();
-                    }
-                }
-            }
+    //                             // Mark entity as having pending upload
+    //                             // self.command_buffer.insert_one(entity, PendingDiffuseUpload);
+    //                         }
 
-            //set those meshes to actually visualize the mesh
-            for entity in modified_entities {
-                if let Ok(mut vis_mesh) = scene.get_comp::<&mut VisMesh>(&entity) {
-                    if vis_mesh.added_automatically {
-                        vis_mesh.color_type = MeshColorType::Texture;
-                    }
-                }
-            }
-        }
+    //                         tex_uploaded = true;
+    //                     }
+    //                 }
+    //                 //we create a new one if we couldn't update an existing one
+    //                 if !tex_uploaded {
+    //                     #[cfg(not(target_arch = "wasm32"))]
+    //                     {
+    //                         let tex = Texture::from_img(
+    //                             img.generic_img.img_ref(),
+    //                             gpu.device(),
+    //                             gpu.queue(),
+    //                             is_srgb,
+    //                             img.generic_img.config.generate_mipmaps,
+    //                             img.generic_img.config.mipmap_generation_cpu,
+    //                             staging_buffer,
+    //                             self.mipmapper.as_ref(),
+    //                         )
+    //                         .block_on()
+    //                         .unwrap();
+    //                         self.command_buffer.insert_one(entity, DiffuseTex(tex));
+    //                     }
+    //                     #[cfg(target_arch = "wasm32")]
+    //                     {
+    //                         let (sender, receiver) = mpsc::channel();
+    //                         if self.diffuse_receiver.is_none() {
+    //                             self.diffuse_receiver = Some(receiver);
+    //                         }
 
-        self.command_buffer.run_on(&mut scene.world);
-    }
+    //                         let img_clone = img.generic_img.img_ref().clone();
+    //                         let device = gpu.device().clone();
+    //                         let queue = gpu.queue().clone();
+    //                         let generate_mipmaps = img.generic_img.config.generate_mipmaps;
+    //                         let mipmap_generation_cpu = img.generic_img.config.mipmap_generation_cpu;
+    //                         let mipmapper_clone = self.mipmapper.clone();
+
+    //                         wasm_bindgen_futures::spawn_local(async move {
+    //                             match Texture::from_img(
+    //                                 &img_clone,
+    //                                 &device,
+    //                                 &queue,
+    //                                 is_srgb,
+    //                                 generate_mipmaps,
+    //                                 mipmap_generation_cpu,
+    //                                 None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+    //                                 mipmapper_clone.as_ref(),
+    //                             )
+    //                             .await
+    //                             {
+    //                                 Ok(texture) => {
+    //                                     let _ = sender.send((entity, DiffuseTex(texture)));
+    //                                 }
+    //                                 Err(e) => {
+    //                                     log::error!("Texture creation failed: {:?}", e);
+    //                                 }
+    //                             }
+    //                         });
+
+    //                         // Mark entity as having pending upload
+    //                         // self.command_buffer.insert_one(entity, PendingDiffuseUpload);
+    //                     }
+    //                 }
+
+    //                 if !keep_on_cpu {
+    //                     // self.command_buffer.remove_one::<DiffuseImg>(entity);
+    //                     let _ = img.generic_img.cpu_img.take();
+    //                 }
+    //             }
+    //         }
+
+    //         //set those meshes to actually visualize the mesh
+    //         for entity in modified_entities {
+    //             // let mut vis_mesh = scene.get_comp::<&mut VisMesh>(&entity);
+    //             if let Ok(mut vis_mesh) = scene.get_comp::<&mut VisMesh>(&entity) {
+    //                 if vis_mesh.added_automatically {
+    //                     vis_mesh.color_type = MeshColorType::Texture;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     self.command_buffer.run_on(&mut scene.world);
+    // }
+
+    // #[allow(clippy::too_many_lines)]
+    // fn upload_normal_tex(&mut self, gpu: &Gpu, scene: &mut Scene) {
+    //     let mut modified_entities = Vec::new();
+    //     {
+    //         let mut query = scene
+    //             .world
+    //             .query::<(&mut NormalImg, Option<&mut NormalTex>, Changed<NormalImg>)>()
+    //             .with::<&Renderable>();
+    //         for (entity, (mut img, tex_opt, changed_img)) in query.iter() {
+    //             if changed_img && img.generic_img.cpu_img.is_some() {
+    //                 debug!("NormalImg changed for entity {entity:?}");
+    //                 let nr_channels = img.generic_img.img_ref().color().channel_count();
+    //                 if nr_channels != 4 {
+    //                     warn!("unoptimal use of memory: normal does not have 4 channels, it has {nr_channels}");
+    //                 }
+    //                 modified_entities.push(entity);
+    //                 let is_srgb = false; //only true for diffuse since they are in srgb space in the png but we want to sample linear colors
+    //                 let keep_on_cpu = img.generic_img.config.keep_on_cpu;
+
+    //                 #[cfg(not(target_arch = "wasm32"))]
+    //                 let staging_buffer = if img.generic_img.config.fast_upload {
+    //                     None
+    //                 } else {
+    //                     //using slow upload through a preallocated staging buffer
+    //                     if self.staging_buffer.is_none() {
+    //                         warn!("The normal image is set to slow upload which would require a preallocated staging buffer. However no bytes have been allocated for it. Check the config.toml for the preallocated_staging_buffer. Now we default to fast upload through wgpu staging buffer which might use more memory than necessary.");
+    //                     }
+    //                     self.staging_buffer.as_ref()
+    //                 };
+
+    //                 //either create a new tex or update the existing one
+    //                 let mut tex_uploaded = false;
+    //                 #[allow(unused_mut)]
+    //                 if let Some(mut existing_tex) = tex_opt {
+    //                     let new_tex_extent = Texture::extent_from_img(img.generic_img.img_ref());
+    //                     let new_tex_format = Texture::format_from_img(img.generic_img.img_ref(), is_srgb);
+    //                     let old_tex_extent = existing_tex.0.extent();
+    //                     let old_format = existing_tex.0.texture.format();
+    //                     if new_tex_format == old_format && new_tex_extent == old_tex_extent {
+    //                         debug!("reusing normal tex");
+
+    //                         #[cfg(not(target_arch = "wasm32"))]
+    //                         {
+    //                             existing_tex
+    //                                 .0
+    //                                 .update_from_img(
+    //                                     img.generic_img.img_ref(),
+    //                                     gpu.device(),
+    //                                     gpu.queue(),
+    //                                     is_srgb,
+    //                                     img.generic_img.config.generate_mipmaps,
+    //                                     img.generic_img.config.mipmap_generation_cpu,
+    //                                     staging_buffer,
+    //                                     self.mipmapper.as_ref(),
+    //                                 )
+    //                                 .block_on()
+    //                                 .unwrap();
+    //                         }
+
+    //                         #[cfg(target_arch = "wasm32")]
+    //                         {
+    //                             let (_sender, receiver) = mpsc::channel();
+    //                             if self.normal_receiver.is_none() {
+    //                                 self.normal_receiver = Some(receiver);
+    //                             }
+    //                             // We can safely clone a lot of the wgpu types because internally they are behind arcs
+    //                             let img_clone = img.generic_img.img_ref().clone();
+    //                             let device = gpu.device().clone();
+    //                             let queue = gpu.queue().clone();
+    //                             let generate_mipmaps = img.generic_img.config.generate_mipmaps;
+    //                             let mipmap_generation_cpu = img.generic_img.config.mipmap_generation_cpu;
+    //                             let mipmapper_clone = self.mipmapper.clone();
+    //                             let mut existing_tex_clone = existing_tex.clone();
+
+    //                             wasm_bindgen_futures::spawn_local(async move {
+    //                                 match existing_tex_clone
+    //                                     .0
+    //                                     .update_from_img(
+    //                                         &img_clone,
+    //                                         &device,
+    //                                         &queue,
+    //                                         is_srgb,
+    //                                         generate_mipmaps,
+    //                                         mipmap_generation_cpu,
+    //                                         None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+    //                                         mipmapper_clone.as_ref(),
+    //                                     )
+    //                                     .await
+    //                                 {
+    //                                     Ok(_) => {}
+    //                                     Err(e) => {
+    //                                         log::error!("Texture update failed: {:?}", e);
+    //                                     }
+    //                                 }
+    //                             });
+
+    //                             // Mark entity as having pending upload
+    //                             // self.command_buffer.insert_one(entity, PendingNormalUpload);
+    //                         }
+
+    //                         tex_uploaded = true;
+    //                     }
+    //                 }
+    //                 //we create a new one if we couldn't update an existing one
+    //                 if !tex_uploaded {
+    //                     #[cfg(not(target_arch = "wasm32"))]
+    //                     {
+    //                         let tex = Texture::from_img(
+    //                             img.generic_img.img_ref(),
+    //                             gpu.device(),
+    //                             gpu.queue(),
+    //                             is_srgb,
+    //                             img.generic_img.config.generate_mipmaps,
+    //                             img.generic_img.config.mipmap_generation_cpu,
+    //                             staging_buffer,
+    //                             self.mipmapper.as_ref(),
+    //                         )
+    //                         .block_on()
+    //                         .unwrap();
+    //                         self.command_buffer.insert_one(entity, NormalTex(tex));
+    //                     }
+
+    //                     #[cfg(target_arch = "wasm32")]
+    //                     {
+    //                         let (sender, receiver) = mpsc::channel();
+    //                         if self.normal_receiver.is_none() {
+    //                             self.normal_receiver = Some(receiver);
+    //                         }
+
+    //                         let img_clone = img.generic_img.img_ref().clone();
+    //                         let device = gpu.device().clone();
+    //                         let queue = gpu.queue().clone();
+    //                         let generate_mipmaps = img.generic_img.config.generate_mipmaps;
+    //                         let mipmap_generation_cpu = img.generic_img.config.mipmap_generation_cpu;
+    //                         let mipmapper_clone = self.mipmapper.clone();
+
+    //                         wasm_bindgen_futures::spawn_local(async move {
+    //                             match Texture::from_img(
+    //                                 &img_clone,
+    //                                 &device,
+    //                                 &queue,
+    //                                 is_srgb,
+    //                                 generate_mipmaps,
+    //                                 mipmap_generation_cpu,
+    //                                 None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+    //                                 mipmapper_clone.as_ref(),
+    //                             )
+    //                             .await
+    //                             {
+    //                                 Ok(texture) => {
+    //                                     let _ = sender.send((entity, NormalTex(texture)));
+    //                                 }
+    //                                 Err(e) => {
+    //                                     log::error!("Texture creation failed: {:?}", e);
+    //                                 }
+    //                             }
+    //                         });
+
+    //                         // Mark entity as having pending upload
+    //                         // self.command_buffer.insert_one(entity, PendingNormalUpload);
+    //                     }
+    //                 }
+
+    //                 if !keep_on_cpu {
+    //                     // self.command_buffer.remove_one::<NormalImg>(entity);
+    //                     let _ = img.generic_img.cpu_img.take();
+    //                 }
+    //             }
+    //         }
+
+    //         //set those meshes to actually visualize the mesh
+    //         for entity in modified_entities {
+    //             if let Ok(mut vis_mesh) = scene.get_comp::<&mut VisMesh>(&entity) {
+    //                 if vis_mesh.added_automatically {
+    //                     vis_mesh.color_type = MeshColorType::Texture;
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     self.command_buffer.run_on(&mut scene.world);
+    // }
+
+    // #[allow(clippy::too_many_lines)]
+    // fn upload_roughness_tex(&mut self, gpu: &Gpu, scene: &mut Scene) {
+    //     let mut modified_entities = Vec::new();
+    //     {
+    //         let mut query = scene
+    //             .world
+    //             .query::<(&mut RoughnessImg, Option<&mut RoughnessTex>, Changed<RoughnessImg>)>()
+    //             .with::<&Renderable>();
+    //         for (entity, (mut img, tex_opt, changed_img)) in query.iter() {
+    //             if changed_img && img.generic_img.cpu_img.is_some() {
+    //                 debug!("RoughnessImg changed for entity {entity:?}");
+    //                 let nr_channels = img.generic_img.img_ref().color().channel_count();
+    //                 if nr_channels != 1 {
+    //                     warn!("unoptimal use of memory: roughness does not have 1 channels, it has {nr_channels}");
+    //                 }
+    //                 modified_entities.push(entity);
+    //                 let is_srgb = false; //only true for diffuse since they are in srgb space in the png but we want to
+    //                                      // sample linear colors
+    //                 let keep_on_cpu = img.generic_img.config.keep_on_cpu;
+
+    //                 #[cfg(not(target_arch = "wasm32"))]
+    //                 let staging_buffer = if img.generic_img.config.fast_upload {
+    //                     None
+    //                 } else {
+    //                     //using slow upload through a preallocated staging buffer
+    //                     if self.staging_buffer.is_none() {
+    //                         warn!("The roughness image is set to slow upload which would require a preallocated staging buffer. However no bytes have been allocated for it. Check the config.toml for the preallocated_staging_buffer. Now we default to fast upload through wgpu staging buffer which might use more memory than necessary.");
+    //                     }
+    //                     self.staging_buffer.as_ref()
+    //                 };
+
+    //                 //either create a new tex or update the existing one
+    //                 let mut tex_uploaded = false;
+    //                 #[allow(unused_mut)]
+    //                 if let Some(mut existing_tex) = tex_opt {
+    //                     let new_tex_extent = Texture::extent_from_img(img.generic_img.img_ref());
+    //                     let new_tex_format = Texture::format_from_img(img.generic_img.img_ref(), is_srgb);
+    //                     let old_tex_extent = existing_tex.0.extent();
+    //                     let old_format = existing_tex.0.texture.format();
+    //                     if new_tex_format == old_format && new_tex_extent == old_tex_extent {
+    //                         debug!("reusing roughness tex");
+
+    //                         #[cfg(not(target_arch = "wasm32"))]
+    //                         {
+    //                             existing_tex
+    //                                 .0
+    //                                 .update_from_img(
+    //                                     img.generic_img.img_ref(),
+    //                                     gpu.device(),
+    //                                     gpu.queue(),
+    //                                     is_srgb,
+    //                                     img.generic_img.config.generate_mipmaps,
+    //                                     img.generic_img.config.mipmap_generation_cpu,
+    //                                     staging_buffer,
+    //                                     self.mipmapper.as_ref(),
+    //                                 )
+    //                                 .block_on()
+    //                                 .unwrap();
+    //                         }
+
+    //                         #[cfg(target_arch = "wasm32")]
+    //                         {
+    //                             let (_sender, receiver) = mpsc::channel();
+    //                             if self.roughness_receiver.is_none() {
+    //                                 self.roughness_receiver = Some(receiver);
+    //                             }
+    //                             // We can safely clone a lot of the wgpu types because internally they are behind arcs
+    //                             let img_clone = img.generic_img.img_ref().clone();
+    //                             let device = gpu.device().clone();
+    //                             let queue = gpu.queue().clone();
+    //                             let generate_mipmaps = img.generic_img.config.generate_mipmaps;
+    //                             let mipmap_generation_cpu = img.generic_img.config.mipmap_generation_cpu;
+    //                             let mipmapper_clone = self.mipmapper.clone();
+    //                             let mut existing_tex_clone = existing_tex.clone();
+
+    //                             wasm_bindgen_futures::spawn_local(async move {
+    //                                 match existing_tex_clone
+    //                                     .0
+    //                                     .update_from_img(
+    //                                         &img_clone,
+    //                                         &device,
+    //                                         &queue,
+    //                                         is_srgb,
+    //                                         generate_mipmaps,
+    //                                         mipmap_generation_cpu,
+    //                                         None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+    //                                         mipmapper_clone.as_ref(),
+    //                                     )
+    //                                     .await
+    //                                 {
+    //                                     Ok(_) => {}
+    //                                     Err(e) => {
+    //                                         log::error!("Texture update failed: {:?}", e);
+    //                                     }
+    //                                 }
+    //                             });
+
+    //                             // Mark entity as having pending upload
+    //                             // self.command_buffer.insert_one(entity, PendingRoughnessUpload);
+    //                         }
+
+    //                         tex_uploaded = true;
+    //                     }
+    //                 }
+    //                 //we create a new one if we couldn't update an existing one
+    //                 if !tex_uploaded {
+    //                     #[cfg(not(target_arch = "wasm32"))]
+    //                     {
+    //                         let tex = Texture::from_img(
+    //                             img.generic_img.img_ref(),
+    //                             gpu.device(),
+    //                             gpu.queue(),
+    //                             is_srgb,
+    //                             img.generic_img.config.generate_mipmaps,
+    //                             img.generic_img.config.mipmap_generation_cpu,
+    //                             staging_buffer,
+    //                             self.mipmapper.as_ref(),
+    //                         )
+    //                         .block_on()
+    //                         .unwrap();
+    //                         self.command_buffer.insert_one(entity, RoughnessTex(tex));
+    //                     }
+
+    //                     #[cfg(target_arch = "wasm32")]
+    //                     {
+    //                         let (sender, receiver) = mpsc::channel();
+    //                         if self.roughness_receiver.is_none() {
+    //                             self.roughness_receiver = Some(receiver);
+    //                         }
+
+    //                         let img_clone = img.generic_img.img_ref().clone();
+    //                         let device = gpu.device().clone();
+    //                         let queue = gpu.queue().clone();
+    //                         let generate_mipmaps = img.generic_img.config.generate_mipmaps;
+    //                         let mipmap_generation_cpu = img.generic_img.config.mipmap_generation_cpu;
+    //                         let mipmapper_clone = self.mipmapper.clone();
+
+    //                         wasm_bindgen_futures::spawn_local(async move {
+    //                             match Texture::from_img(
+    //                                 &img_clone,
+    //                                 &device,
+    //                                 &queue,
+    //                                 is_srgb,
+    //                                 generate_mipmaps,
+    //                                 mipmap_generation_cpu,
+    //                                 None, //TODO: Forcing fast upload on WASM to avoid parking issues, look into fixes for this
+    //                                 mipmapper_clone.as_ref(),
+    //                             )
+    //                             .await
+    //                             {
+    //                                 Ok(texture) => {
+    //                                     let _ = sender.send((entity, RoughnessTex(texture)));
+    //                                 }
+    //                                 Err(e) => {
+    //                                     log::error!("Texture creation failed: {:?}", e);
+    //                                 }
+    //                             }
+    //                         });
+
+    //                         // Mark entity as having pending upload
+    //                         // self.command_buffer.insert_one(entity, PendingRoughnessUpload);
+    //                     }
+    //                 }
+
+    //                 if !keep_on_cpu {
+    //                     // self.command_buffer.remove_one::<RoughnessImg>(entity);
+    //                     let _ = img.generic_img.cpu_img.take();
+    //                 }
+    //             }
+    //         }
+
+    //         //set those meshes to actually visualize the mesh
+    //         for entity in modified_entities {
+    //             if let Ok(mut vis_mesh) = scene.get_comp::<&mut VisMesh>(&entity) {
+    //                 if vis_mesh.added_automatically {
+    //                     vis_mesh.color_type = MeshColorType::Texture;
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     self.command_buffer.run_on(&mut scene.world);
+    // }
 
     fn upload_environment_map(&mut self, gpu: &Gpu, scene: &mut Scene) {
         // if scene.has_resource::<EnvironmentMap>() {

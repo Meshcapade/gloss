@@ -169,6 +169,7 @@ impl Plugins {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) struct InternalPlugins {
     pub gpu_systems: RVec<Tuple2<GpuSystem, SystemMetadata>>,
 }
@@ -178,11 +179,13 @@ impl Default for InternalPlugins {
         Self { gpu_systems: RVec::new() }
     }
 }
+
 impl InternalPlugins {
     pub fn new() -> Self {
         Self { gpu_systems: RVec::new() }
     }
     #[allow(clippy::needless_update)]
+    #[allow(dead_code)]
     pub fn insert_plugin<T: InternalPlugin + 'static>(&mut self, plugin: &T) {
         for sys in plugin.gpu_systems().iter() {
             let metadata = SystemMetadata {

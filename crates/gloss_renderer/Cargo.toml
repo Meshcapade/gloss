@@ -73,6 +73,7 @@ ply-rs.workspace=true
 static_assertions.workspace=true
 itertools.workspace=true
 re_memory.workspace=true
+strum_macros.workspace=true
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

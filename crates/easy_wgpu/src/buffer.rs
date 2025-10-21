@@ -6,6 +6,7 @@ use wgpu;
 
 /// A wrapper for `wgpu::Buffer`. Allows writing of aligned or packed data into
 /// it
+#[derive(Clone)]
 pub struct Buffer {
     pub buffer: wgpu::Buffer,
     pub size_bytes: usize,

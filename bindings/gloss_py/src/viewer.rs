@@ -28,7 +28,7 @@ impl PyViewer {
     }
     #[pyo3(text_signature = "($self, name: str) -> Entity")]
     pub fn get_or_create_entity(&mut self, name: &str) -> PyActorMut {
-        let scene: &mut Scene = self.0.scene();
+        let scene: &mut Scene = self.0.scene_mut();
         let entity = scene.get_or_create_entity(name).entity();
         PyActorMut::new(entity, scene)
     }
@@ -89,7 +89,7 @@ impl PyViewer {
     #[pyo3(text_signature = "($self) -> Scene")]
     pub fn get_scene(&mut self) -> PyScene {
         //attempt3 just with a weakptr
-        let obj_ptr: *mut Scene = &mut *self.0.scene();
+        let obj_ptr: *mut Scene = &mut *self.0.scene_mut();
         PyScene::new(obj_ptr)
     }
     #[pyo3(text_signature = "($self) -> Camera")]
@@ -123,7 +123,7 @@ impl PyViewer {
     }
     #[pyo3(text_signature = "($self) -> NDArray[np.float32]")]
     pub fn get_linearised_depth(&mut self) -> Py<PyUntypedArray> {
-        let (znear, zfar) = self.0.camera().near_far(self.0.scene());
+        let (znear, zfar) = self.0.camera().near_far(self.0.scene_mut());
         self.get_final_depth().depth_linearize(&self.get_device(), &self.get_queue(), znear, zfar)
     }
     #[pyo3(text_signature = "($self) -> PluginList")]

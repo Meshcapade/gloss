@@ -4,6 +4,8 @@
 use crate::gui::Gui;
 #[cfg(feature = "with-gui")]
 use crate::plugin_manager::GuiSystem;
+#[cfg(feature = "selector")]
+use crate::selector::SelectorPlugin;
 use crate::{
     builders,
     camera::Camera,
@@ -17,9 +19,9 @@ use crate::{
         InternalPlugins,
     },
     scene::Scene,
-    selector::SelectorPlugin,
     set_panic_hook,
 };
+
 #[cfg(target_arch = "wasm32")]
 use std::future::Future;
 #[cfg(target_arch = "wasm32")]
@@ -421,7 +423,10 @@ impl Viewer {
 
         let window_size = winit::dpi::PhysicalSize::new(100, 100);
 
+        #[allow(unused_mut)]
         let mut internal_plugins = InternalPlugins::new();
+
+        #[cfg(feature = "selector")]
         internal_plugins.insert_plugin(&SelectorPlugin::new(true));
 
         #[allow(unused_mut)]
@@ -468,12 +473,16 @@ impl Viewer {
         viewer
     }
 
-    pub fn scene(&mut self) -> &mut Scene {
+    pub fn scene_mut(&mut self) -> &mut Scene {
         assert!(self.scene.is_some(), "The scene has not been created yet. This typically happens on wasm environments because you are accessing the scene right after creating the viewer. You need to provide a deferred function for initializing the scene to the viewer.run() function rather than trying to fill the scene right after the creation of the viewer. Check the web examples of Gloss");
         self.scene.as_mut().unwrap()
     }
+    pub fn scene(&self) -> &Scene {
+        assert!(self.scene.is_some(), "The scene has not been created yet. This typically happens on wasm environments because you are accessing the scene right after creating the viewer. You need to provide a deferred function for initializing the scene to the viewer.run() function rather than trying to fill the scene right after the creation of the viewer. Check the web examples of Gloss");
+        self.scene.as_ref().unwrap()
+    }
 
-    pub fn camera(&mut self) -> Camera {
+    pub fn camera(&self) -> Camera {
         assert!(self.scene().get_current_cam().is_some(), "The camera has not been created yet. This typically happens on wasm environments because you are accessing the camera right after creating the viewer. You need to provide a deferred function for initializing the camera to the viewer.run() function rather than trying to access the camera right after the creation of the viewer. Check the web examples of Gloss");
         let scene = self.scene();
         scene.get_current_cam().unwrap()
@@ -1358,6 +1367,7 @@ impl Viewer {
     /// Useful for web apps when the viewer is a static member.
     #[allow(clippy::missing_panics_doc)]
     #[allow(unreachable_code)] //the lines after the event loop are actually ran on wasm
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn run_static_ref(&'static mut self) {
         let event_loop = self.runner.event_loop.take().unwrap();
         self.runner.is_running = self.runner.autostart;
@@ -1370,6 +1380,22 @@ impl Viewer {
                 let _ = event_loop.spawn_app(self);
             }
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn run_static_ref<F, Fut>(&'static mut self, f: F)
+    where
+        F: FnOnce(Scene) -> Fut + 'static,
+        Fut: Future<Output = Scene> + 'static,
+    {
+        // Create a wrapper that converts the user function to our expected type
+        let wrapper: SceneInitFn = Box::new(move |scene: Scene| Box::pin(f(scene)));
+
+        self.scene_init_func = Some(wrapper);
+
+        let event_loop = self.runner.event_loop.take().unwrap();
+        self.runner.is_running = self.runner.autostart;
+        let _ = event_loop.spawn_app(self);
     }
 
     /// if the event loop is running we can call this to destroy everything and

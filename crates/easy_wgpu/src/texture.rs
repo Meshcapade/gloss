@@ -43,6 +43,7 @@ impl TexParams {
     }
 }
 
+#[derive(Clone)]
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -190,14 +191,17 @@ impl Texture {
             None,
             None,
         )
+        .block_on()
+        .unwrap()
     }
 
     /// # Panics
     /// Will panic if textures that have more than 1 byte per channel or more
     /// than 4 channels.
+    #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::too_many_arguments)]
-    pub fn from_img(
+    pub async fn from_img(
         img: &DynImage,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -206,7 +210,7 @@ impl Texture {
         mipmap_generation_cpu: bool,
         staging_buffer: Option<&Buffer>,
         mipmaper: Option<&RenderMipmapGenerator>,
-    ) -> Self {
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let dimensions = img.dimensions();
         let nr_channels = img.color().channel_count();
         let bytes_per_channel = img.color().bytes_per_pixel() / nr_channels;
@@ -252,7 +256,7 @@ impl Texture {
 
         let texture = device.create_texture(&desc); //create with all mips but upload only 1 mip
 
-        Self::upload_single_mip(&texture, device, queue, &desc, img_buf, staging_buffer, 0);
+        Self::upload_single_mip(&texture, device, queue, &desc, img_buf, staging_buffer, 0).await?;
 
         //mipmaps
         if generate_mipmaps {
@@ -266,7 +270,8 @@ impl Texture {
                 mipmap_generation_cpu,
                 staging_buffer,
                 mipmaper,
-            );
+            )
+            .await?;
         }
 
         // let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -284,20 +289,21 @@ impl Texture {
             ..Default::default()
         });
 
-        Self {
+        Ok(Self {
             texture,
             view,
             sampler,
             tex_params, /* width: dimensions.0,
                          * height: dimensions.1,
                          * bind_group: None, */
-        }
+        })
     }
 
     /// # Panics
     /// Will panic if the image has more than 1 byte per channel
+    #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::too_many_arguments)]
-    pub fn update_from_img(
+    pub async fn update_from_img(
         &mut self,
         img: &DynImage,
         device: &wgpu::Device,
@@ -307,7 +313,7 @@ impl Texture {
         mipmap_generation_cpu: bool,
         staging_buffer: Option<&Buffer>,
         mipmaper: Option<&RenderMipmapGenerator>,
-    ) {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // let dimensions = img.dimensions();
         let nr_channels = img.color().channel_count();
         let bytes_per_channel = img.color().bytes_per_pixel() / nr_channels;
@@ -348,7 +354,7 @@ impl Texture {
             view_formats: &[],
         };
 
-        Self::upload_single_mip(&self.texture, device, queue, &desc, img_buf, staging_buffer, 0);
+        Self::upload_single_mip(&self.texture, device, queue, &desc, img_buf, staging_buffer, 0).await?;
 
         //mipmaps
         if generate_mipmaps {
@@ -362,7 +368,8 @@ impl Texture {
                 mipmap_generation_cpu,
                 staging_buffer,
                 mipmaper,
-            );
+            )
+            .await?;
         }
 
         // let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -373,20 +380,23 @@ impl Texture {
 
         //update
         self.view = view;
+
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn generate_mipmaps(
+    #[allow(clippy::missing_errors_doc)]
+    pub async fn generate_mipmaps(
         img: &DynImage,
         texture: &wgpu::Texture,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        desc: &wgpu::TextureDescriptor,
+        desc: &wgpu::TextureDescriptor<'_>,
         nr_mip_maps: u32,
         mipmap_generation_cpu: bool,
         staging_buffer: Option<&Buffer>,
         mipmaper: Option<&RenderMipmapGenerator>,
-    ) {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let nr_channels = img.color().channel_count();
         if mipmap_generation_cpu {
             //CPU generation
@@ -408,7 +418,7 @@ impl Texture {
                     _ => panic!("Format with more than 4 channels not supported"),
                 };
 
-                Self::upload_single_mip(texture, device, queue, desc, img_mip_buf, staging_buffer, mip_lvl);
+                Self::upload_single_mip(texture, device, queue, desc, img_mip_buf, staging_buffer, mip_lvl).await?;
             }
         } else {
             //GPU mipmaps generation
@@ -420,6 +430,8 @@ impl Texture {
                 warn!("Couldn't generate mipmaps since the mipmapper was not provided");
             }
         }
+
+        Ok(())
     }
 
     pub fn extent_from_img(img: &DynImage) -> wgpu::Extent3d {
@@ -456,15 +468,17 @@ impl Texture {
     /// creation part and the data is assumed to contain only one mip # Panics
     /// Will panic if the data does not fit in the defined mipmaps described in
     /// textureDescriptor
-    pub fn upload_single_mip(
+    /// This is async for handling of textures on web environments
+    #[allow(clippy::missing_errors_doc)]
+    pub async fn upload_single_mip(
         texture: &wgpu::Texture,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        desc: &wgpu::TextureDescriptor,
+        desc: &wgpu::TextureDescriptor<'_>,
         data: &[u8],
         staging_buffer: Option<&Buffer>,
         mip: u32,
-    ) {
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let mut mip_size = desc.mip_level_size(mip).unwrap();
         // copying layers separately
         if desc.dimension != wgpu::TextureDimension::D3 {
@@ -514,7 +528,7 @@ impl Texture {
                     tx.send(result).unwrap();
                 });
                 let _ = device.poll(wgpu::PollType::Wait);
-                rx.block_on().unwrap().unwrap();
+                rx.await.unwrap()?;
                 let mut buf_data = buffer_slice.get_mapped_range_mut();
 
                 //copy into it
@@ -573,7 +587,7 @@ impl Texture {
             );
         }
 
-        //-=---------------------
+        Ok(())
     }
 
     /// Basically the same as `device.create_texture_with_data` but without the

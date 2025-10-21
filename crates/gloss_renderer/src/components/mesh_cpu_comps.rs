@@ -14,8 +14,6 @@ use image::ImageReader;
 use log::warn;
 use na::DMatrix;
 use std::io::{BufReader, Cursor, Read, Seek};
-// use burn::backend::{Candle, NdArray, Wgpu};
-
 /// Component that modifications to the config
 #[derive(Clone)]
 pub struct ConfigChanges {
@@ -524,6 +522,7 @@ impl MetalnessImg {
 
 /// Component which represents a roughness img. Assumes it is stored as
 /// perceptual roughness/
+#[derive(Clone)]
 pub struct RoughnessImg {
     pub generic_img: GenericImg,
 }
@@ -551,6 +550,47 @@ impl RoughnessImg {
     pub fn new_from_raw_pixels(pixels: Vec<u8>, width: u32, height: u32, channels: u8, config: &ImgConfig) -> Self {
         let generic_img = GenericImg::new_from_raw_pixels(pixels, width, height, channels, config);
         Self { generic_img }
+    }
+}
+
+pub trait GenericImageGetter {
+    fn generic_img(&self) -> &GenericImg;
+    fn generic_img_mut(&mut self) -> &mut GenericImg;
+}
+
+impl GenericImageGetter for DiffuseImg {
+    fn generic_img(&self) -> &GenericImg {
+        &self.generic_img
+    }
+    fn generic_img_mut(&mut self) -> &mut GenericImg {
+        &mut self.generic_img
+    }
+}
+
+impl GenericImageGetter for NormalImg {
+    fn generic_img(&self) -> &GenericImg {
+        &self.generic_img
+    }
+    fn generic_img_mut(&mut self) -> &mut GenericImg {
+        &mut self.generic_img
+    }
+}
+
+impl GenericImageGetter for RoughnessImg {
+    fn generic_img(&self) -> &GenericImg {
+        &self.generic_img
+    }
+    fn generic_img_mut(&mut self) -> &mut GenericImg {
+        &mut self.generic_img
+    }
+}
+
+impl GenericImageGetter for MetalnessImg {
+    fn generic_img(&self) -> &GenericImg {
+        &self.generic_img
+    }
+    fn generic_img_mut(&mut self) -> &mut GenericImg {
+        &mut self.generic_img
     }
 }
 

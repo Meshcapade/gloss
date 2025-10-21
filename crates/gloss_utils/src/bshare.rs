@@ -11,7 +11,6 @@ use ndarray as nd;
 /// Convert a burn float tensor to a Vec on wasm
 #[cfg(target_arch = "wasm32")]
 pub fn tensor_to_data_float<B: Backend, const D: usize>(tensor: &Tensor<B, D, Float>) -> Vec<f32> {
-    // tensor.to_data().block_on().to_vec::<f32>().unwrap()
     tensor.to_data().to_vec::<f32>().unwrap()
 }
 
