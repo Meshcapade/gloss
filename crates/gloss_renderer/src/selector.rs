@@ -6,16 +6,19 @@ use crate::{
     viewer::GpuResources,
 };
 
-// #[cfg(target_arch = "wasm32")]
-// use std::sync::mpsc;
-// #[cfg(target_arch = "wasm32")]
-// use wasm_bindgen_futures;
+#[cfg(feature = "selector")]
+use crossbeam_channel;
+#[cfg(all(target_arch = "wasm32", feature = "selector"))]
+use wasm_bindgen_futures;
 
 pub struct Selector {
     pub current_selected: String,
-    // #[cfg(target_arch = "wasm32")]
-    // pub pixel_receiver: Option<mpsc::Receiver<(u32, u32, Vec<u8>)>>,
 }
+
+/// Resource that holds the receiver for pixel data downloaded from ent id pass.
+/// The data stored here is the entity id of the selected entity.
+#[cfg(feature = "selector")]
+pub struct SelectorPixelReceiver(pub crossbeam_channel::Receiver<u8>);
 
 impl Default for Selector {
     fn default() -> Self {
@@ -27,56 +30,8 @@ impl Selector {
     pub fn new() -> Self {
         Self {
             current_selected: String::new(),
-            // #[cfg(target_arch = "wasm32")]
-            // pixel_receiver: None,
         }
     }
-
-    // #[cfg(target_arch = "wasm32")]
-    // pub fn process_completed_pixel_downloads(&mut self, scene: &mut Scene, runner: &mut RunnerState) {
-    //     if let Some(receiver) = &self.pixel_receiver {
-    //         if let Ok((_x, _y, pixel_data)) = receiver.try_recv() {
-    //             let entity_id = pixel_data[0];
-    //             self.handle_pixel_selection(scene, runner, entity_id);
-    //         }
-    //     }
-    // }
-
-    // #[cfg(target_arch = "wasm32")]
-    // fn handle_pixel_selection(&self, scene: &mut Scene, runner: &mut RunnerState, entity_id: u8) {
-    //     // Switch off selection for previous entity using the name in the selector
-    //     // Always do this, every click regardless of where should switch off the previous selection
-    //     if let Ok(selector) = scene.get_resource::<&mut Selector>() {
-    //         if let Some(prev_entity) = scene.get_entity_with_name(&selector.current_selected) {
-    //             if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(prev_entity) {
-    //                 vis_outline.show_outline = false;
-    //             }
-    //         }
-    //     }
-    //     let _ = scene.remove_resource::<Selector>();
-
-    //     // For pixels with no entity, we get 0, dont do anything in that case.
-    //     // If entity_id is not 0, we can look up the entity in the scene to select
-    //     if entity_id != 0 {
-    //         // Look for an entity with given ID (internally iterates over all ents)
-    //         let entity_ref = scene.find_entity_with_id(entity_id);
-
-    //         // Modify selector and VisOutline state if entity is found
-    //         if let Some(e_ref) = entity_ref {
-    //             let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
-    //             // Only ents with VisOutline are candidates for visual selection
-    //             if let Some(mut vis_outline) = e_ref.get::<&mut VisOutline>() {
-    //                 vis_outline.show_outline = true;
-    //             }
-    //             // Add the selector resource to the scene
-    //             scene.add_resource(Selector {
-    //                 current_selected: name.clone(),
-    //             });
-    //         }
-    //     }
-
-    //     runner.request_redraw(); //need to redraw again so the next frame we show the outline
-    // }
 }
 
 #[derive(Clone)]
@@ -86,11 +41,7 @@ pub struct SelectorPlugin {
 
 impl SelectorPlugin {
     pub fn new(autorun: bool) -> Self {
-        Self {
-            autorun,
-            // #[cfg(target_arch = "wasm32")]
-            // pixel_receiver: None,
-        }
+        Self { autorun }
     }
 }
 
@@ -100,21 +51,66 @@ impl InternalPlugin for SelectorPlugin {
         self.autorun
     }
     fn gpu_systems(&self) -> Vec<GpuSystem> {
-        vec![GpuSystem::new(handle_selection_click).with_name("selector_gpu_system")]
+        vec![
+            GpuSystem::new(queue_pixel_download).with_name("selector_queue_download_system"),
+            GpuSystem::new(process_received_pixels).with_name("selector_process_pixels_system"),
+        ]
     }
 }
 
+/// This system listens to `SelectorPixelReceiver` resource and handles the pixel data.
 #[cfg(feature = "selector")]
-pub fn handle_selection_click(scene: &mut Scene, runner: &mut RunnerState, gpu_res: &GpuResources) {
+pub fn process_received_pixels(scene: &mut Scene, runner: &mut RunnerState, _gpu_res: &GpuResources) {
+    // Try to receive pixel data
+    let pixel_data = scene
+        .get_resource::<&SelectorPixelReceiver>()
+        .ok()
+        .and_then(|receiver| receiver.0.try_recv().ok());
+
+    // Early return if no data was received
+    if let Some(pixel_data) = pixel_data {
+        let entity_id = pixel_data;
+
+        // Switch off selection for previous entity
+        if let Ok(selector) = scene.get_resource::<&mut Selector>() {
+            if let Some(prev_entity) = scene.get_entity_with_name(&selector.current_selected) {
+                if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(prev_entity) {
+                    vis_outline.show_outline = false;
+                }
+            }
+        }
+        let _ = scene.remove_resource::<Selector>();
+
+        // Process the new selection
+        if entity_id != 0 {
+            let entity_ref = scene.find_entity_with_id(entity_id);
+
+            if let Some(e_ref) = entity_ref {
+                let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
+
+                if let Some(mut vis_outline) = e_ref.get::<&mut VisOutline>() {
+                    vis_outline.show_outline = true;
+                }
+
+                scene.add_resource(Selector {
+                    current_selected: name.clone(),
+                });
+            }
+        }
+
+        let _ = scene.remove_resource::<SelectorPixelReceiver>();
+        runner.request_redraw();
+    }
+}
+
+/// This system detects clicks and queues up the download of pixels.
+#[cfg(feature = "selector")]
+pub fn queue_pixel_download(scene: &mut Scene, _runner: &mut RunnerState, gpu_res: &GpuResources) {
     // Early return if LMB is not clicked
     if !scene.get_current_cam().unwrap().is_click(scene) {
         return;
     }
 
-    // #[cfg(target_arch = "wasm32")]
-    // self.process_completed_pixel_downloads(scene, runner);
-
-    // Get the cursor position if it exists, otherwise return
     #[allow(clippy::cast_possible_truncation)]
     #[allow(clippy::cast_sign_loss)]
     let cursor_pos = scene
@@ -129,69 +125,34 @@ pub fn handle_selection_click(scene: &mut Scene, runner: &mut RunnerState, gpu_r
 
     // Get the entity id texture from the renderer
     let entity_id_texture = gpu_res.renderer.entity_id_buffer();
-    // Scale as per the scale factor
     let scaled_x = x / entity_id_texture.tex_params.scale_factor;
     let scaled_y = y / entity_id_texture.tex_params.scale_factor;
+
+    let (sender, receiver) = crossbeam_channel::unbounded();
 
     // We only need the pixel at selection so we dont really need to download the whole thing
     #[cfg(not(target_arch = "wasm32"))]
     {
         let single_pixel_img =
             pollster::block_on(entity_id_texture.download_pixel_to_cpu(gpu.device(), gpu.queue(), wgpu::TextureAspect::All, scaled_x, scaled_y));
-        let entity_id = single_pixel_img.as_bytes()[0];
-
-        // Switch off selection for previous entity using the name in the selector
-        // Always do this, every click regardless of where should switch off the previous selection
-        if let Ok(selector) = scene.get_resource::<&mut Selector>() {
-            if let Some(prev_entity) = scene.get_entity_with_name(&selector.current_selected) {
-                if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(prev_entity) {
-                    vis_outline.show_outline = false;
-                }
-            }
-        }
-        let _ = scene.remove_resource::<Selector>();
-
-        // For pixels with no entity, we get 0, dont do anything in that case.
-        // If entity_id is not 0, we can look up the entity in the scene to select
-        if entity_id != 0 {
-            // Look for an entity with given ID (internally iterates over all ents)
-            let entity_ref = scene.find_entity_with_id(entity_id);
-
-            // Modify selector and VisOutline state if entity is found
-            if let Some(e_ref) = entity_ref {
-                let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
-                // Only ents with VisOutline are candidates for visual selection
-                if let Some(mut vis_outline) = e_ref.get::<&mut VisOutline>() {
-                    vis_outline.show_outline = true;
-                }
-                // Add the selector resource to the scene
-                scene.add_resource(Selector {
-                    current_selected: name.clone(),
-                });
-            }
-        }
-
-        runner.request_redraw(); //need to redraw again so the next frame we show the outline
+        // We send only the first byte of the pixel data, which is the entity id
+        let _ = sender.send(single_pixel_img.as_bytes().to_vec()[0]);
     }
 
-    //  #[cfg(target_arch = "wasm32")]
-    //  {
-    //      let (sender, receiver) = mpsc::channel();
-    //      self.pixel_receiver = Some(receiver);
+    #[cfg(target_arch = "wasm32")]
+    {
+        let texture_clone = entity_id_texture.clone();
+        let device = gpu.device().clone();
+        let queue = gpu.queue().clone();
 
-    //      let texture_clone = entity_id_texture.clone();
-    //      let device = gpu.device().clone();
-    //      let queue = gpu.queue().clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            let pixel_data = texture_clone
+                .download_pixel_to_cpu(&device, &queue, wgpu::TextureAspect::All, scaled_x, scaled_y)
+                .await;
+            // We send only the first byte of the pixel data, which is the entity id
+            let _ = sender.send(pixel_data.as_bytes().to_vec()[0]);
+        });
+    }
 
-    //      wasm_bindgen_futures::spawn_local(async move {
-    //          match texture_clone.download_pixel_to_cpu(&device, &queue, wgpu::TextureAspect::All, scaled_x, scaled_y).await {
-    //              Ok(pixel_data) => {
-    //                  let _ = sender.send((scaled_x, scaled_y, pixel_data.as_bytes().to_vec()));
-    //              }
-    //              Err(e) => {
-    //                  log::error!("Pixel download failed: {:?}", e);
-    //              }
-    //          }
-    //      });
-    //  }
+    scene.add_resource(SelectorPixelReceiver(receiver));
 }

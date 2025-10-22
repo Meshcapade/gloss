@@ -219,10 +219,15 @@ impl LocalEntData for Locals {
         };
         let is_floor = u32::from(is_floor);
 
+        // let camera = scene.get_current_cam().unwrap();
+        // let (width, _) = camera.get_target_res(scene);
+        // let scale_factor = width as f32 / 1920.0;
+        let scale_factor = 1.0;
+
         Locals {
             model_matrix,
             outline_color: vis_outline.outline_color,
-            outline_width: vis_outline.outline_width,
+            outline_width: vis_outline.outline_width * scale_factor,
             is_floor,
             pad_c: 0.0,
             pad_d: 0.0,

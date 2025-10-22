@@ -2339,6 +2339,7 @@ dependencies = [
  "config",
  "console_error_panic_hook",
  "console_log",
+ "crossbeam-channel",
  "cubecl",
  "easy-wgpu",
  "egui",

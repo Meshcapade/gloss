@@ -80,8 +80,6 @@ use std::task::{Poll, Waker};
 #[cfg(target_arch = "wasm32")]
 type SceneInitFn = Box<dyn FnOnce(Scene) -> Pin<Box<dyn Future<Output = Scene> + 'static>> + 'static>;
 
-// #[cfg(not(target_arch = "wasm32"))]
-
 /// All the ``GpuResources`` are kept together to be able to easily recreate
 /// them
 #[repr(C)]
