@@ -9,7 +9,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-gloss-renderer = { path = "../../crates/gloss_renderer", default-features = false , features = ["with-gui", "selector"] }
+gloss-renderer = { path = "../../crates/gloss_renderer", default-features = false }
 
 # Third party
 pollster.workspace=true

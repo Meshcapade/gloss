@@ -192,17 +192,17 @@
 
                     const diffPixels = pixelmatch(currentImage.data, referenceImage.data, diff.data, width, height, { threshold: 0.2 });
 
-                    const diffPath = path.join(referencesDir, `diff_${desiredWidth}x${desiredHeight}.png`);
-                    fs.writeFileSync(diffPath, PNG.sync.write(diff));
-                    console.log(`Diff image saved at ${diffPath}`);
-
                     console.log(`Number of pixels outside threshold: ${diffPixels}`);
 
                     const threshold = 5000;
                     if (diffPixels > threshold) {
+                        // Save diff image only on failure
+                        const diffPath = path.join(referencesDir, `diff_${desiredWidth}x${desiredHeight}.png`);
+                        fs.writeFileSync(diffPath, PNG.sync.write(diff));
+                        console.log(`Diff image saved at ${diffPath}`);
+                        
                         console.log('====================================================================================');
                         throw new Error(`[TEST FAILED]: Pixel difference (${diffPixels}) exceeds threshold (${threshold})`);
-                        console.log('====================================================================================');
                     } else {
                         console.log('====================================================================');
                         console.log('[TEST PASSED]: Pixel difference is within the acceptable threshold');
@@ -230,10 +230,12 @@
 
     async function compareScreenshot(maxRetries = 5) {
         let retryCount = 0;
+        let testPassed = false;
 
         while (retryCount < maxRetries) {
             try {
                 await runTest();
+                testPassed = true;
                 break; // Exit loop if the test runs successfully
             } catch (error) {
                 if (error.message.includes('BROWSERSTACK_QUEUE_SIZE_EXCEEDED')) {
@@ -242,14 +244,23 @@
                     await new Promise(resolve => setTimeout(resolve, 120000)); // Wait for 2 minutes before retrying
                 } else {
                     console.log("Custom Error: An error occurred during the screenshot comparison process.");
+                    console.error(error);
                     break;
                 }
             }
         }
 
         if (retryCount === maxRetries) {
-            console.log('Custom Error: Test failed after maximum retries due to queue size exceeded.');
+            console.error('Custom Error: Test failed after maximum retries due to queue size exceeded.');
+            process.exit(1);
         }
+
+        if (!testPassed) {
+            console.error('Custom Error: Test failed - see errors above.');
+            process.exit(1);
+        }
+
+        console.log('All tests passed successfully!');
     }
 
     compareScreenshot();
