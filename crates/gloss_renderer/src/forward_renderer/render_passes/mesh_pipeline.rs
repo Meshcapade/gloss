@@ -236,8 +236,10 @@ impl PipelineRunner for MeshPipeline {
 
             // Skip in the loop and do after
             if let Ok(ref current_selector) = selector {
-                if name.0 == current_selector.current_selected {
-                    continue;
+                if let Some(current_selected) = &current_selector.current_selected {
+                    if name.0 == *current_selected {
+                        continue;
+                    }
                 }
             }
 
@@ -255,22 +257,24 @@ impl PipelineRunner for MeshPipeline {
 
         for (_id, (verts, faces, uvs, normals, tangents, colors, _diffuse_tex, _normal_tex, _roughness_tex, vis_mesh, name)) in query_state.iter() {
             if let Ok(ref current_selector) = selector {
-                if name.0 == current_selector.current_selected {
-                    if !vis_mesh.show_mesh {
-                        return;
+                if let Some(current_selected) = &current_selector.current_selected {
+                    if name.0 == *current_selected {
+                        if !vis_mesh.show_mesh {
+                            return;
+                        }
+
+                        render_pass.set_stencil_reference(1);
+
+                        let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&current_selected.clone()];
+                        render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
+                        render_pass.set_vertex_buffer(0, verts.buf.slice(..));
+                        render_pass.set_vertex_buffer(1, uvs.buf.slice(..));
+                        render_pass.set_vertex_buffer(2, normals.buf.slice(..));
+                        render_pass.set_vertex_buffer(3, tangents.buf.slice(..));
+                        render_pass.set_vertex_buffer(4, colors.buf.slice(..));
+                        render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
+                        render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
                     }
-
-                    render_pass.set_stencil_reference(1);
-
-                    let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&current_selector.current_selected.clone()];
-                    render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
-                    render_pass.set_vertex_buffer(0, verts.buf.slice(..));
-                    render_pass.set_vertex_buffer(1, uvs.buf.slice(..));
-                    render_pass.set_vertex_buffer(2, normals.buf.slice(..));
-                    render_pass.set_vertex_buffer(3, tangents.buf.slice(..));
-                    render_pass.set_vertex_buffer(4, colors.buf.slice(..));
-                    render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
-                    render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
                 }
             }
         }

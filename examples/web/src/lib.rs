@@ -42,7 +42,6 @@ async fn start() {
 #[cfg(target_arch = "wasm32")]
 async fn create_test_scene_wasm(scene: &mut gloss_renderer::scene::Scene) {
     let path_mesh = "./assets/bust.obj";
-
     scene
         .get_or_create_entity("test_mesh")
         .insert_builder(builders::build_from_file_async(path_mesh).await)

@@ -391,16 +391,20 @@ impl GuiMainWidget {
                                     /* -------------------------------------------------------------------------- */
 
                                     // The selector may have been set by click2select, respect that selection instead of starting afresh
+                                    let mut nothing_selected = true;
                                     if let Ok(selector) = scene.get_resource::<&mut Selector>() {
-                                        let name = selector.current_selected.clone();
-                                        if self.selected_mesh_name != name.clone() {
-                                            // println!("Updated Selected entity: {name}");
-                                            let entity = scene.get_entity_with_name(&name);
-                                            self.selected_entity = entity;
+                                        if let Some(current_selected) = &selector.current_selected {
+                                            nothing_selected = false;
+                                            let name = current_selected.clone();
+                                            if self.selected_mesh_name != name.clone() {
+                                                let entity = scene.get_entity_with_name(&name);
+                                                self.selected_entity = entity;
+                                            }
+                                            self.selected_mesh_name = name;
                                         }
-                                        self.selected_mesh_name = name;
-                                    } else {
-                                        // If we dont have a selector resource, leave the selection GUI in a deselected state
+                                    }
+                                    if nothing_selected {
+                                        // If we dont have a selector resource OR if selection is None, leave the selection GUI in a deselected state
                                         self.selected_mesh_name = String::new();
                                         self.selected_entity = None;
                                     }
@@ -428,7 +432,7 @@ impl GuiMainWidget {
 
                                             // Set selector and update outline for new selection
                                             let selector = Selector {
-                                                current_selected: name.clone(),
+                                                current_selected: Some(name.clone()),
                                             };
                                             scene.add_resource(selector);
                                             if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(entity) {

@@ -5,6 +5,7 @@ use crate::{
     config::RenderConfig,
     forward_renderer::{bind_group_collection::BindGroupCollection, locals::LocalEntData},
     scene::Scene,
+    selector::Selector,
 };
 use easy_wgpu::{
     bind_group::{BindGroupBuilder, BindGroupWrapper},
@@ -113,10 +114,12 @@ impl PipelineRunner for EntityIdPass {
         per_frame_uniforms: &'r PerFrameUniforms,
         _render_params: &RenderConfig,
         query_state: &'r mut Self::QueryState<'_>,
-        _scene: &Scene,
+        scene: &Scene,
     ) {
-        //completely skip this if there are no entities to draw
-        if query_state.iter().count() == 0 {
+        //completely skip this if there are no entities to draw or if the selector is not active
+        let selector_is_active = scene.has_resource::<Selector>();
+
+        if query_state.iter().count() == 0 || !selector_is_active {
             return;
         }
 
