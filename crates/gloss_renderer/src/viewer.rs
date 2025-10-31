@@ -1177,6 +1177,7 @@ impl Viewer {
             self.runner.frame_is_started = false;
             return Ok(());
         }
+
         let scene = self.scene.as_mut().unwrap();
         let mut camera = scene.get_current_cam().unwrap();
 

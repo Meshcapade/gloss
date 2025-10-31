@@ -385,30 +385,31 @@ impl UploadPass {
     }
 
     #[cfg(target_arch = "wasm32")]
-    // Insert textures to entity once they are completed
+    // Insert textures to entity once they are completed and clear the receiver
     fn process_completed_texture_uploads(&mut self, scene: &mut Scene) {
-        if let Some(receiver) = &self.diffuse_receiver {
-            while let Ok((entity, diffuse_tex)) = receiver.try_recv() {
-                self.command_buffer.insert_one(entity, diffuse_tex);
-                // let _ = scene.world.remove_one::<PendingDiffuseUpload>(entity);
+        fn process_texture_receiver<T: TextureUploadable>(
+            texture_receiver: &mut Option<mpsc::Receiver<(Entity, T::Tex)>>,
+            command_buffer: &mut CommandBuffer,
+        ) {
+            if let Some(recv) = texture_receiver {
+                let mut processed = false;
+                while let Ok((entity, texture)) = recv.try_recv() {
+                    command_buffer.insert_one(entity, texture);
+                    processed = true;
+                }
+                if processed {
+                    *texture_receiver = None;
+                }
             }
         }
 
-        if let Some(receiver) = &self.normal_receiver {
-            while let Ok((entity, normal_tex)) = receiver.try_recv() {
-                self.command_buffer.insert_one(entity, normal_tex);
-                // let _ = scene.world.remove_one::<PendingNormalUpload>(entity);
-            }
-        }
+        process_texture_receiver::<DiffuseUploadable>(&mut self.diffuse_receiver, &mut self.command_buffer);
+        process_texture_receiver::<NormalUploadable>(&mut self.normal_receiver, &mut self.command_buffer);
+        process_texture_receiver::<RoughnessUploadable>(&mut self.roughness_receiver, &mut self.command_buffer);
 
-        if let Some(receiver) = &self.roughness_receiver {
-            while let Ok((entity, roughness_tex)) = receiver.try_recv() {
-                self.command_buffer.insert_one(entity, roughness_tex);
-                // let _ = scene.world.remove_one::<PendingRoughnessUpload>(entity);
-            }
-        }
         self.command_buffer.run_on(&mut scene.world);
     }
+
     #[allow(clippy::too_many_lines)]
     fn upload_texture<T: TextureUploadable>(&mut self, gpu: &Gpu, scene: &mut Scene) {
         let mut modified_entities = Vec::new();
@@ -471,11 +472,6 @@ impl UploadPass {
 
                             #[cfg(target_arch = "wasm32")]
                             {
-                                let (_sender, receiver) = mpsc::channel();
-                                let texture_receiver = T::texture_receiver(self);
-                                if texture_receiver.is_none() {
-                                    *texture_receiver = Some(receiver);
-                                }
                                 // We can safely clone a lot of the wgpu types because internally they are behind arcs
                                 let img_clone = img.generic_img().img_ref().clone();
                                 let device = gpu.device().clone();
@@ -506,9 +502,6 @@ impl UploadPass {
                                         }
                                     }
                                 });
-
-                                // Mark entity as having pending upload
-                                // self.command_buffer.insert_one(entity, PendingDiffuseUpload);
                             }
 
                             tex_uploaded = true;
@@ -568,14 +561,10 @@ impl UploadPass {
                                     }
                                 }
                             });
-
-                            // Mark entity as having pending upload
-                            // self.command_buffer.insert_one(entity, PendingDiffuseUpload);
                         }
                     }
 
                     if !keep_on_cpu {
-                        // self.command_buffer.remove_one::<DiffuseImg>(entity);
                         let _ = img.generic_img_mut().cpu_img.take();
                     }
                 }

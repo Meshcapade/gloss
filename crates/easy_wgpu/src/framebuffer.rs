@@ -123,9 +123,8 @@ impl<T: enum_map::EnumArray<Option<Texture>> + std::fmt::Debug> FrameBuffer<T> {
             let tex = tex.as_mut().unwrap();
 
             let scale_factor = tex.tex_params.scale_factor;
-            let scaled_width = width / scale_factor;
-            let scaled_height = height / scale_factor;
-
+            let scaled_width = (width / scale_factor).max(1);
+            let scaled_height = (height / scale_factor).max(1);
             tex.resize(device, scaled_width, scaled_height);
         }
         self.width = width;
