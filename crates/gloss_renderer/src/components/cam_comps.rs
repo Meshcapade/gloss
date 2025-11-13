@@ -389,7 +389,8 @@ impl CamController {
     }
     pub fn decide_if_click(&mut self) {
         if let Some(last_press) = self.last_press {
-            if last_press.elapsed().as_millis() < CLICK_DURATION_MS && !self.mouse_moved_while_pressed {
+            if last_press.elapsed().as_millis() < CLICK_DURATION_MS {
+                //&& !self.mouse_moved_while_pressed {
                 self.is_last_press_click = true;
             }
         }

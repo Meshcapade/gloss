@@ -197,7 +197,7 @@ impl Default for VisOutline {
         VisOutline {
             show_outline: false,
             outline_color: na::Vector4::<f32>::new(0.29, 0.82, 0.73, 1.0), // Blue-green default color
-            outline_width: 4.0,
+            outline_width: 5.0,
             added_automatically: false,
         }
     }
