@@ -1425,7 +1425,7 @@ dependencies = [
 
 [[package]]
 name = "easy-wgpu"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "bytemuck",
  "encase",
@@ -2261,7 +2261,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "gloss-burn-multibackend"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "burn",
  "log",
@@ -2271,7 +2271,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-geometry"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "burn",
  "burn-cubecl",
@@ -2292,7 +2292,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-hecs"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "abi_stable",
  "bencher",
@@ -2311,7 +2311,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-hecs-macros"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "gloss-hecs",
  "proc-macro2",
@@ -2321,7 +2321,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-img"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "bytemuck",
  "image",
@@ -2330,7 +2330,7 @@ dependencies = [
 
 [[package]]
 name = "gloss-renderer"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "abi_stable",
  "burn",
@@ -2385,18 +2385,21 @@ dependencies = [
 
 [[package]]
 name = "gloss-rs"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "easy-wgpu",
+ "gloss-burn-multibackend",
  "gloss-geometry",
  "gloss-img",
  "gloss-renderer",
  "gloss-utils",
+ "wgpu-burn-global-device",
+ "wgpu-burn-interop",
 ]
 
 [[package]]
 name = "gloss-utils"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "abi_stable",
  "burn",
@@ -2437,7 +2440,7 @@ dependencies = [
 
 [[package]]
 name = "gloss_py"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "easy-wgpu",
  "gloss-burn-multibackend",
@@ -2460,7 +2463,7 @@ dependencies = [
 
 [[package]]
 name = "gloss_py_macros"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "quote",
  "syn 1.0.109",
@@ -5315,7 +5318,7 @@ dependencies = [
 
 [[package]]
 name = "wgpu-burn-global-device"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "burn",
  "burn-cubecl",
@@ -5327,7 +5330,7 @@ dependencies = [
 
 [[package]]
 name = "wgpu-burn-interop"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "burn",
  "burn-cubecl",

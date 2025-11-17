@@ -11,6 +11,9 @@
 //! - [`gloss_hecs`](crate::gloss_hecs) - A wrapper around hecs forECS-related functionality.
 //! - [`gloss_utils`](crate::gloss_utils) - Utility functions and helpers.
 //! - [`gloss_geometry`](crate::gloss_geometry) - Geometry-related functionality.
+//! - [`wgpu_burn_global_device`](crate::wgpu_burn_global_device) - A global wgpu device for use with burn.
+//! - [`gloss_burn_multibackend`](crate::gloss_burn_multibackend) - A backend for Burn that can dynamically change between backends.
+//! - [`wgpu_burn_interop`](crate::wgpu_burn_interop) - A small library interop via cubecl between wgpu and burn.
 //!
 //! ## Examples
 //! Below are the examples you can explore in the `examples/` folder of the
@@ -26,7 +29,10 @@
 
 // Re-exports
 pub use easy_wgpu;
+pub use gloss_burn_multibackend;
 pub use gloss_geometry;
 pub use gloss_img;
 pub use gloss_renderer;
 pub use gloss_utils;
+pub use wgpu_burn_global_device;
+pub use wgpu_burn_interop;

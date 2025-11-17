@@ -21,6 +21,9 @@ gloss-img.workspace = true
 gloss-renderer.workspace = true
 gloss-utils.workspace = true
 gloss-geometry.workspace = true
+gloss-burn-multibackend.workspace = true
+wgpu-burn-interop.workspace = true
+wgpu-burn-global-device.workspace = true
 
 [lib]
 crate-type = ["rlib"]

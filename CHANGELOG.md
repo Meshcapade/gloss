@@ -11,6 +11,43 @@ Unreleased` header.
 
 # Unreleased
 
+# 0.8.0 
+### ⭐ Added
+- crates for burn multi-backend and for defining global wgpu device
+- Added CubeCL functions for computing normals and tangents
+- Static glTF reading 
+- Interpolate functions for `ModelMatrix`
+- `BoundingBox` component for entities which dont have vertices and need a scale
+### 🔧 Changed
+- Updated to the latest version of a lot of core crates
+- Changes to support GPU sharing across binaries
+- Scene initialisation is now async for the web 
+- A bunch of texture operations are now async for support with WASM with the new dependency updates
+- Updates to Pixel download without blocking main thread and selector resource now enables/disables use of the click to select feature
+### 🐛 Fixed
+- Rendering loop not starting on native builds
+
+# 0.7.0 
+### ⭐ Added
+- New crate `gloss-geometry`
+- click-to-select for selecting entities
+### 🔧 Changed
+### 🐛 Fixed
+- WASM ABI changes by passing arguments by reference for extern functions 
+- Previous way of handling ctrl-c was causing seg faults on python
+
+# 0.6.0 
+### ⭐ Added
+- 3D tensors in bshare
+- Support for burn backend 
+- Show FPS and dt in GUI
+- `ViewerDummy` as a container for the scene 
+### 🔧 Changed
+- Updated dependencies
+- Made some changes to make gloss more pythonic 
+- Remove gloss-memory
+### 🐛 Fixed
+- Fix for the rendering starting before the canvas size was set
 
 # 0.5.0
 

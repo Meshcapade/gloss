@@ -30,7 +30,7 @@ row-serialize = ["serde"]
 unsafe_typeid = []
 
 [dependencies]
-gloss-hecs-macros = { path = "macros", version = "0.7", optional = true }
+gloss-hecs-macros = { path = "macros", version = "0.8", optional = true }
 hashbrown = { version = "0.13.1", default-features = false, features = ["ahash", "inline-more"] }
 lazy_static = { version = "1.4.0", optional = true, features = ["spin_no_std"] }
 serde = { version = "1.0.117", default-features = false, optional = true }
