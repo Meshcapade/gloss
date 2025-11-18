@@ -23,6 +23,7 @@ if __name__ == "__main__":
     path_obj = os.path.join(path_data, "bust.obj")
 
     mesh = viewer.get_or_create_entity(name="mesh")
+
     mesh.insert_builder(builders.build_from_file(path_obj))
 
     viewer.run()

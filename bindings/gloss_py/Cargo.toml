@@ -19,9 +19,9 @@ doc = false
 
 [features]
 # default = ["extension-module"]
-default = ["with-gui"]
+default = ["with-gui", "selector"]
 with-gui=["easy-wgpu/with-gui", "gloss-renderer/with-gui"]
-
+selector=["gloss-renderer/selector"]
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
 # pypi = ["extension-module"]
