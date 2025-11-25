@@ -899,8 +899,10 @@ fn process_gltf_node(
 /// Creates a camera frustum for visualization
 #[must_use]
 pub fn build_camera_frustum(aspect_ratio: f32, yfov: f32) -> EntityBuilder {
-    let display_distance = 1.0; // Hardcoded for visualization, similar to blenders cam
-    let half_height = display_distance * (yfov / 2.0).tan();
+    let target_half_height = 0.5; // Fixed half-height for consistency with blender's camera visualization
+    let display_distance = target_half_height / (yfov / 2.0).tan();
+
+    let half_height = target_half_height;
     let half_width = half_height * aspect_ratio;
 
     // Triangle dimensions for the up indicator

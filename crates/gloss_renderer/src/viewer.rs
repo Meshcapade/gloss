@@ -227,7 +227,6 @@ impl GpuResources {
             size = canvas_size.to_physical(window.scale_factor());
         }
 
-        println!("scale factor: {:?}", window.scale_factor());
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
