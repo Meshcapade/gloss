@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)] //a lot of operations require inserting or removing component from a entity but
                                       // the entity will for sure exists so it will never panic
 
-use crate::components::{Colors, DiffuseImg, Edges, ImgConfig};
+use crate::components::{Colors, DiffuseImg, Edges, ImgConfig, VisLines, VisMesh};
 use gloss_hecs::EntityBuilder;
 use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorInt2D};
 use log::debug;
@@ -13,7 +13,7 @@ use gloss_utils::io::FileType;
 #[allow(unused_imports)]
 use log::{error, info, warn};
 use na::DMatrix;
-use nalgebra as na;
+use nalgebra::{self as na, Vector4};
 use std::path::Path;
 use tobj;
 
@@ -894,4 +894,97 @@ fn process_gltf_node(
             has_multiple_textures,
         );
     }
+}
+
+/// Creates a camera frustum for visualization
+#[must_use]
+pub fn build_camera_frustum(aspect_ratio: f32, yfov: f32) -> EntityBuilder {
+    let display_distance = 1.0; // Hardcoded for visualization, similar to blenders cam
+    let half_height = display_distance * (yfov / 2.0).tan();
+    let half_width = half_height * aspect_ratio;
+
+    // Triangle dimensions for the up indicator
+    let triangle_width_ratio = 0.7;
+    let tri_height = half_height * triangle_width_ratio;
+    let tri_offset = half_height * 0.1;
+    let tri_half_width = half_width * triangle_width_ratio;
+
+    // Create 8 vertices: 1 (center) + 4 (image plane) + 3 (up indicator triangle)
+    let verts = DMatrix::<f32>::from_row_slice(
+        8,
+        3,
+        &[
+            0.0,
+            0.0,
+            0.0,
+            -half_width,
+            -half_height,
+            -display_distance,
+            half_width,
+            -half_height,
+            -display_distance,
+            half_width,
+            half_height,
+            -display_distance,
+            -half_width,
+            half_height,
+            -display_distance,
+            // Up indicator triangle
+            -tri_half_width,
+            half_height + tri_offset,
+            -display_distance,
+            tri_half_width,
+            half_height + tri_offset,
+            -display_distance,
+            0.0,
+            half_height + tri_offset + tri_height,
+            -display_distance,
+        ],
+    );
+
+    // Create 8 edges
+    let edges = DMatrix::<u32>::from_row_slice(8, 2, &[0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 3, 3, 4, 4, 1]);
+
+    // Create 1 triangular face for the up indicator
+    let faces = DMatrix::<u32>::from_row_slice(1, 3, &[5, 6, 7]);
+
+    // Debug: to add the 4 side faces of the frustum, for comparing with blenders cam
+    // let faces = DMatrix::<u32>::from_row_slice(
+    //     5,
+    //     3,
+    //     &[
+    //         5, 6, 7,
+    //         0, 1, 2,
+    //         0, 2, 3,
+    //         0, 3, 4,
+    //         0, 4, 1,
+    //     ],
+    // );
+
+    let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
+    let edges_tensor = DynamicTensorInt2D::from_dmatrix(&edges);
+    let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
+
+    let mut builder = EntityBuilder::new();
+    builder.add(Verts(verts_tensor));
+    builder.add(Edges(edges_tensor));
+    builder.add(Faces(faces_tensor));
+
+    // Explicitly set colors and thickness
+    let line_color = Vector4::new(0.8, 0.8, 0.8, 1.0);
+    let face_color = Vector4::new(0.8, 0.8, 0.8, 0.1);
+
+    builder.add(VisLines {
+        show_lines: true,
+        line_color,
+        line_width: 2.0,
+        ..Default::default()
+    });
+    builder.add(VisMesh {
+        show_mesh: true,
+        solid_color: face_color,
+        ..Default::default()
+    });
+
+    builder
 }

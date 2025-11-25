@@ -5,6 +5,7 @@ use crate::{
     config::RenderConfig,
     forward_renderer::{bind_group_collection::BindGroupCollection, locals::LocalEntData},
     scene::Scene,
+    selector::Selectable,
 };
 use easy_wgpu::{
     bind_group::{BindGroupBuilder, BindGroupWrapper},
@@ -112,10 +113,10 @@ impl PipelineRunner for OutlinePass {
         &'a ModelMatrix,
         &'a VisOutline,
     );
-    type QueryState<'a> = gloss_hecs::QueryBorrow<'a, gloss_hecs::With<Self::QueryItems<'a>, &'a Renderable>>;
+    type QueryState<'a> = gloss_hecs::QueryBorrow<'a, gloss_hecs::With<Self::QueryItems<'a>, (&'a Renderable, &'a Selectable)>>;
 
     fn query_state(scene: &Scene) -> Self::QueryState<'_> {
-        scene.world.query::<Self::QueryItems<'_>>().with::<&Renderable>()
+        scene.world.query::<Self::QueryItems<'_>>().with::<(&Renderable, &Selectable)>()
     }
 
     fn prepare<'a>(&mut self, gpu: &Gpu, _per_frame_uniforms: &PerFrameUniforms, scene: &'a Scene) -> Self::QueryState<'a> {

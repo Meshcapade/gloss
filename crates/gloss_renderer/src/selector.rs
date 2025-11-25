@@ -15,6 +15,7 @@ pub struct Selector {
     pub current_selected: Option<String>,
 }
 
+pub struct Selectable;
 /// Resource that holds the receiver for pixel data downloaded from ent id pass.
 /// The data stored here is the entity id of the selected entity.
 #[cfg(feature = "selector")]

@@ -14,6 +14,7 @@ use crate::{
     },
     config::{Config, FloorTexture, FloorType, LightConfig},
     light::Light,
+    selector::Selectable,
 };
 
 use gloss_geometry::geom;
@@ -91,13 +92,13 @@ impl Scene {
 
     /// Creates a entity with a name or gets the one that already exists with
     /// that concrete name You can keep adding components to this entity
-    /// with .insert() Also inserts a renderable component
+    /// with .insert() Also inserts a renderable component and a selectable component
     pub fn get_or_create_entity(&mut self, name: &str) -> EntityMut {
         let r_name = RString::from(name.to_string());
         let entity_ref = self
             .name2entity
             .entry(r_name)
-            .or_insert_with(|| self.world.spawn((Name(name.to_string()), Renderable))); //to insert a single component we use a tuple like (x,)
+            .or_insert_with(|| self.world.spawn((Name(name.to_string()), Renderable, Selectable))); //to insert a single component we use a tuple like (x,)
         EntityMut::new(&mut self.world, *entity_ref)
     }
 
@@ -737,12 +738,19 @@ impl<'w> EntityMut<'w> {
     pub fn insert<T: Component>(&mut self, component: T) -> &mut Self {
         self.insert_bundle((component,))
     }
+
     /// Inserts a [`Bundle`] of components to the entity.
     /// This will overwrite any previous value(s) of the same component type.
     pub fn insert_bundle(&mut self, bundle: impl DynamicBundle) -> &mut Self {
         let _ = self.world.insert(self.entity, bundle);
         self
     }
+
+    pub fn remove<T: Component>(&mut self) -> &mut Self {
+        let _ = self.world.remove_one::<T>(self.entity);
+        self
+    }
+
     /// Inserts a [`EntityBuilder`] of components to the entity.
     /// This will overwrite any previous value(s) of the same component type.
     pub fn insert_builder(&mut self, mut builder: EntityBuilder) -> &mut Self {
