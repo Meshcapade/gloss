@@ -39,9 +39,8 @@ pub struct PosLookat {
     pub up: na::Vector3<f32>,
 }
 
-// #[derive(Default)]
+#[derive(Clone)]
 pub enum Projection {
-    // #[default]
     WithFov(ProjectionWithFov),
     WithIntrinsics(ProjectionWithIntrinsics),
 }
@@ -61,8 +60,6 @@ pub struct ProjectionWithIntrinsics {
     pub fy: f32, //radians
     pub cx: f32,
     pub cy: f32,
-    // pub height: f32,
-    // pub width: f32,
     pub near: f32,
     pub far: f32,
 }
