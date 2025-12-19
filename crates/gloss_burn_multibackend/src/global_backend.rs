@@ -5,6 +5,8 @@ pub enum GlobalBackend {
     Candle,
     NdArray,
     Wgpu,
+    TorchCpu,
+    TorchCuda(usize), //the index of the cuda device
 }
 
 pub static GLOBAL_BURN_BACKEND: OnceCell<GlobalBackend> = OnceCell::new();

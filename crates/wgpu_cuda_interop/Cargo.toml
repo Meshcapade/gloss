@@ -1,0 +1,48 @@
+[package]
+name = "wgpu-cuda-interop"
+authors.workspace = true
+description = "Library for vulkan and cuda interop of memory"
+edition.workspace = true
+publish = true
+license.workspace = true
+rust-version.workspace = true
+version.workspace = true
+readme = "README.md"
+documentation = "https://docs.rs/wgpu-cuda-interop"
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[features]
+default = ["cuda"]
+cuda = ["libloading", "lazy_static", "cust", "cuda_std", "cust_raw", "wgpu/vulkan"]
+
+
+[dependencies]
+#local to package
+# strum = "0.25"
+# strum_macros = "0.25"
+
+#workspace internal gloss
+
+#workspace third-party
+libc.workspace=true
+log.workspace=true
+wgpu.workspace=true
+wgpu-hal.workspace=true
+ash.workspace=true
+libloading={ workspace = true, optional = true }
+lazy_static={ workspace = true, optional = true }
+cust={ workspace = true, optional = true }
+cuda_std={ workspace = true, optional = true }
+cust_raw={ workspace = true, optional = true }
+
+
+
+
+[lints]
+workspace = true
+
+
+

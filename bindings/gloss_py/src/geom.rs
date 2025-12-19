@@ -5,7 +5,7 @@ use gloss_utils::convert_enum_from;
 use numpy::{PyArray1, PyArray2, PyArrayMethods, PyReadonlyArray1, PyReadonlyArray2, ToPyArray};
 use pyo3::prelude::*;
 
-#[pyclass(name = "SplatType", module = "gloss.types", unsendable, eq, eq_int)]
+#[pyclass(name = "SplatType", module = "gloss.types", unsendable)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PySplatType {
     Avg = 0,
@@ -13,7 +13,7 @@ pub enum PySplatType {
 }
 convert_enum_from!(PySplatType, SplatType, Avg, Sum,);
 
-#[pyclass(name = "IndirRemovalPolicy", module = "gloss.types", unsendable, eq, eq_int)]
+#[pyclass(name = "IndirRemovalPolicy", module = "gloss.types", unsendable)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PyIndirRemovalPolicy {
     RemoveInvalidRows = 0,

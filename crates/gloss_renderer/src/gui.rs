@@ -31,7 +31,6 @@ use egui::style::{HandleShape, NumericColorSpace, ScrollStyle};
 use gloss_utils::{
     abi_stable_aliases::std_types::{ROption::RSome, RString, RVec},
     memory::get_last_relevant_func_name,
-    tensor::DynamicMatrixOps,
 };
 
 use re_memory::{accounting_allocator, CallstackStatistics, MemoryUse};
@@ -775,7 +774,7 @@ impl GuiMainWidget {
                     let cam = scene.get_current_cam().unwrap();
                     let view = cam.view_matrix(scene);
                     let proj = cam.proj_matrix(scene);
-                    for (idx, vert) in verts.0.to_dmatrix().row_iter().enumerate() {
+                    for (idx, vert) in verts.0.row_iter().enumerate() {
                         let point_world = model_matrix.0 * na::Point3::from(vert.fixed_columns::<3>(0).transpose());
                         let point_screen = cam.project(
                             point_world,
@@ -1624,7 +1623,7 @@ impl GuiMainWidget {
 
                     //transform vertices
                     let mm = scene.get_comp::<&ModelMatrix>(&selected_entity).unwrap();
-                    let v = geom::transform_verts(&v.0.to_dmatrix(), &mm.0);
+                    let v = geom::transform_verts(&v.0, &mm.0);
 
                     let f = scene.get_comp::<&Faces>(&selected_entity).ok().map(|f| f.0.clone());
 
@@ -1633,14 +1632,14 @@ impl GuiMainWidget {
                     let normals = scene
                         .get_comp::<&Normals>(&selected_entity)
                         .ok()
-                        .map(|normals| geom::transform_vectors(&normals.0.to_dmatrix(), &mm.0));
+                        .map(|normals| geom::transform_vectors(&normals.0, &mm.0));
 
                     //TODO make the path parametrizable
                     geom::save_obj(
                         &v,
-                        f.map(|faces| faces.to_dmatrix()).as_ref(),
+                        f.as_ref(),
                         // None,
-                        uv.map(|faces| faces.to_dmatrix()).as_ref(),
+                        uv.as_ref(),
                         normals.as_ref(),
                         "./saved_obj.obj",
                     );
@@ -1657,7 +1656,7 @@ impl GuiMainWidget {
 
                     //transform vertices
                     let mm = scene.get_comp::<&ModelMatrix>(&selected_entity).unwrap();
-                    let v = geom::transform_verts(&v.0.to_dmatrix(), &mm.0);
+                    let v = geom::transform_verts(&v.0, &mm.0);
 
                     let f = scene.get_comp::<&Faces>(&selected_entity).ok().map(|f| f.0.clone());
 
@@ -1666,18 +1665,18 @@ impl GuiMainWidget {
                     let normals = scene
                         .get_comp::<&Normals>(&selected_entity)
                         .ok()
-                        .map(|normals| geom::transform_vectors(&normals.0.to_dmatrix(), &mm.0));
+                        .map(|normals| geom::transform_vectors(&normals.0, &mm.0));
 
                     let colors = scene.get_comp::<&Colors>(&selected_entity).ok().map(|colors| colors.0.clone());
 
                     //TODO make the path parametrizable
                     geom::save_ply(
                         &v,
-                        f.map(|faces| faces.to_dmatrix()).as_ref(),
+                        f.as_ref(),
                         // None,
-                        uv.map(|uvs| uvs.to_dmatrix()).as_ref(),
+                        uv.as_ref(),
                         normals.as_ref(),
-                        colors.map(|colors| colors.to_dmatrix()).as_ref(),
+                        colors.as_ref(),
                         "./saved_ply.ply",
                     );
                 }

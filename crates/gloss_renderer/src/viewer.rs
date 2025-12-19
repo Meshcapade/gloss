@@ -1431,7 +1431,8 @@ impl Viewer {
     }
 
     fn finalize_scene(&mut self) {
-        self.scene.as_mut().unwrap().add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
+        let gpu = self.gpu_res.as_ref().unwrap().gpu.clone();
+        self.scene.as_mut().unwrap().add_resource(gpu.clone());
     }
 
     fn resume(&mut self, event_loop: &ActiveEventLoop) {

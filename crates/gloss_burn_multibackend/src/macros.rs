@@ -31,6 +31,13 @@ macro_rules! ops_tensor_tensor {
 
                 $tensor::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op($($t,)*))
             }
+
+            #[cfg(feature = "burn-torch")]
+            ($($tensor::Torch($t),)*) => {
+                use crate::backend::TorchBackend;
+
+                $tensor::Torch(<TorchBackend as $trait<TorchBackend>>::$op($($t,)*))
+            }
             _ => panic!("Invalid device."),
         }
 
@@ -72,6 +79,13 @@ macro_rules! ops_tensor {
 
                 $tensor_type::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op(t))
             }
+
+            #[cfg(feature = "burn-torch")]
+            $tensor_type::Torch(t) => {
+                use crate::backend::TorchBackend;
+
+                $tensor_type::Torch(<TorchBackend as $trait<TorchBackend>>::$op(t))
+            }
         }
     };
 }
@@ -106,7 +120,14 @@ macro_rules! ops_tensor_scalar {
                 use crate::backend::WgpuBackend;
 
                 $tensor::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op($t, $s.try_into().unwrap()))
-            } // _ => panic!("Invalid device."),
+            }
+
+            #[cfg(feature = "burn-torch")]
+            ($tensor::Torch($t), $s) => {
+                use crate::backend::TorchBackend;
+
+                $tensor::Torch(<TorchBackend as $trait<TorchBackend>>::$op($t, $s.try_into().unwrap()))
+            }
         }
     };
 }
@@ -145,6 +166,13 @@ macro_rules! ops_tensor_rest {
 
                 $tensor_type::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op(t $(, $rest)*))
             }
+
+            #[cfg(feature = "burn-torch")]
+            $tensor_type::Torch(t) => {
+                use crate::backend::TorchBackend;
+
+                $tensor_type::Torch(<TorchBackend as $trait<TorchBackend>>::$op(t $(, $rest)*))
+            }
         }
     };
 }
@@ -173,6 +201,13 @@ macro_rules! ops_rest_device {
 
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op($($args),*, device))
             }
+
+            #[cfg(feature = "burn-torch")]
+            MultiDevice::Torch(device) => {
+                use crate::backend::TorchBackend;
+
+                MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::$op($($args),*, device))
+            }
         }
     };
 
@@ -199,6 +234,13 @@ macro_rules! ops_rest_device {
 
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op($($args),*, device))
             }
+
+            #[cfg(feature = "burn-torch")]
+            MultiDevice::Torch(device) => {
+                use crate::backend::TorchBackend;
+
+                MultiIntTensor::Torch(<TorchBackend as IntTensorOps<TorchBackend>>::$op($($args),*, device))
+            }
         }
     };
 }
@@ -224,6 +266,12 @@ macro_rules! ops_dim_tensor_indices {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op($dim, t, i))
             }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiFloatTensor::Torch(t), MultiIntTensor::Torch(i)) => {
+                use crate::backend::TorchBackend;
+                MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::$op($dim, t, i))
+            }
             _ => panic!("Mismatched tensor backends"),
         }
     };
@@ -246,6 +294,12 @@ macro_rules! ops_dim_tensor_indices {
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op($dim, t, i))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiIntTensor::Torch(t), MultiIntTensor::Torch(i)) => {
+                use crate::backend::TorchBackend;
+                MultiIntTensor::Torch(<TorchBackend as IntTensorOps<TorchBackend>>::$op($dim, t, i))
             }
             _ => panic!("Mismatched tensor backends"),
         }
@@ -273,6 +327,12 @@ macro_rules! ops_dim_tensor_indices_values {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op($dim, t, i, v))
             }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiFloatTensor::Torch(t), MultiIntTensor::Torch(i), MultiFloatTensor::Torch(v)) => {
+                use crate::backend::TorchBackend;
+                MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::$op($dim, t, i, v))
+            }
             _ => panic!("Mismatched tensor backends"),
         }
     };
@@ -295,6 +355,12 @@ macro_rules! ops_dim_tensor_indices_values {
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i), MultiIntTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op($dim, t, i, v))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiIntTensor::Torch(t), MultiIntTensor::Torch(i), MultiIntTensor::Torch(v)) => {
+                use crate::backend::TorchBackend;
+                MultiIntTensor::Torch(<TorchBackend as IntTensorOps<TorchBackend>>::$op($dim, t, i, v))
             }
             _ => panic!("Mismatched tensor backends"),
         }
@@ -322,6 +388,12 @@ macro_rules! ops_tensor_dim_indices {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op(t, $dim, i))
             }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiFloatTensor::Torch(t), MultiIntTensor::Torch(i)) => {
+                use crate::backend::TorchBackend;
+                MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::$op(t, $dim, i))
+            }
             _ => panic!("Mismatched tensor backends"),
         }
     };
@@ -344,6 +416,12 @@ macro_rules! ops_tensor_dim_indices {
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op(t, $dim, i))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiIntTensor::Torch(t), MultiIntTensor::Torch(i)) => {
+                use crate::backend::TorchBackend;
+                MultiIntTensor::Torch(<TorchBackend as IntTensorOps<TorchBackend>>::$op(t, $dim, i))
             }
             _ => panic!("Mismatched tensor backends"),
         }
@@ -371,6 +449,12 @@ macro_rules! ops_tensor_dim_indices_values {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op(t, $dim, i, v))
             }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiFloatTensor::Torch(t), MultiIntTensor::Torch(i), MultiFloatTensor::Torch(v)) => {
+                use crate::backend::TorchBackend;
+                MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::$op(t, $dim, i, v))
+            }
             _ => panic!("Mismatched tensor backends"),
         }
     };
@@ -393,6 +477,12 @@ macro_rules! ops_tensor_dim_indices_values {
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(i), MultiIntTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op(t, $dim, i, v))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiIntTensor::Torch(t), MultiIntTensor::Torch(i), MultiIntTensor::Torch(v)) => {
+                use crate::backend::TorchBackend;
+                MultiIntTensor::Torch(<TorchBackend as IntTensorOps<TorchBackend>>::$op(t, $dim, i, v))
             }
             _ => panic!("Mismatched tensor backends"),
         }
@@ -420,6 +510,12 @@ macro_rules! ops_tensor_other_values {
                 use crate::backend::WgpuBackend;
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::$op(t, $other, v))
             }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiFloatTensor::Torch(t), MultiFloatTensor::Torch(v)) => {
+                use crate::backend::TorchBackend;
+                MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::$op(t, $other, v))
+            }
             _ => panic!("Mismatched tensor backends"),
         }
     };
@@ -442,6 +538,12 @@ macro_rules! ops_tensor_other_values {
             (MultiIntTensor::Wgpu(t), MultiIntTensor::Wgpu(v)) => {
                 use crate::backend::WgpuBackend;
                 MultiIntTensor::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::$op(t, $other, v))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            (MultiIntTensor::Torch(t), MultiIntTensor::Torch(v)) => {
+                use crate::backend::TorchBackend;
+                MultiIntTensor::Torch(<TorchBackend as IntTensorOps<TorchBackend>>::$op(t, $other, v))
             }
             _ => panic!("Mismatched tensor backends"),
         }
@@ -482,6 +584,13 @@ macro_rules! ops_tensor_rest_ret_bool {
                 use crate::backend::WgpuBackend;
 
                 MultiBoolTensor::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op(t $(, $rest)*))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            $tensor_type::Torch(t) => {
+                use crate::backend::TorchBackend;
+
+                MultiBoolTensor::Torch(<TorchBackend as $trait<TorchBackend>>::$op(t $(, $rest)*))
             }
         }
     };
@@ -525,6 +634,13 @@ macro_rules! ops_tensor_ret_float {
                 use crate::backend::WgpuBackend;
 
                 MultiFloatTensor::Wgpu(<WgpuBackend as $trait<WgpuBackend>>::$op(t))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            $tensor_type::Torch(t) => {
+                use crate::backend::TorchBackend;
+
+                MultiFloatTensor::Torch(<TorchBackend as $trait<TorchBackend>>::$op(t))
             }
         }
     };

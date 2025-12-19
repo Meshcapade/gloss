@@ -21,7 +21,6 @@ use gloss_geometry::geom;
 use gloss_utils::abi_stable_aliases::std_types::{RHashMap, RString};
 #[cfg(not(target_arch = "wasm32"))]
 use gloss_utils::abi_stable_aliases::StableAbi;
-use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorOps};
 use nalgebra as na;
 
 pub static GLOSS_FLOOR_NAME: &str = "floor";
@@ -81,7 +80,7 @@ impl Scene {
     /// Creates a entity with a name or gets the one that already exists with
     /// that concrete name You can keep adding components to this entity
     /// with .insert()
-    pub fn get_or_create_hidden_entity(&mut self, name: &str) -> EntityMut {
+    pub fn get_or_create_hidden_entity(&mut self, name: &str) -> EntityMut<'_> {
         let r_name = RString::from(name.to_string());
         let entity_ref = self
             .name2entity
@@ -131,14 +130,14 @@ impl Scene {
 
     /// # Panics
     /// Will panic if no entity has that name
-    pub fn get_entity_mut_with_name(&mut self, name: &str) -> Option<EntityMut> {
+    pub fn get_entity_mut_with_name(&mut self, name: &str) -> Option<EntityMut<'_>> {
         let entity_opt = self.name2entity.get(name);
         entity_opt.map(|ent| EntityMut::new(&mut self.world, *ent))
     }
 
     /// # Panics
     /// Will return None if no entity with id found
-    pub fn find_entity_with_id(&mut self, id: u8) -> Option<EntityRef> {
+    pub fn find_entity_with_id(&mut self, id: u8) -> Option<EntityRef<'_>> {
         let entities = self.get_all_entities(false);
 
         for entity in entities {
@@ -317,11 +316,8 @@ impl Scene {
             trace!("scale for mesh {}", name.0);
 
             //get min and max vertex in obj coords
-            let min_coord_vec: Vec<f32> = verts.0.min_vec();
-            let max_coord_vec: Vec<f32> = verts.0.max_vec();
-            // let min_coord_vec: Vec<f32> = verts.0.column_iter().map(|c|
-            // c.min()).collect(); let max_coord_vec: Vec<f32> =
-            // verts.0.column_iter().map(|c| c.max()).collect();
+            let min_coord_vec: Vec<f32> = verts.0.column_iter().map(|c| c.min()).collect();
+            let max_coord_vec: Vec<f32> = verts.0.column_iter().map(|c| c.max()).collect();
             let min_point = na::Point3::<f32>::from_slice(&min_coord_vec);
             let max_point = na::Point3::<f32>::from_slice(&max_coord_vec);
 
@@ -362,7 +358,7 @@ impl Scene {
             };
 
             //get min and max vertex in obj coords
-            let v_world = geom::transform_verts(&verts.0.to_dmatrix(), &model_matrix.0);
+            let v_world = geom::transform_verts(&verts.0, &model_matrix.0);
             let min_y_cur = v_world.column(1).min();
             min_y_global = min_y_global.min(min_y_cur);
         }

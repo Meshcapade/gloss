@@ -16,7 +16,7 @@ pollster.workspace=true
 nalgebra.workspace=true
 getrandom02.workspace=true
 getrandom03.workspace=true
-burn.workspace=true
+# burn.workspace=true
 
 # More dependancies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
 [target.'cfg(target_arch = "wasm32")'.dependencies]

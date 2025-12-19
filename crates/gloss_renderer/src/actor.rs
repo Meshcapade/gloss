@@ -6,7 +6,6 @@ use crate::{
     components::{Colors, Faces, ModelMatrix, Normals, UVs, Verts},
     scene::Scene,
 };
-use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D};
 
 /// Contains a reference to an entity in the world so that any mesh processing
 /// will directly affect the relevant entity in the world.
@@ -37,16 +36,14 @@ impl Actor {
 
             //verts
             if let Ok(verts) = scene.get_comp::<&Verts>(&self.entity) {
-                let new_verts = geom::transform_verts(&verts.0.to_dmatrix(), &model_matrix.0);
-                let new_verts_tensor = DynamicTensorFloat2D::from_dmatrix(&new_verts);
-                command_buffer.insert_one(self.entity, Verts(new_verts_tensor));
+                let new_verts = geom::transform_verts(&verts.0, &model_matrix.0);
+                command_buffer.insert_one(self.entity, Verts(new_verts));
             }
 
             //normals
             if let Ok(normals) = scene.get_comp::<&Normals>(&self.entity) {
-                let new_normals = geom::transform_vectors(&normals.0.to_dmatrix(), &model_matrix.0);
-                let new_normals_tensor = DynamicTensorFloat2D::from_dmatrix(&new_normals);
-                command_buffer.insert_one(self.entity, Normals(new_normals_tensor));
+                let new_normals = geom::transform_vectors(&normals.0, &model_matrix.0);
+                command_buffer.insert_one(self.entity, Normals(new_normals));
             }
 
             //model matrix is now identity
@@ -68,10 +65,10 @@ impl Actor {
 
         //TODO modify data given the model matrix
         geom::save_obj(
-            &verts.0.to_dmatrix(),
-            faces.as_ref().map(|v| v.0.to_dmatrix()).as_ref(),
-            uvs.as_ref().map(|v| v.0.to_dmatrix()).as_ref(),
-            normals.as_ref().map(|v| v.0.to_dmatrix()).as_ref(),
+            &verts.0,
+            faces.as_ref().map(|v| &v.0),
+            uvs.as_ref().map(|v| &v.0),
+            normals.as_ref().map(|v| &v.0),
             path,
         );
     }
@@ -90,11 +87,11 @@ impl Actor {
         //TODO modify data given the model matrix
 
         geom::save_ply(
-            &verts.0.to_dmatrix(),
-            faces.as_ref().map(|v| v.0.to_dmatrix()).as_ref(),
-            uvs.as_ref().map(|v| v.0.to_dmatrix()).as_ref(),
-            normals.as_ref().map(|v| v.0.to_dmatrix()).as_ref(),
-            colors.as_ref().map(|v| v.0.to_dmatrix()).as_ref(),
+            &verts.0,
+            faces.as_ref().map(|v| &v.0),
+            uvs.as_ref().map(|v| &v.0),
+            normals.as_ref().map(|v| &v.0),
+            colors.as_ref().map(|v| &v.0),
             path,
         );
     }

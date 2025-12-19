@@ -1,3 +1,5 @@
+#![allow(dead_code)] //needed to supress warning of the check function of encase. To be removed after encase 0.11
+
 use std::collections::HashMap;
 
 use crate::{
@@ -246,12 +248,12 @@ impl PipelineRunner for MeshPipeline {
             //local bindings
             let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&name.0.clone()];
             render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
-            render_pass.set_vertex_buffer(0, verts.buf.slice(..));
-            render_pass.set_vertex_buffer(1, uvs.buf.slice(..));
-            render_pass.set_vertex_buffer(2, normals.buf.slice(..));
-            render_pass.set_vertex_buffer(3, tangents.buf.slice(..));
-            render_pass.set_vertex_buffer(4, colors.buf.slice(..));
-            render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.set_vertex_buffer(0, verts.buf.buffer.slice(..));
+            render_pass.set_vertex_buffer(1, uvs.buf.buffer.slice(..));
+            render_pass.set_vertex_buffer(2, normals.buf.buffer.slice(..));
+            render_pass.set_vertex_buffer(3, tangents.buf.buffer.slice(..));
+            render_pass.set_vertex_buffer(4, colors.buf.buffer.slice(..));
+            render_pass.set_index_buffer(faces.buf.buffer.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
         }
 
@@ -267,12 +269,12 @@ impl PipelineRunner for MeshPipeline {
 
                         let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&current_selected.clone()];
                         render_pass.set_bind_group(2, local_bg.bg(), &[*offset]);
-                        render_pass.set_vertex_buffer(0, verts.buf.slice(..));
-                        render_pass.set_vertex_buffer(1, uvs.buf.slice(..));
-                        render_pass.set_vertex_buffer(2, normals.buf.slice(..));
-                        render_pass.set_vertex_buffer(3, tangents.buf.slice(..));
-                        render_pass.set_vertex_buffer(4, colors.buf.slice(..));
-                        render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
+                        render_pass.set_vertex_buffer(0, verts.buf.buffer.slice(..));
+                        render_pass.set_vertex_buffer(1, uvs.buf.buffer.slice(..));
+                        render_pass.set_vertex_buffer(2, normals.buf.buffer.slice(..));
+                        render_pass.set_vertex_buffer(3, tangents.buf.buffer.slice(..));
+                        render_pass.set_vertex_buffer(4, colors.buf.buffer.slice(..));
+                        render_pass.set_index_buffer(faces.buf.buffer.slice(..), wgpu::IndexFormat::Uint32);
                         render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
                     }
                 }

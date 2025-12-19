@@ -9,7 +9,7 @@ use nalgebra as na;
 use numpy::{AllowTypeChange, PyArrayLike1, PyArrayMethods, PyUntypedArrayMethods};
 use pyo3::prelude::*;
 
-#[pyclass(name = "PointColorType", module = "gloss.types", unsendable, eq, eq_int)]
+#[pyclass(name = "PointColorType", module = "gloss.types", unsendable)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PyPointColorType {
     Solid = 0,

@@ -108,16 +108,34 @@ impl<B: Backend> ToBurn<B, 2, Int> for nd::Array2<u32> {
     #[allow(clippy::cast_possible_wrap)]
     fn to_burn(&self, device: &B::Device) -> Tensor<B, 2, Int> {
         let array_i32 = self.mapv(|x| x as i32);
-        let vec: Vec<i32> = array_i32.into_raw_vec_and_offset().0;
+        let vec: Vec<i32> = array_i32.into_raw_vec();
         // let vec: Vec<i32> = array_i32.into_raw_vec();
         let shape = [self.nrows(), self.ncols()];
         Tensor::<B, 1, Int>::from_ints(&vec[..], device).reshape(shape)
+
+        //for torch the dtype is i64 only so we need to handle that case
+        // since the multibackend has a fixed dtype of i32 for int tensors we cannot use  B::IntElem::dtype() since it would just return i32
+        // we need to check if the device is torch or libtorch and cast to i64 in this case
+        // let backend_name = B::name(device);
+        // if backend_name.contains("torch") {
+        //     let array = self.mapv(i64::from);
+        //     let vec: Vec<i64> = array.into_raw_vec();
+        //     let shape = [self.nrows(), self.ncols()];
+        //     // Tensor::<B, 1, Int>::from_ints(&vec[..], device).reshape(shape) //internally it does a conversion to i32, sad :(
+        //     let data: TensorData = vec.as_slice().into();
+        //     Tensor::<B, 1, Int>::from_data(data, device).reshape(shape)
+        // } else {
+        //     let array = self.mapv(|x| x as i32);
+        //     let vec: Vec<i32> = array.into_raw_vec();
+        //     let shape = [self.nrows(), self.ncols()];
+        //     Tensor::<B, 1, Int>::from_ints(&vec[..], device).reshape(shape)
+        // }
     }
 
     #[allow(clippy::cast_possible_wrap)]
     fn into_burn(self, device: &B::Device) -> Tensor<B, 2, Int> {
         let array_i32 = self.mapv(|x| x as i32);
-        let vec: Vec<i32> = array_i32.into_raw_vec_and_offset().0;
+        let vec: Vec<i32> = array_i32.into_raw_vec();
         // let vec: Vec<i32> = array_i32.into_raw_vec();
         let shape = [self.nrows(), self.ncols()];
         Tensor::<B, 1, Int>::from_ints(&vec[..], device).reshape(shape)
@@ -129,7 +147,7 @@ impl<B: Backend> ToBurn<B, 1, Int> for nd::Array1<u32> {
     #[allow(clippy::cast_possible_wrap)]
     fn to_burn(&self, device: &B::Device) -> Tensor<B, 1, Int> {
         let array_i32 = self.mapv(|x| x as i32);
-        let vec: Vec<i32> = array_i32.into_raw_vec_and_offset().0;
+        let vec: Vec<i32> = array_i32.into_raw_vec();
         // let vec: Vec<i32> = array_i32.into_raw_vec();
         Tensor::<B, 1, Int>::from_ints(&vec[..], device)
     }
@@ -137,7 +155,7 @@ impl<B: Backend> ToBurn<B, 1, Int> for nd::Array1<u32> {
     #[allow(clippy::cast_possible_wrap)]
     fn into_burn(self, device: &B::Device) -> Tensor<B, 1, Int> {
         let array_i32 = self.mapv(|x| x as i32);
-        let vec: Vec<i32> = array_i32.into_raw_vec_and_offset().0;
+        let vec: Vec<i32> = array_i32.into_raw_vec();
         // let vec: Vec<i32> = array_i32.into_raw_vec();
         Tensor::<B, 1, Int>::from_ints(&vec[..], device)
     }
@@ -173,7 +191,7 @@ impl<B: Backend> ToBurn<B, 3, Int> for nd::Array3<u32> {
     #[allow(clippy::cast_possible_wrap)]
     fn to_burn(&self, device: &B::Device) -> Tensor<B, 3, Int> {
         let array_i32 = self.mapv(|x| x as i32);
-        let vec: Vec<i32> = array_i32.into_raw_vec_and_offset().0;
+        let vec: Vec<i32> = array_i32.into_raw_vec();
         // let vec: Vec<i32> = array_i32.into_raw_vec();
         let shape = [self.shape()[0], self.shape()[1], self.shape()[2]];
         Tensor::<B, 1, Int>::from_ints(&vec[..], device).reshape(shape)
@@ -182,7 +200,7 @@ impl<B: Backend> ToBurn<B, 3, Int> for nd::Array3<u32> {
     #[allow(clippy::cast_possible_wrap)]
     fn into_burn(self, device: &B::Device) -> Tensor<B, 3, Int> {
         let array_i32 = self.mapv(|x| x as i32);
-        let vec: Vec<i32> = array_i32.into_raw_vec_and_offset().0;
+        let vec: Vec<i32> = array_i32.into_raw_vec();
         // let vec: Vec<i32> = array_i32.into_raw_vec();
         let shape = [self.shape()[0], self.shape()[1], self.shape()[2]];
         Tensor::<B, 1, Int>::from_ints(&vec[..], device).reshape(shape)

@@ -12,6 +12,18 @@ use gloss_utils::numerical;
 
 use crate::{buffer::Buffer, mipmap::RenderMipmapGenerator};
 
+#[cfg(feature = "burn-torch")]
+use crate::error::CudaInteropError;
+#[cfg(feature = "burn-torch")]
+use cust_raw;
+
+#[cfg(feature = "burn-torch")]
+use std::sync::Arc;
+#[cfg(feature = "burn-torch")]
+use tch::Tensor;
+#[cfg(feature = "burn-torch")]
+use wgpu_cuda_interop::{vulkan_wgpu_interop::WgpuBufferCudaMem, AllocSize};
+
 //aditional parameters for texture creation that usually you can leave as
 // default
 #[derive(Clone, Copy)]
@@ -52,6 +64,10 @@ pub struct Texture {
     // pub height: u32,
     // pub bind_group: Option<wgpu::BindGroup>, //cannot lazily create because it depends on the binding locations
     pub tex_params: TexParams,
+
+    //optional stuff for vulkan-cuda interop
+    #[cfg(feature = "burn-torch")]
+    pub staging_buffer_backed_by_cuda_mem: Option<Arc<WgpuBufferCudaMem>>,
 }
 
 impl Texture {
@@ -102,6 +118,8 @@ impl Texture {
             // width,
             // height,
             // bind_group: None,
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
         }
     }
 
@@ -169,6 +187,8 @@ impl Texture {
             tex_params, /* width: dimensions.0,
                          * height: dimensions.1,
                          * bind_group: None, */
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
         }
     }
 
@@ -296,6 +316,8 @@ impl Texture {
             tex_params, /* width: dimensions.0,
                          * height: dimensions.1,
                          * bind_group: None, */
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
         })
     }
 
@@ -382,6 +404,10 @@ impl Texture {
         self.view = view;
 
         Ok(())
+    }
+
+    pub fn nr_channels(&self) -> u32 {
+        self.texture.format().components().into()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1118,6 +1144,8 @@ impl Texture {
             sampler,
             tex_params, /* width,
                          * height, */
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
         }
     }
 
@@ -1184,6 +1212,8 @@ impl Texture {
             sampler,
             tex_params, /* width,
                          * height, */
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
         }
     }
 
@@ -1209,4 +1239,80 @@ impl Texture {
     //         height: (),
     //     }
     // }
+
+    #[cfg(feature = "burn-torch")]
+    pub fn from_tensor(
+        &mut self,
+        tensor: &Tensor,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        adapter: &wgpu::Adapter,
+    ) -> Result<(), CudaInteropError> {
+        if tensor.dim() != 4 {
+            return Err(CudaInteropError::InvalidTensorDim(tensor.dim() as usize));
+        }
+        if tensor.size()[0] != 1 {
+            return Err(CudaInteropError::InvalidBatchSize(tensor.size()[0] as usize));
+        }
+        if tensor.kind() != tch::Kind::Uint8 {
+            return Err(CudaInteropError::InvalidTensorType(tensor.kind()));
+        }
+
+        let mut tensor_hwc: Tensor = tensor.permute([0, 2, 3, 1]).squeeze().contiguous();
+        let nr_channels = tensor_hwc.size()[2] as usize;
+        if nr_channels > 4 {
+            return Err(CudaInteropError::InvalidChannelSize(nr_channels));
+        }
+
+        //since there is no such thing as rgb textures (just R, RG and RGBA). If it has 3 channels we pad with a channel full of zeros
+        if nr_channels == 3 {
+            let zero_channel = Tensor::empty_like(&tensor_hwc.slice(2, 0, 1, 1));
+            tensor_hwc = Tensor::cat(&[tensor_hwc, zero_channel], 2);
+        }
+        let nr_channels = tensor_hwc.size()[2] as usize;
+
+        //calculate the size of the image
+        let height = tensor_hwc.size()[0] as usize;
+        let width = tensor_hwc.size()[1] as usize;
+        let bytes_per_channel = 1; //we assume is one byte per channel since we only allow uint8
+        let img_size = AllocSize {
+            height: height,
+            width: width,
+            stride: width * nr_channels * bytes_per_channel,
+        };
+
+        //recreate the staging buffer if necessary
+        if self.staging_buffer_backed_by_cuda_mem.is_none()
+            || self.staging_buffer_backed_by_cuda_mem.as_ref().unwrap().cuda_mem.alloc_size != img_size
+        {
+            debug!("staging_buffer_backed_by_cuda_mem creating because it is none or the size is different");
+            let wgpu_cuda = wgpu_cuda_interop::interop::create_wgpu_cuda_buffer(device, adapter, img_size, true);
+            self.staging_buffer_backed_by_cuda_mem = Some(Arc::new(wgpu_cuda));
+        }
+
+        //remake the texture size if necessary
+        if self.texture.height() != height as u32 || self.texture.width() != width as u32 || self.nr_channels() != nr_channels as u32 {
+            // let old_format= self.texture.format();
+            // println!("old format {:?}", old_format);
+            let new_format = match nr_channels {
+                1 => wgpu::TextureFormat::R8Unorm,
+                2 => wgpu::TextureFormat::Rg8Unorm,
+                4 => wgpu::TextureFormat::Rgba8UnormSrgb,
+                _ => panic!("Unsupported number of channels"),
+            };
+            let new_tex = Texture::new(device, width as u32, height as u32, new_format, self.texture.usage(), self.tex_params);
+            //replace
+            // println!("replacing the view!");
+            self.texture = new_tex.texture;
+            self.view = new_tex.view;
+        }
+
+        //copy from cuda memory to the staging buffer and then to the texture
+        let source_ptr = tensor_hwc.data_ptr() as cust_raw::CUdeviceptr;
+        if let Some(staging_buffer) = self.staging_buffer_backed_by_cuda_mem.as_ref() {
+            wgpu_cuda_interop::interop::cuda_img_to_wgpu(source_ptr, img_size, staging_buffer, &self.texture, device, queue);
+        }
+
+        Ok(())
+    }
 }

@@ -2,6 +2,8 @@
 use crate::backend::CandleBackend;
 #[cfg(feature = "burn-ndarray")]
 use crate::backend::NdArrayBackend;
+#[cfg(feature = "burn-torch")]
+use crate::backend::TorchBackend;
 #[cfg(feature = "burn-wgpu")]
 use crate::backend::WgpuBackend;
 
@@ -20,6 +22,8 @@ pub enum MultiFloatTensor {
     NdArray(FloatTensor<NdArrayBackend>),
     #[cfg(feature = "burn-wgpu")]
     Wgpu(FloatTensor<WgpuBackend>),
+    #[cfg(feature = "burn-torch")]
+    Torch(FloatTensor<TorchBackend>),
     // #[cfg(feature = "autodiff")]
     // Autodiff(FloatTensor<burn_autodiff::Autodiff<MultiBackend>>),
 }
@@ -33,6 +37,8 @@ pub enum MultiIntTensor {
     NdArray(IntTensor<NdArrayBackend>),
     #[cfg(feature = "burn-wgpu")]
     Wgpu(IntTensor<WgpuBackend>),
+    #[cfg(feature = "burn-torch")]
+    Torch(IntTensor<TorchBackend>),
     // #[cfg(feature = "autodiff")]
     // Autodiff(IntTensor<burn_autodiff::Autodiff<MultiBackend>>),
 }
@@ -46,6 +52,8 @@ pub enum MultiBoolTensor {
     NdArray(BoolTensor<NdArrayBackend>),
     #[cfg(feature = "burn-wgpu")]
     Wgpu(BoolTensor<WgpuBackend>),
+    #[cfg(feature = "burn-torch")]
+    Torch(BoolTensor<TorchBackend>),
     // #[cfg(feature = "autodiff")]
     // Autodiff(BoolTensor<burn_autodiff::Autodiff<MultiBackend>>),
 }
@@ -64,6 +72,8 @@ impl TensorMetadata for MultiFloatTensor {
             MultiFloatTensor::NdArray(t) => t.shape(),
             #[cfg(feature = "burn-wgpu")]
             MultiFloatTensor::Wgpu(t) => t.shape(),
+            #[cfg(feature = "burn-torch")]
+            MultiFloatTensor::Torch(t) => t.shape(),
             // #[cfg(feature = "autodiff")]
             // MultiFloatTensor::Autodiff(t) => t.shape(),
         }
@@ -79,6 +89,8 @@ impl TensorMetadata for MultiIntTensor {
             MultiIntTensor::NdArray(_) => DType::I32,
             #[cfg(feature = "burn-wgpu")]
             MultiIntTensor::Wgpu(_) => DType::I32,
+            #[cfg(feature = "burn-torch")]
+            MultiIntTensor::Torch(_) => DType::I64,
         }
     }
 
@@ -90,6 +102,8 @@ impl TensorMetadata for MultiIntTensor {
             MultiIntTensor::NdArray(t) => t.shape(),
             #[cfg(feature = "burn-wgpu")]
             MultiIntTensor::Wgpu(t) => t.shape(),
+            #[cfg(feature = "burn-torch")]
+            MultiIntTensor::Torch(t) => t.shape(),
             // #[cfg(feature = "autodiff")]
             // MultiIntTensor::Autodiff(t) => t.shape(),
         }
@@ -109,6 +123,8 @@ impl TensorMetadata for MultiBoolTensor {
             MultiBoolTensor::NdArray(t) => t.shape(),
             #[cfg(feature = "burn-wgpu")]
             MultiBoolTensor::Wgpu(t) => t.shape(),
+            #[cfg(feature = "burn-torch")]
+            MultiBoolTensor::Torch(t) => t.shape(),
             // #[cfg(feature = "autodiff")]
             // MultiIntTensor::Autodiff(t) => t.shape(),
         }

@@ -3,7 +3,6 @@
 
 use crate::components::{Colors, DiffuseImg, Edges, ImgConfig, VisLines, VisMesh};
 use gloss_hecs::EntityBuilder;
-use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorInt2D};
 use log::debug;
 use nalgebra_glm::{Vec2, Vec3};
 
@@ -88,11 +87,9 @@ pub fn build_cube(center: na::Point3<f32>, scale: f32) -> EntityBuilder {
     let mut model_matrix = na::SimilarityMatrix3::<f32>::identity();
     // model_matrix.append_scaling_mut(0.1);
     model_matrix.append_translation_mut(&center.coords.into());
-    let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-    let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
 
     let mut builder = EntityBuilder::new();
-    builder.add(Verts(verts_tensor)).add(Faces(faces_tensor)).add(ModelMatrix(model_matrix));
+    builder.add(Verts(verts)).add(Faces(faces)).add(ModelMatrix(model_matrix));
 
     builder
 }
@@ -172,16 +169,9 @@ pub fn build_plane(center: na::Point3<f32>, normal: na::Vector3<f32>, size_x: f3
         //reset to identity
         model_matrix = na::SimilarityMatrix3::<f32>::identity();
     }
-    let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-    let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
-    let uvs_tensor = DynamicTensorFloat2D::from_dmatrix(&uvs);
 
     let mut builder = EntityBuilder::new();
-    builder
-        .add(Verts(verts_tensor))
-        .add(Faces(faces_tensor))
-        .add(UVs(uvs_tensor))
-        .add(ModelMatrix(model_matrix));
+    builder.add(Verts(verts)).add(Faces(faces)).add(UVs(uvs)).add(ModelMatrix(model_matrix));
 
     builder
 }
@@ -220,11 +210,8 @@ pub fn build_floor() -> EntityBuilder {
             0.0, 1.0, //
         ],
     );
-    let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-    let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
-    let uvs_tensor = DynamicTensorFloat2D::from_dmatrix(&uvs);
     let mut builder = EntityBuilder::new();
-    builder.add(Verts(verts_tensor)).add(Faces(faces_tensor)).add(UVs(uvs_tensor));
+    builder.add(Verts(verts)).add(Faces(faces)).add(UVs(uvs));
 
     builder
 }
@@ -324,11 +311,9 @@ pub fn build_grid(
         //reset to identity
         model_matrix = na::SimilarityMatrix3::<f32>::identity();
     }
-    let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-    let edges_tensor = DynamicTensorInt2D::from_dmatrix(&edges);
 
     let mut builder = EntityBuilder::new();
-    builder.add(Verts(verts_tensor)).add(Edges(edges_tensor)).add(ModelMatrix(model_matrix));
+    builder.add(Verts(verts)).add(Edges(edges)).add(ModelMatrix(model_matrix));
 
     builder
 }
@@ -438,29 +423,25 @@ fn model_obj_to_entity_builder(models: &[tobj::Model]) -> EntityBuilder {
     if nr_verts > 0 {
         debug!("read_obj: file has verts");
         let verts = DMatrix::<f32>::from_row_slice(nr_verts, 3, mesh.positions.as_slice());
-        let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-        builder.add(Verts(verts_tensor));
+        builder.add(Verts(verts));
     }
 
     if nr_faces > 0 {
         debug!("read_obj: file has faces");
         let faces = DMatrix::<u32>::from_row_slice(nr_faces, 3, mesh.indices.as_slice());
-        let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
-        builder.add(Faces(faces_tensor));
+        builder.add(Faces(faces));
     }
 
     if nr_normals > 0 {
         debug!("read_obj: file has normals");
         let normals = DMatrix::<f32>::from_row_slice(nr_normals, 3, mesh.normals.as_slice());
-        let normals_tensor = DynamicTensorFloat2D::from_dmatrix(&normals);
-        builder.add(Normals(normals_tensor));
+        builder.add(Normals(normals));
     }
 
     if nr_texcoords > 0 {
         debug!("read_obj: file has texcoords");
         let uv = DMatrix::<f32>::from_row_slice(nr_texcoords, 2, mesh.texcoords.as_slice());
-        let uvs_tensor = DynamicTensorFloat2D::from_dmatrix(&uv);
-        builder.add(UVs(uvs_tensor));
+        builder.add(UVs(uv));
     }
 
     // if !mesh.faces_original_index.is_empty() {
@@ -584,8 +565,7 @@ fn build_from_ply(path: &Path) -> EntityBuilder {
         verts.row_mut(idx)[1] = v.pos.y;
         verts.row_mut(idx)[2] = v.pos.z;
     }
-    let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-    builder.add(Verts(verts_tensor));
+    builder.add(Verts(verts));
     //color
     let mut colors = DMatrix::<f32>::zeros(vertex_list.len(), 3);
     for (idx, v) in vertex_list.iter().enumerate() {
@@ -596,8 +576,7 @@ fn build_from_ply(path: &Path) -> EntityBuilder {
     //TODO need a better way to detect if we actually have color info
     if colors.min() != 0.0 || colors.max() != 0.0 {
         debug!("read_ply: file has colors");
-        let colors_tensor = DynamicTensorFloat2D::from_dmatrix(&colors);
-        builder.add(Colors(colors_tensor));
+        builder.add(Colors(colors));
     }
     //normal
     let mut normals = DMatrix::<f32>::zeros(vertex_list.len(), 3);
@@ -609,8 +588,7 @@ fn build_from_ply(path: &Path) -> EntityBuilder {
     //TODO need a better way to detect if we actually have normal info
     if normals.min() != 0.0 || normals.max() != 0.0 {
         debug!("read_ply: file has normals");
-        let normals_tensor = DynamicTensorFloat2D::from_dmatrix(&normals);
-        builder.add(Normals(normals_tensor));
+        builder.add(Normals(normals));
     }
     //uv
     let mut uvs = DMatrix::<f32>::zeros(vertex_list.len(), 2);
@@ -621,8 +599,7 @@ fn build_from_ply(path: &Path) -> EntityBuilder {
     //TODO need a better way to detect if we actually have normal info
     if uvs.min() != 0.0 || uvs.max() != 0.0 {
         debug!("read_ply: file has uvs");
-        let uvs_tensor = DynamicTensorFloat2D::from_dmatrix(&uvs);
-        builder.add(UVs(uvs_tensor));
+        builder.add(UVs(uvs));
     }
 
     if !face_list.is_empty() {
@@ -634,9 +611,8 @@ fn build_from_ply(path: &Path) -> EntityBuilder {
             faces.row_mut(idx)[1] = f.vertex_index[1];
             faces.row_mut(idx)[2] = f.vertex_index[2];
         }
-        let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
 
-        builder.add(Faces(faces_tensor));
+        builder.add(Faces(faces));
     }
 
     builder
@@ -691,8 +667,7 @@ fn build_from_gltf(path: &Path) -> EntityBuilder {
         debug!("gltf: total nr positions {nr_verts}");
 
         let verts = DMatrix::<f32>::from_row_slice(nr_verts, 3, &all_positions);
-        let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-        builder.add(Verts(verts_tensor));
+        builder.add(Verts(verts));
     }
 
     if !all_indices.is_empty() {
@@ -700,8 +675,7 @@ fn build_from_gltf(path: &Path) -> EntityBuilder {
         debug!("gltf: total nr indices {}", all_indices.len());
 
         let faces = DMatrix::<u32>::from_row_slice(nr_faces, 3, &all_indices);
-        let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
-        builder.add(Faces(faces_tensor));
+        builder.add(Faces(faces));
     }
 
     if !all_normals.is_empty() {
@@ -709,8 +683,7 @@ fn build_from_gltf(path: &Path) -> EntityBuilder {
         debug!("gltf: total nr normals {nr_normals}");
 
         let normals_mat = DMatrix::<f32>::from_row_slice(nr_normals, 3, &all_normals);
-        let normals_tensor = DynamicTensorFloat2D::from_dmatrix(&normals_mat);
-        builder.add(Normals(normals_tensor));
+        builder.add(Normals(normals_mat));
     }
 
     if !all_tex_coords.is_empty() {
@@ -718,10 +691,9 @@ fn build_from_gltf(path: &Path) -> EntityBuilder {
         debug!("gltf: total nr tex_coords {nr_uvs}");
 
         let uvs = DMatrix::<f32>::from_row_slice(nr_uvs, 2, &all_tex_coords);
-        let uvs_tensor = DynamicTensorFloat2D::from_dmatrix(&uvs);
         //if for some reason the number fo uvs does not match the number of vertices, we discard the uvs
         if uvs.nrows() == nr_verts {
-            builder.add(UVs(uvs_tensor));
+            builder.add(UVs(uvs));
         } else {
             warn!(
                 "gltf: number of uvs {} does not match number of vertices {}, discarding uvs",
@@ -736,8 +708,7 @@ fn build_from_gltf(path: &Path) -> EntityBuilder {
         debug!("gltf: total nr colors {nr_colors}");
 
         let colors_mat = DMatrix::<f32>::from_row_slice(nr_colors, 3, &all_colors);
-        let colors_tensor = DynamicTensorFloat2D::from_dmatrix(&colors_mat);
-        builder.add(Colors(colors_tensor));
+        builder.add(Colors(colors_mat));
     }
 
     // Add texture if we found exactly one
@@ -963,14 +934,10 @@ pub fn build_camera_frustum(aspect_ratio: f32, yfov: f32) -> EntityBuilder {
     //     ],
     // );
 
-    let verts_tensor = DynamicTensorFloat2D::from_dmatrix(&verts);
-    let edges_tensor = DynamicTensorInt2D::from_dmatrix(&edges);
-    let faces_tensor = DynamicTensorInt2D::from_dmatrix(&faces);
-
     let mut builder = EntityBuilder::new();
-    builder.add(Verts(verts_tensor));
-    builder.add(Edges(edges_tensor));
-    builder.add(Faces(faces_tensor));
+    builder.add(Verts(verts));
+    builder.add(Edges(edges));
+    builder.add(Faces(faces));
 
     // Explicitly set colors and thickness
     let line_color = Vector4::new(0.8, 0.8, 0.8, 1.0);

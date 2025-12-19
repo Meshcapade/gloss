@@ -1,16 +1,18 @@
 #![allow(clippy::cast_precision_loss)]
-
+#![allow(dead_code)] //needed to supress warning of the check function of encase. To be removed after encase 0.11
 extern crate nalgebra as na;
 
 // use crate::backend_specific_action;
 
+#[cfg(feature = "burn-torch")]
+use crate::components::{ColorsPyTensor, FacesPyTensor, NormalsPyTensor, TangentsPyTensor, UVsPyTensor, VertsPyTensor};
 use crate::{
     camera::Camera,
     components::{
-        Colors, ColorsGPU, DiffuseImg, DiffuseTex, Edges, EdgesV1, EdgesV1GPU, EdgesV2, EdgesV2GPU, EnvironmentMap, EnvironmentMapGpu, Faces,
-        FacesGPU, GenericImageGetter, GpuAtrib, LightEmit, MeshColorType, Name, NormalImg, NormalTex, Normals, NormalsGPU, PosLookat, Projection,
-        ProjectionWithFov, Renderable, RoughnessImg, RoughnessTex, ShadowCaster, Tangents, TangentsGPU, TextureGetter, UVs, UVsGPU, Verts, VertsGPU,
-        VisMesh,
+        Colors, ColorsGPU, CpuAtrib, DiffuseImg, DiffuseTex, Edges, EdgesV1, EdgesV1GPU, EdgesV2, EdgesV2GPU, EnvironmentMap, EnvironmentMapGpu,
+        Faces, FacesGPU, GenericImageGetter, GpuAtrib, LightEmit, MeshColorType, Name, NormalImg, NormalTex, Normals, NormalsGPU, PosLookat,
+        Projection, ProjectionWithFov, Renderable, RoughnessImg, RoughnessTex, ShadowCaster, Tangents, TangentsGPU, TextureGetter, UVs, UVsGPU,
+        Verts, VertsGPU, VisMesh,
     },
     config::RenderConfig,
     scene::Scene,
@@ -25,7 +27,6 @@ use easy_wgpu::{
     mipmap::RenderMipmapGenerator,
     texture::Texture,
 };
-use gloss_utils::tensor::{DynamicMatrixOps, DynamicTensorFloat2D, DynamicTensorOps};
 
 use gloss_hecs::{Changed, CommandBuffer, Component, Entity};
 use gloss_utils::numerical::{align, align_usz};
@@ -221,6 +222,17 @@ impl UploadPass {
         self.upload_lights(gpu, scene);
         self.upload_params(gpu, scene, render_params);
 
+        //interop between tensors and gpu buffers
+        #[cfg(feature = "burn-torch")]
+        {
+            self.upload_v_interop(gpu, scene);
+            self.upload_f_interop(gpu, scene);
+            self.upload_uv_interop(gpu, scene);
+            self.upload_nv_interop(gpu, scene);
+            self.upload_t_interop(gpu, scene);
+            self.upload_c_interop(gpu, scene);
+        }
+
         &self.per_frame_uniforms
     }
 
@@ -236,7 +248,7 @@ impl UploadPass {
 
     #[allow(clippy::unnecessary_unwrap)] //I know it's unnecesary but it makes everything more compact the two cases
                                          // more explicit
-    fn upload_dynamic_vertex_atrib<T, C: DynamicTensorOps<T> + Component, G: GpuAtrib + Component>(
+    fn upload_vertex_atrib<T: na::Scalar + bytemuck::Pod, C: CpuAtrib<T> + Component, G: GpuAtrib + Component>(
         &mut self,
         entity: Entity,
         atrib: &C,
@@ -245,29 +257,25 @@ impl UploadPass {
         additional_usage: wgpu::BufferUsages, // scene: &mut Scene,
         label: &str,
     ) {
-        // TODO: If DynamicTensor of Wgpu backend, do a direct buffer to buffer copy
-        let verts_bytes = atrib.as_bytes();
-        let size_bytes = verts_bytes.len();
+        let verts = atrib.data_ref();
+        let verts_t = verts.transpose();
+        let size_bytes = verts_t.len() * atrib.byte_size_element();
         if atrib_gpu.is_none() || atrib_gpu.as_ref().unwrap().data_ref().size() != std::convert::TryInto::<u64>::try_into(size_bytes).unwrap() {
-            // Allocate new memory for the GPU buffer if it doesn't exist or size has
-            // changed
+            //allocate new memory if it's the first time or if the size_bytes doesn't fit in it
             let desc = wgpu::util::BufferInitDescriptor {
                 label: Some(label),
-                contents: &verts_bytes, // Use the raw data directly
+                contents: bytemuck::cast_slice(verts_t.data.as_slice()),
                 usage: additional_usage | wgpu::BufferUsages::COPY_DST,
             };
-
             let buf: wgpu::Buffer = gpu.device().create_buffer_init(&desc);
 
-            // Insert the new GPU buffer component into the entity
             self.command_buffer
-                .insert_one(entity, G::new_from(buf, u32::try_from(atrib.nrows()).unwrap()));
+                .insert_one(entity, G::new_from(buf, u32::try_from(atrib.data_ref().nrows()).unwrap()));
+            //it either creates the component or it overwrites it
         } else {
-            gpu.queue().write_buffer(
-                atrib_gpu.unwrap().data_ref(),
-                0,
-                &verts_bytes, // Use the raw data directly
-            );
+            //buffer exists as it has to correct size, so we just write to it
+            gpu.queue()
+                .write_buffer(atrib_gpu.unwrap().data_ref(), 0, bytemuck::cast_slice(verts_t.data.as_slice()));
         }
     }
 
@@ -281,7 +289,7 @@ impl UploadPass {
 
         for (ent, (verts, mut verts_gpu, changed_verts)) in query {
             if changed_verts {
-                self.upload_dynamic_vertex_atrib(ent, &verts.0, verts_gpu.as_deref_mut(), gpu, usage, "verts");
+                self.upload_vertex_atrib(ent, verts, verts_gpu.as_deref_mut(), gpu, usage, "verts");
             }
         }
         self.command_buffer.run_on(&mut scene.world);
@@ -303,16 +311,14 @@ impl UploadPass {
         let usage = wgpu::BufferUsages::VERTEX;
         for (ent, (verts, edges, mut edges_v1_gpu, mut edges_v2_gpu, changed_verts, changed_edges)) in query {
             if changed_verts || changed_edges {
-                let edges_v1_mat = index_vertices_from_edges(&verts.0.to_dmatrix(), &edges.0.to_dmatrix(), 0);
-                let edges_v2_mat = index_vertices_from_edges(&verts.0.to_dmatrix(), &edges.0.to_dmatrix(), 1);
+                let edges_v1_mat = index_vertices_from_edges(&verts.0, &edges.0, 0);
+                let edges_v2_mat = index_vertices_from_edges(&verts.0, &edges.0, 1);
 
-                let edges_v1_mat_tensor = DynamicTensorFloat2D::from_dmatrix(&edges_v1_mat);
-                let edges_v2_mat_tensor = DynamicTensorFloat2D::from_dmatrix(&edges_v2_mat);
-                let edges_v1 = EdgesV1(edges_v1_mat_tensor);
-                let edges_v2 = EdgesV2(edges_v2_mat_tensor);
+                let edges_v1 = EdgesV1(edges_v1_mat);
+                let edges_v2 = EdgesV2(edges_v2_mat);
 
-                self.upload_dynamic_vertex_atrib(ent, &edges_v1.0, edges_v1_gpu.as_deref_mut(), gpu, usage, "edges_v1");
-                self.upload_dynamic_vertex_atrib(ent, &edges_v2.0, edges_v2_gpu.as_deref_mut(), gpu, usage, "edges_v2");
+                self.upload_vertex_atrib(ent, &edges_v1, edges_v1_gpu.as_deref_mut(), gpu, usage, "edges_v1");
+                self.upload_vertex_atrib(ent, &edges_v2, edges_v2_gpu.as_deref_mut(), gpu, usage, "edges_v2");
             }
         }
         self.command_buffer.run_on(&mut scene.world);
@@ -326,7 +332,7 @@ impl UploadPass {
         let usage = wgpu::BufferUsages::INDEX;
         for (ent, (faces, mut faces_gpu, changed_faces)) in query {
             if changed_faces {
-                self.upload_dynamic_vertex_atrib(ent, &faces.0, faces_gpu.as_deref_mut(), gpu, usage, "faces");
+                self.upload_vertex_atrib(ent, faces, faces_gpu.as_deref_mut(), gpu, usage, "faces");
             }
         }
         self.command_buffer.run_on(&mut scene.world);
@@ -336,7 +342,7 @@ impl UploadPass {
         let usage = wgpu::BufferUsages::VERTEX;
         for (ent, (uvs, mut uvs_gpu, changed_uvs)) in query {
             if changed_uvs {
-                self.upload_dynamic_vertex_atrib(ent, &uvs.0, uvs_gpu.as_deref_mut(), gpu, usage, "uv");
+                self.upload_vertex_atrib(ent, uvs, uvs_gpu.as_deref_mut(), gpu, usage, "uv");
             }
         }
         self.command_buffer.run_on(&mut scene.world);
@@ -350,7 +356,7 @@ impl UploadPass {
         let usage = wgpu::BufferUsages::VERTEX;
         for (ent, (normals, mut normals_gpu, changed_normals)) in query {
             if changed_normals {
-                self.upload_dynamic_vertex_atrib(ent, &normals.0, normals_gpu.as_deref_mut(), gpu, usage, "normals");
+                self.upload_vertex_atrib(ent, normals, normals_gpu.as_deref_mut(), gpu, usage, "normals");
             }
         }
         self.command_buffer.run_on(&mut scene.world);
@@ -364,7 +370,7 @@ impl UploadPass {
         let usage = wgpu::BufferUsages::VERTEX;
         for (ent, (tangents, mut tangents_gpu, changed_tangents)) in query {
             if changed_tangents {
-                self.upload_dynamic_vertex_atrib(ent, &tangents.0, tangents_gpu.as_deref_mut(), gpu, usage, "tangents");
+                self.upload_vertex_atrib(ent, tangents, tangents_gpu.as_deref_mut(), gpu, usage, "tangents");
             }
         }
         self.command_buffer.run_on(&mut scene.world);
@@ -378,7 +384,7 @@ impl UploadPass {
         let usage = wgpu::BufferUsages::VERTEX;
         for (ent, (colors, mut colors_gpu, changed_colors)) in query {
             if changed_colors {
-                self.upload_dynamic_vertex_atrib(ent, &colors.0, colors_gpu.as_deref_mut(), gpu, usage, "colors");
+                self.upload_vertex_atrib(ent, colors, colors_gpu.as_deref_mut(), gpu, usage, "colors");
             }
         }
         self.command_buffer.run_on(&mut scene.world);
@@ -1338,6 +1344,212 @@ impl UploadPass {
         self.per_frame_uniforms.params_buf.upload_from_cpu_chunks(gpu.queue());
         self.per_frame_uniforms.params_buf.reset_chunks_offset();
     }
+
+    #[cfg(feature = "burn-torch")]
+    fn upload_v_interop(&mut self, gpu: &Gpu, scene: &mut Scene) {
+        let query = scene
+            .world
+            .query_mut::<(&VertsPyTensor, Option<&mut VertsGPU>, Changed<VertsPyTensor>)>()
+            .with::<&Renderable>();
+
+        for (ent, (verts, verts_gpu, changed_verts)) in query {
+            if changed_verts {
+                if let Some(mut verts_gpu) = verts_gpu {
+                    // println!("VertsGPU already exists for entity {:?}", ent);
+                    verts_gpu
+                        .buf
+                        .copy_from_tensor(&verts.tensor, gpu.device(), gpu.queue(), gpu.adapter())
+                        .expect("Failed to copy vertex tensor to GPU buffer");
+                    verts_gpu.nr_vertices = verts.tensor.size()[1] as u32;
+                } else {
+                    // println!("Uploading vertex interop for entity {:?}", ent);
+                    let verts_gpu = VertsGPU {
+                        buf: easy_wgpu::buffer::Buffer::new_from_tensor(
+                            &verts.tensor,
+                            gpu.device(),
+                            gpu.queue(),
+                            gpu.adapter(),
+                            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                            Some("VertsGPU buffer"),
+                        ),
+                        nr_vertices: verts.tensor.size()[1] as u32,
+                    };
+                    self.command_buffer.insert_one(ent, verts_gpu);
+                }
+            }
+        }
+        self.command_buffer.run_on(&mut scene.world);
+    }
+
+    #[cfg(feature = "burn-torch")]
+    fn upload_f_interop(&mut self, gpu: &Gpu, scene: &mut Scene) {
+        let query = scene
+            .world
+            .query_mut::<(&FacesPyTensor, Option<&mut FacesGPU>, Changed<FacesPyTensor>)>()
+            .with::<&Renderable>();
+
+        for (ent, (faces, faces_gpu, changed_faces)) in query {
+            if changed_faces {
+                if let Some(mut faces_gpu) = faces_gpu {
+                    faces_gpu
+                        .buf
+                        .copy_from_tensor(&faces.tensor, gpu.device(), gpu.queue(), gpu.adapter())
+                        .expect("Failed to copy face tensor to GPU buffer");
+                    faces_gpu.nr_triangles = faces.tensor.size()[1] as u32;
+                } else {
+                    let faces_gpu = FacesGPU {
+                        buf: easy_wgpu::buffer::Buffer::new_from_tensor(
+                            &faces.tensor,
+                            gpu.device(),
+                            gpu.queue(),
+                            gpu.adapter(),
+                            wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+                            Some("FacesGPU buffer"),
+                        ),
+                        nr_triangles: faces.tensor.size()[1] as u32,
+                    };
+                    self.command_buffer.insert_one(ent, faces_gpu);
+                }
+            }
+        }
+        self.command_buffer.run_on(&mut scene.world);
+    }
+
+    #[cfg(feature = "burn-torch")]
+    fn upload_uv_interop(&mut self, gpu: &Gpu, scene: &mut Scene) {
+        let query = scene
+            .world
+            .query_mut::<(&UVsPyTensor, Option<&mut UVsGPU>, Changed<UVsPyTensor>)>()
+            .with::<&Renderable>();
+
+        for (ent, (uvs, uvs_gpu, changed_uvs)) in query {
+            if changed_uvs {
+                if let Some(mut uvs_gpu) = uvs_gpu {
+                    uvs_gpu
+                        .buf
+                        .copy_from_tensor(&uvs.tensor, gpu.device(), gpu.queue(), gpu.adapter())
+                        .expect("Failed to copy UVs tensor to GPU buffer");
+                    uvs_gpu.nr_vertices = uvs.tensor.size()[1] as u32;
+                } else {
+                    let uvs_gpu = UVsGPU {
+                        buf: easy_wgpu::buffer::Buffer::new_from_tensor(
+                            &uvs.tensor,
+                            gpu.device(),
+                            gpu.queue(),
+                            gpu.adapter(),
+                            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                            Some("UVsGPU buffer"),
+                        ),
+                        nr_vertices: uvs.tensor.size()[1] as u32,
+                    };
+                    self.command_buffer.insert_one(ent, uvs_gpu);
+                }
+            }
+        }
+        self.command_buffer.run_on(&mut scene.world);
+    }
+
+    #[cfg(feature = "burn-torch")]
+    fn upload_nv_interop(&mut self, gpu: &Gpu, scene: &mut Scene) {
+        let query = scene
+            .world
+            .query_mut::<(&NormalsPyTensor, Option<&mut NormalsGPU>, Changed<NormalsPyTensor>)>()
+            .with::<&Renderable>();
+
+        for (ent, (normals, normals_gpu, changed_normals)) in query {
+            if changed_normals {
+                if let Some(mut normals_gpu) = normals_gpu {
+                    normals_gpu
+                        .buf
+                        .copy_from_tensor(&normals.tensor, gpu.device(), gpu.queue(), gpu.adapter())
+                        .expect("Failed to copy Normals tensor to GPU buffer");
+                    normals_gpu.nr_vertices = normals.tensor.size()[1] as u32;
+                } else {
+                    let normals_gpu = NormalsGPU {
+                        buf: easy_wgpu::buffer::Buffer::new_from_tensor(
+                            &normals.tensor,
+                            gpu.device(),
+                            gpu.queue(),
+                            gpu.adapter(),
+                            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                            Some("NormalsGPU buffer"),
+                        ),
+                        nr_vertices: normals.tensor.size()[1] as u32,
+                    };
+                    self.command_buffer.insert_one(ent, normals_gpu);
+                }
+            }
+        }
+        self.command_buffer.run_on(&mut scene.world);
+    }
+
+    #[cfg(feature = "burn-torch")]
+    fn upload_t_interop(&mut self, gpu: &Gpu, scene: &mut Scene) {
+        let query = scene
+            .world
+            .query_mut::<(&TangentsPyTensor, Option<&mut TangentsGPU>, Changed<TangentsPyTensor>)>()
+            .with::<&Renderable>();
+
+        for (ent, (tangents, tangents_gpu, changed_tangents)) in query {
+            if changed_tangents {
+                if let Some(mut tangents_gpu) = tangents_gpu {
+                    tangents_gpu
+                        .buf
+                        .copy_from_tensor(&tangents.tensor, gpu.device(), gpu.queue(), gpu.adapter())
+                        .expect("Failed to copy Tangents tensor to GPU buffer");
+                    tangents_gpu.nr_vertices = tangents.tensor.size()[1] as u32;
+                } else {
+                    let tangents_gpu = TangentsGPU {
+                        buf: easy_wgpu::buffer::Buffer::new_from_tensor(
+                            &tangents.tensor,
+                            gpu.device(),
+                            gpu.queue(),
+                            gpu.adapter(),
+                            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                            Some("TangentsGPU buffer"),
+                        ),
+                        nr_vertices: tangents.tensor.size()[1] as u32,
+                    };
+                    self.command_buffer.insert_one(ent, tangents_gpu);
+                }
+            }
+        }
+        self.command_buffer.run_on(&mut scene.world);
+    }
+
+    #[cfg(feature = "burn-torch")]
+    fn upload_c_interop(&mut self, gpu: &Gpu, scene: &mut Scene) {
+        let query = scene
+            .world
+            .query_mut::<(&ColorsPyTensor, Option<&mut ColorsGPU>, Changed<ColorsPyTensor>)>()
+            .with::<&Renderable>();
+
+        for (ent, (colors, colors_gpu, changed_colors)) in query {
+            if changed_colors {
+                if let Some(mut colors_gpu) = colors_gpu {
+                    colors_gpu
+                        .buf
+                        .copy_from_tensor(&colors.tensor, gpu.device(), gpu.queue(), gpu.adapter())
+                        .expect("Failed to copy Colors tensor to GPU buffer");
+                    colors_gpu.nr_vertices = colors.tensor.size()[1] as u32;
+                } else {
+                    let colors_gpu = ColorsGPU {
+                        buf: easy_wgpu::buffer::Buffer::new_from_tensor(
+                            &colors.tensor,
+                            gpu.device(),
+                            gpu.queue(),
+                            gpu.adapter(),
+                            wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                            Some("ColorsGPU buffer"),
+                        ),
+                        nr_vertices: colors.tensor.size()[1] as u32,
+                    };
+                    self.command_buffer.insert_one(ent, colors_gpu);
+                }
+            }
+        }
+        self.command_buffer.run_on(&mut scene.world);
+    }
 }
 
 #[repr(C)]
@@ -1369,7 +1581,6 @@ struct PerFrameCamCPU {
 /// Contains light data that will be sent to the GPU once a frame.
 #[repr(C)]
 #[derive(Clone, Copy, encase::ShaderType)]
-// #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct PerFrameLightCPU {
     view_matrix: na::Matrix4<f32>,
     proj_matrix: na::Matrix4<f32>,

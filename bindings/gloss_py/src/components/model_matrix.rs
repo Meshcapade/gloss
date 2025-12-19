@@ -53,6 +53,12 @@ impl PyModelMatrix {
         let mm = mm.with_rotation_euler(&na::Vector3::<f32>::new(arr[0], arr[1], arr[2]));
         Self { inner: mm }
     }
+    #[pyo3(text_signature = "($self, scale: float32) -> ModelMatrix")]
+    pub fn with_scale(&self, scale: f32) -> Self {
+        let mm = self.inner.clone();
+        let mm = mm.with_scale(scale);
+        Self { inner: mm }
+    }
     #[pyo3(text_signature = "($self) -> NDArray[np.float32]")]
     pub fn numpy(&mut self, py: Python<'_>) -> Py<PyArray2<f32>> {
         self.inner.0.to_homogeneous().to_pyarray_bound(py).into()

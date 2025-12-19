@@ -10,7 +10,15 @@ if [ -z "${CONDA_PREFIX}" ]; then
 else
     echo "We are in Conda so we already have an virtual environment for python"
 fi
-maturin develop 
+
+if [[ "$1" == "--torch" ]]; then
+    echo "compiling with torch compatibility"
+    LIBTORCH_USE_PYTORCH=1 maturin develop --features "burn-torch"
+else
+    echo "compiling without torch compatibility"
+    maturin develop
+fi
+
 
 # Generate stubs for the python bindings
 python3 generate_stubs.py

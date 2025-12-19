@@ -18,10 +18,24 @@ name = "gloss" # name of the .so library that the Python module will import
 doc = false
 
 [features]
-# default = ["extension-module"]
-default = ["with-gui", "selector"]
+default = [
+    "with-gui", "selector"
+    ]
 with-gui=["easy-wgpu/with-gui", "gloss-renderer/with-gui"]
+burn-torch = [
+    "gloss-renderer/burn-torch", 
+    "easy-wgpu/burn-torch", 
+    "gloss-utils/burn-torch", 
+    "gloss-burn-multibackend/burn-torch", 
+    "wgpu-cuda-interop/cuda",
+    "pyo3-tch",
+    "tch",
+    "burn-tch",
+    ]
 selector=["gloss-renderer/selector"]
+
+
+
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
 # pypi = ["extension-module"]
@@ -35,8 +49,12 @@ extension-module = ["pyo3/extension-module"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # local to package
-pyo3 = { version = "0.22", features = ["macros", "multiple-pymethods", "abi3-py38", "extension-module", "gil-refs"] }
-numpy = { version = "0.22", features = ["nalgebra"] }
+pyo3 = { version = "0.21", features = ["macros", "multiple-pymethods", "abi3-py38", "extension-module", "gil-refs"] }
+pyo3-tch = {version = "0.19", optional=true}
+tch = { workspace=true, optional=true }
+burn.workspace=true
+burn-tch = { workspace=true, optional=true }
+numpy = { version = "0.21", features = ["nalgebra"] }
 nalgebra.workspace=true
 log.workspace=true
 gloss_py_macros = { path = "macros"}
@@ -56,6 +74,8 @@ ndarray.workspace=true
 gloss-hecs.workspace=true
 num-traits.workspace=true
 image.workspace=true
+wgpu-cuda-interop = { workspace=true, optional=true }
+
 
 [lints]
 workspace = true

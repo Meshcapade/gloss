@@ -1,3 +1,4 @@
+use crate::components::img_config::PyImgConfig;
 use gloss_hecs::Entity;
 use gloss_py_macros::PyComponent;
 use gloss_renderer::{
@@ -15,10 +16,10 @@ pub struct PyDiffuseImg {
 #[pymethods]
 impl PyDiffuseImg {
     #[new]
-    #[pyo3(text_signature = "(path: str) -> DiffuseImg")]
-    pub fn new(path: &str) -> Self {
+    #[pyo3(text_signature = "(path: str, img_config: Optional[ImgConfig] = None) -> DiffuseImg")]
+    pub fn new(path: &str, img_config: Option<PyImgConfig>) -> Self {
         Self {
-            inner: DiffuseImg::new_from_path(path, &ImgConfig::default()),
+            inner: DiffuseImg::new_from_path(path, &img_config.map_or(ImgConfig::default(), |x| x.inner)),
         }
     }
 }

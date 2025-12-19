@@ -32,6 +32,7 @@ gloss-hecs = { path = "crates/gloss_hecs", version = "0.8", features = ["macros"
 gloss-geometry = { path = "crates/gloss_geometry", version = "0.8"}
 gloss-burn-multibackend = { path = "crates/gloss_burn_multibackend", version = "0.8"}
 wgpu-burn-interop = { path = "crates/wgpu_burn_interop", version = "0.8"}
+wgpu-cuda-interop = { path = "crates/wgpu_cuda_interop", version = "0.8", default-features = false} #keep with default features =false because not all machines have cuda
 wgpu-burn-global-device = { path = "crates/wgpu_burn_global_device", version = "0.8"}
 
 # =====================================================================
@@ -45,9 +46,12 @@ bytemuck = { version = "1.12", features = [ "derive" ] }
 env_logger = "0.10"
 log = {version = "0.4", features = ["std"]}
 pollster = "0.3"
+ash = "0.38"
 libc = "0.2"
+lazy_static = "1.4.0"
 winit = { version = "0.30.7", default-features = false, features = ["rwh_06", "x11"] } 
 wgpu       = { version = "25.0",  default-features = false, features = ["wgsl", "spirv", "webgl", "metal", "webgpu"] } 
+wgpu-hal = { version = "25.0", default-features = false }
 num-traits     = { version = "0.2", default-features = false }
 image = { version= "0.25.5", default-features = false, features=["jpeg", "png", "tiff"] } #TODO maybe replace it with zune-image
 nalgebra = {version = "0.32", default-features = false, features = ["std", "serde-serialize-no-std"]} #TODO: Update when numpy updates dependency
@@ -57,9 +61,11 @@ tobj = { version = "4.0", features=["async"]}
 obj-exporter = "0.2"
 futures = "0.3"
 futures-intrusive = "0.5"
-burn = { version = "0.18", default-features = false, features=["ndarray", "wgpu", "candle", "autotune"]}
+burn = { version = "0.18", default-features = false, features=["wgpu", "candle", "autotune"]}
 cubecl={ version="0.6.0",  default-features = false}
 burn-cubecl = { version = "0.18", default-features = false}
+tch = "0.19" #TODO put this only as dependency when burn uses the torch backend
+burn-tch = { version = "0.18", default-features = false } #TODO make it a dependency only when burn uses torch
 egui = {version = "0.32", default-features = false, features= ["default_fonts"]}
 egui-wgpu = {version = "0.32", default-features = false}
 egui-winit = {version = "0.32", default-features = false, features = ["x11"] } #disabled arboard feature because it doesn't work on wasm
@@ -73,7 +79,7 @@ ktx2 = "0.3"
 config = { version = "0.14.0", default-features = false, features = ["toml"]} 
 serde = { version = "1.0", features = ["derive"] }
 toml = { version = "0.8" }
-ndarray = { version = "0.16"  }
+ndarray = { version = "0.15"  }
 ply-rs = "0.1.3"
 itertools = "0.12"
 strum = "0.26.3"
@@ -91,6 +97,13 @@ futures-lite="2.6"
 future="0.3"
 gltf = "1.4.0"
 crossbeam-channel = "0.5"
+#for cuda interop
+cust="0.3.2"
+cuda_std="0.2.2"
+cust_raw="0.11.3"
+libloading = "0.8"
+# pyo3-tch = "0.19"
+
 # =====================================================================
 # Dependencies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web
 # =====================================================================

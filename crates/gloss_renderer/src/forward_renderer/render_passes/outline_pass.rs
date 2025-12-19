@@ -1,3 +1,5 @@
+#![allow(dead_code)] //needed to supress warning of the check function of encase. To be removed after encase 0.11
+
 use std::collections::HashMap;
 
 use crate::{
@@ -160,9 +162,9 @@ impl PipelineRunner for OutlinePass {
 
             render_pass.set_bind_group(1, local_bg.bg(), &[*offset]);
 
-            render_pass.set_vertex_buffer(0, verts.buf.slice(..));
-            render_pass.set_vertex_buffer(1, normals.buf.slice(..));
-            render_pass.set_index_buffer(faces.buf.slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.set_vertex_buffer(0, verts.buf.buffer.slice(..));
+            render_pass.set_vertex_buffer(1, normals.buf.buffer.slice(..));
+            render_pass.set_index_buffer(faces.buf.buffer.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.draw_indexed(0..faces.nr_triangles * 3, 0, 0..1);
         }
     }

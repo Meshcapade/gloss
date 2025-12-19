@@ -17,6 +17,7 @@ repository.workspace = true
 # default = ["log_with_time"]
 default = []
 log_with_time =[]
+burn-torch = ["burn/burn-tch"]
 
 [dependencies]
 #local to package

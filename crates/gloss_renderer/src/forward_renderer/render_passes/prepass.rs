@@ -15,10 +15,6 @@ use easy_wgpu::{
 };
 use gloss_geometry::geom::{self, PerVertexNormalsWeightingType};
 use gloss_hecs::{Changed, CommandBuffer, Entity};
-use gloss_utils::{
-    bshare::{ToBurn, ToNalgebraFloat, ToNalgebraInt},
-    tensor::{DynamicTensorFloat2D, DynamicTensorInt2D, DynamicTensorOps},
-};
 use log::{debug, warn};
 /// Makes sure that the meshes are all with with correct components. Add model
 /// matrices to the ones that will be rendered and dummy textures so that we can
@@ -243,36 +239,8 @@ impl PrePass {
         // We panic if prepass sees Wgpu backend tensors for now and if faces and verts
         // are on different backends
         let insert_normals = |entity: Entity, verts: &Verts, faces: &Faces, command_buffer: &mut CommandBuffer| {
-            match (&verts.0, &faces.0) {
-                // Handle both NdArray variants
-                (DynamicTensorFloat2D::NdArray(verts_tensor), DynamicTensorInt2D::NdArray(faces_tensor)) => {
-                    let normals = geom::compute_per_vertex_normals(
-                        &verts_tensor.to_nalgebra(),
-                        &faces_tensor.to_nalgebra(),
-                        &PerVertexNormalsWeightingType::Area,
-                    );
-                    let normals_tensor = DynamicTensorFloat2D::NdArray(normals.into_burn(&verts_tensor.device()));
-                    command_buffer.insert_one(entity, Normals(normals_tensor));
-                }
-                // Let prepass support only NdArray since we dont really do any parallel computations
-                // Handle both Candle variants
-                (DynamicTensorFloat2D::Candle(verts_tensor), DynamicTensorInt2D::Candle(faces_tensor)) => {
-                    let normals = geom::compute_per_vertex_normals_burn(verts_tensor, faces_tensor, &PerVertexNormalsWeightingType::Area);
-                    let normals_tensor = DynamicTensorFloat2D::Candle(normals);
-                    command_buffer.insert_one(entity, Normals(normals_tensor));
-                }
-                // Panic for unsupported Wgpu backend
-                (DynamicTensorFloat2D::Wgpu(_), _) | (_, DynamicTensorInt2D::Wgpu(_)) => {
-                    panic!("Wgpu backend is not supported for the prepass! Make sure normals are being added in smpl-rs");
-                }
-                // Handle mismatched backends (e.g., one is NdArray and the other is Candle)
-                _ => {
-                    panic!(
-                        "Mismatched backends between verts and faces tensors! Faces - {:?} Verts - {:?}",
-                        &verts.0, &faces.0
-                    );
-                }
-            }
+            let normals = geom::compute_per_vertex_normals(&verts.0, &faces.0, &PerVertexNormalsWeightingType::Area);
+            command_buffer.insert_one(entity, Normals(normals));
         };
 
         //add normals to all entities that have verts and faces but don't have Normals
@@ -295,45 +263,8 @@ impl PrePass {
     #[allow(clippy::too_many_lines)]
     fn add_tangents(&mut self, scene: &mut Scene) {
         let insert_tangents = |entity: Entity, verts: &Verts, faces: &Faces, normals: &Normals, uvs: &UVs, command_buffer: &mut CommandBuffer| {
-            match (&verts.0, &faces.0, &normals.0, &uvs.0) {
-                // Handle both NdArray and dynamic backends
-                (
-                    DynamicTensorFloat2D::NdArray(verts_tensor),
-                    DynamicTensorInt2D::NdArray(faces_tensor),
-                    DynamicTensorFloat2D::NdArray(normals_tensor),
-                    DynamicTensorFloat2D::NdArray(uvs_tensor),
-                ) => {
-                    // Compute tangents for NdArray backend
-                    let tangents = geom::compute_tangents(
-                        &verts_tensor.to_nalgebra(),
-                        &faces_tensor.to_nalgebra(),
-                        &normals_tensor.to_nalgebra(),
-                        &uvs_tensor.to_nalgebra(),
-                    );
-                    let tangents_tensor = DynamicTensorFloat2D::NdArray(tangents.into_burn(&verts_tensor.device()));
-                    command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                }
-                // Let prepass support only NdArray since we dont really do any parallel computations
-                // (
-                //     DynamicTensorFloat2D::Candle(verts_tensor),
-                //     DynamicTensorInt2D::Candle(faces_tensor),
-                //     DynamicTensorFloat2D::Candle(normals_tensor),
-                //     DynamicTensorFloat2D::Candle(uvs_tensor),
-                // ) => {
-                //     // Compute tangents for Candle backend
-                //     let tangents = geom::compute_tangents_burn(
-                //         verts_tensor,
-                //         faces_tensor,
-                //         normals_tensor,
-                //         uvs_tensor,
-                //     );
-                //     let tangents_tensor = DynamicTensorFloat2D::Candle(tangents);
-                //     command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                // }
-                _ => {
-                    panic!("Unsupported backend combination for tangents calculation!");
-                }
-            }
+            let tangents = geom::compute_tangents(&verts.0, &faces.0, &normals.0, &uvs.0);
+            command_buffer.insert_one(entity, Tangents(tangents));
         };
 
         //all the entities that have verts, faces, normals and uvs but NO tangents
@@ -361,27 +292,8 @@ impl PrePass {
         // will also just add dummy uvs
         let mut query = scene.world.query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&UVs>();
         for (entity, (verts, _faces)) in query.iter() {
-            // Match the backend of verts
-            match &verts.0 {
-                DynamicTensorFloat2D::NdArray(verts_tensor) => {
-                    // Compute tangents using the NdArray backend
-                    let tangents = geom::compute_dummy_tangents(verts_tensor.dims()[0], &verts_tensor.device());
-                    let tangents_tensor = DynamicTensorFloat2D::NdArray(tangents);
-                    self.command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                }
-                DynamicTensorFloat2D::Candle(verts_tensor) => {
-                    // Compute tangents using the Candle backend
-                    let tangents = geom::compute_dummy_tangents(verts_tensor.dims()[0], &verts_tensor.device());
-                    let tangents_tensor = DynamicTensorFloat2D::Candle(tangents);
-                    self.command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                }
-                DynamicTensorFloat2D::Wgpu(verts_tensor) => {
-                    // Compute tangents using the Wgpu backend
-                    let tangents = geom::compute_dummy_tangents(verts_tensor.dims()[0], &verts_tensor.device());
-                    let tangents_tensor = DynamicTensorFloat2D::Wgpu(tangents);
-                    self.command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                }
-            }
+            let tangents = geom::compute_dummy_tangents(verts.0.nrows());
+            self.command_buffer.insert_one(entity, Tangents(tangents));
         }
 
         // If we have verts, faces, NO uvs but we do have tangents, make sure the
@@ -390,26 +302,8 @@ impl PrePass {
 
         for (entity, (verts, _faces, tangents)) in query.iter() {
             if verts.0.nrows() != tangents.0.nrows() {
-                match &verts.0 {
-                    DynamicTensorFloat2D::NdArray(verts_tensor) => {
-                        // Compute tangents using the NdArray backend
-                        let tangents = geom::compute_dummy_tangents(verts_tensor.dims()[0], &verts_tensor.device());
-                        let tangents_tensor = DynamicTensorFloat2D::NdArray(tangents);
-                        self.command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                    }
-                    DynamicTensorFloat2D::Candle(verts_tensor) => {
-                        // Compute tangents using the Candle backend
-                        let tangents = geom::compute_dummy_tangents(verts_tensor.dims()[0], &verts_tensor.device());
-                        let tangents_tensor = DynamicTensorFloat2D::Candle(tangents);
-                        self.command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                    }
-                    DynamicTensorFloat2D::Wgpu(verts_tensor) => {
-                        // Compute tangents using the Wgpu backend
-                        let tangents = geom::compute_dummy_tangents(verts_tensor.dims()[0], &verts_tensor.device());
-                        let tangents_tensor = DynamicTensorFloat2D::Wgpu(tangents);
-                        self.command_buffer.insert_one(entity, Tangents(tangents_tensor));
-                    }
-                }
+                let tangents = geom::compute_dummy_tangents(verts.0.nrows());
+                self.command_buffer.insert_one(entity, Tangents(tangents));
             }
         }
     }
@@ -445,26 +339,8 @@ impl PrePass {
         let mut query = scene.world.query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&UVs>();
 
         for (entity, (verts, _faces)) in query.iter() {
-            match &verts.0 {
-                DynamicTensorFloat2D::NdArray(verts_tensor) => {
-                    // Compute dummy uvs for NdArray backend
-                    let uvs = geom::compute_dummy_uvs(verts_tensor.dims()[0], &verts_tensor.device());
-                    let uvs_tensor = DynamicTensorFloat2D::NdArray(uvs);
-                    self.command_buffer.insert_one(entity, UVs(uvs_tensor));
-                }
-                DynamicTensorFloat2D::Candle(verts_tensor) => {
-                    // Compute dummy uvs for Candle backend
-                    let uvs = geom::compute_dummy_uvs(verts_tensor.dims()[0], &verts_tensor.device());
-                    let uvs_tensor = DynamicTensorFloat2D::Candle(uvs);
-                    self.command_buffer.insert_one(entity, UVs(uvs_tensor));
-                }
-                DynamicTensorFloat2D::Wgpu(verts_tensor) => {
-                    // Compute dummy uvs for Wgpu backend
-                    let uvs = geom::compute_dummy_uvs(verts_tensor.dims()[0], &verts_tensor.device());
-                    let uvs_tensor = DynamicTensorFloat2D::Wgpu(uvs);
-                    self.command_buffer.insert_one(entity, UVs(uvs_tensor));
-                }
-            }
+            let uvs = geom::compute_dummy_uvs(verts.0.nrows());
+            self.command_buffer.insert_one(entity, UVs(uvs));
         }
 
         // If we do have uvs, make sure that they are the same size
@@ -472,26 +348,8 @@ impl PrePass {
 
         for (entity, (verts, _faces, uvs)) in query.iter() {
             if verts.0.nrows() != uvs.0.nrows() {
-                match &verts.0 {
-                    DynamicTensorFloat2D::NdArray(verts_tensor) => {
-                        // Recompute uvs for NdArray backend
-                        let uvs = geom::compute_dummy_uvs(verts_tensor.dims()[0], &verts_tensor.device());
-                        let uvs_tensor = DynamicTensorFloat2D::NdArray(uvs);
-                        self.command_buffer.insert_one(entity, UVs(uvs_tensor));
-                    }
-                    DynamicTensorFloat2D::Candle(verts_tensor) => {
-                        // Recompute uvs for Candle backend
-                        let uvs = geom::compute_dummy_uvs(verts_tensor.dims()[0], &verts_tensor.device());
-                        let uvs_tensor = DynamicTensorFloat2D::Candle(uvs);
-                        self.command_buffer.insert_one(entity, UVs(uvs_tensor));
-                    }
-                    DynamicTensorFloat2D::Wgpu(verts_tensor) => {
-                        // Recompute uvs for Wgpu backend
-                        let uvs = geom::compute_dummy_uvs(verts_tensor.dims()[0], &verts_tensor.device());
-                        let uvs_tensor = DynamicTensorFloat2D::Wgpu(uvs);
-                        self.command_buffer.insert_one(entity, UVs(uvs_tensor));
-                    }
-                }
+                let uvs = geom::compute_dummy_uvs(verts.0.nrows());
+                self.command_buffer.insert_one(entity, UVs(uvs));
             }
         }
     }
@@ -528,26 +386,8 @@ impl PrePass {
         let mut query = scene.world.query::<&Verts>().with::<&Renderable>().without::<&Colors>();
 
         for (entity, verts) in query.iter() {
-            match &verts.0 {
-                DynamicTensorFloat2D::NdArray(verts_tensor) => {
-                    // Compute dummy colors for NdArray backend
-                    let colors = geom::compute_dummy_colors(verts_tensor.dims()[0], &verts_tensor.device());
-                    let colors_tensor = DynamicTensorFloat2D::NdArray(colors);
-                    self.command_buffer.insert_one(entity, Colors(colors_tensor));
-                }
-                DynamicTensorFloat2D::Candle(verts_tensor) => {
-                    // Compute dummy colors for Candle backend
-                    let colors = geom::compute_dummy_colors(verts_tensor.dims()[0], &verts_tensor.device());
-                    let colors_tensor = DynamicTensorFloat2D::Candle(colors);
-                    self.command_buffer.insert_one(entity, Colors(colors_tensor));
-                }
-                DynamicTensorFloat2D::Wgpu(verts_tensor) => {
-                    // Compute dummy colors for Wgpu backend
-                    let colors = geom::compute_dummy_colors(verts_tensor.dims()[0], &verts_tensor.device());
-                    let colors_tensor = DynamicTensorFloat2D::Wgpu(colors);
-                    self.command_buffer.insert_one(entity, Colors(colors_tensor));
-                }
-            }
+            let colors = geom::compute_dummy_colors(verts.0.nrows());
+            self.command_buffer.insert_one(entity, Colors(colors));
         }
 
         // If we do have colors, make sure they are the same size as verts
@@ -555,26 +395,8 @@ impl PrePass {
 
         for (entity, (verts, colors)) in query.iter() {
             if verts.0.nrows() != colors.0.nrows() {
-                match &verts.0 {
-                    DynamicTensorFloat2D::NdArray(verts_tensor) => {
-                        // Recompute colors for NdArray backend
-                        let colors = geom::compute_dummy_colors(verts_tensor.dims()[0], &verts_tensor.device());
-                        let colors_tensor = DynamicTensorFloat2D::NdArray(colors);
-                        self.command_buffer.insert_one(entity, Colors(colors_tensor));
-                    }
-                    DynamicTensorFloat2D::Candle(verts_tensor) => {
-                        // Recompute colors for Candle backend
-                        let colors = geom::compute_dummy_colors(verts_tensor.dims()[0], &verts_tensor.device());
-                        let colors_tensor = DynamicTensorFloat2D::Candle(colors);
-                        self.command_buffer.insert_one(entity, Colors(colors_tensor));
-                    }
-                    DynamicTensorFloat2D::Wgpu(verts_tensor) => {
-                        // Recompute colors for Wgpu backend
-                        let colors = geom::compute_dummy_colors(verts_tensor.dims()[0], &verts_tensor.device());
-                        let colors_tensor = DynamicTensorFloat2D::Wgpu(colors);
-                        self.command_buffer.insert_one(entity, Colors(colors_tensor));
-                    }
-                }
+                let colors = geom::compute_dummy_colors(verts.0.nrows());
+                self.command_buffer.insert_one(entity, Colors(colors));
             }
         }
     }

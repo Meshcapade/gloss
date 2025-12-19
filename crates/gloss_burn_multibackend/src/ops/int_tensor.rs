@@ -8,6 +8,8 @@ use burn::tensor::{ops::IntTensorOps, Distribution, Shape, TensorData};
 use crate::backend::CandleBackend;
 #[cfg(feature = "burn-ndarray")]
 use crate::backend::NdArrayBackend;
+#[cfg(feature = "burn-torch")]
+use crate::backend::TorchBackend;
 #[cfg(feature = "burn-wgpu")]
 use crate::backend::WgpuBackend;
 use crate::{
@@ -25,6 +27,8 @@ impl IntTensorOps<Self> for MultiBackend {
             MultiDevice::NdArray(d) => data.convert_dtype(burn::tensor::DType::I32),
             #[cfg(feature = "burn-wgpu")]
             MultiDevice::Wgpu(d) => data.convert_dtype(burn::tensor::DType::I32),
+            #[cfg(feature = "burn-torch")]
+            MultiDevice::Torch(d) => data.convert_dtype(burn::tensor::DType::I64),
         };
         ops_rest_device!(int(data ; device) => int_from_data)
     }
@@ -39,6 +43,8 @@ impl IntTensorOps<Self> for MultiBackend {
             MultiIntTensor::NdArray(t) => <NdArrayBackend as IntTensorOps<NdArrayBackend>>::int_into_data(t).await,
             #[cfg(feature = "burn-wgpu")]
             MultiIntTensor::Wgpu(t) => <WgpuBackend as IntTensorOps<WgpuBackend>>::int_into_data(t).await,
+            #[cfg(feature = "burn-torch")]
+            MultiIntTensor::Torch(t) => <TorchBackend as IntTensorOps<TorchBackend>>::int_into_data(t).await,
         }
     }
     fn int_to_device(tensor: MultiIntTensor, device: &MultiDevice) -> MultiIntTensor {
@@ -55,6 +61,8 @@ impl IntTensorOps<Self> for MultiBackend {
             MultiIntTensor::NdArray(t) => MultiDevice::NdArray(<NdArrayBackend as IntTensorOps<NdArrayBackend>>::int_device(t)),
             #[cfg(feature = "burn-wgpu")]
             MultiIntTensor::Wgpu(t) => MultiDevice::Wgpu(<WgpuBackend as IntTensorOps<WgpuBackend>>::int_device(t)),
+            #[cfg(feature = "burn-torch")]
+            MultiIntTensor::Torch(t) => MultiDevice::Torch(<TorchBackend as IntTensorOps<TorchBackend>>::int_device(t)),
         }
     }
     fn int_empty(shape: Shape, device: &MultiDevice) -> MultiIntTensor {

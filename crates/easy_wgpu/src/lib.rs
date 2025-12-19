@@ -33,6 +33,7 @@ pub mod pipeline;
 // live within the current context, also it does not save us much coding space
 // to use this abstraction
 pub mod buffer;
+pub mod error;
 pub mod mipmap;
 pub mod texture;
 pub mod utils;

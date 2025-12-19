@@ -6,10 +6,7 @@ extern crate nalgebra as na;
 // use burn::backend::candle::CandleDevice;
 // use burn::backend::Candle;
 use gloss_img::DynImage;
-use gloss_utils::{
-    io::FileLoader,
-    tensor::{DynamicTensorFloat2D, DynamicTensorInt2D},
-};
+use gloss_utils::io::FileLoader;
 use image::ImageReader;
 use log::warn;
 use na::DMatrix;
@@ -241,6 +238,13 @@ impl ModelMatrix {
         mat
     }
     #[must_use]
+    pub fn with_scale(self, s: f32) -> Self {
+        let mut mat = self;
+        mat.0.append_scaling_mut(s);
+        mat
+    }
+
+    #[must_use]
     pub fn interpolate(&self, other: &Self, other_weight: f32) -> Self {
         if !(0.0..=1.0).contains(&other_weight) {
             warn!("pose interpolation weight is outside the [0,1] range, will clamp. Weight is {other_weight}");
@@ -261,47 +265,47 @@ impl ModelMatrix {
 pub struct CamTrack(pub DMatrix<f32>);
 
 #[derive(Clone, Debug)]
-pub struct Verts(pub DynamicTensorFloat2D);
+pub struct Verts(pub DMatrix<f32>);
 
 /// Component that represents a matrix of vertex positions for the first vertex
 /// of an edge
 #[derive(Clone, Debug)]
-pub struct EdgesV1(pub DynamicTensorFloat2D);
+pub struct EdgesV1(pub DMatrix<f32>);
 /// Component that represents a matrix of vertex positions for the second vertex
 /// of an edge
 #[derive(Clone, Debug)]
-pub struct EdgesV2(pub DynamicTensorFloat2D);
+pub struct EdgesV2(pub DMatrix<f32>);
 
 /// Component that represents a matrix of face indices for rendering a triangle
 /// mesh
 // #[derive(Clone)]
 // pub struct Faces(pub DMatrix<u32>);
 #[derive(Clone)]
-pub struct Faces(pub DynamicTensorInt2D);
+pub struct Faces(pub DMatrix<u32>);
 
 /// Component that represents a matrix of edges as Nx2 where each row is the
 /// start idx and end idx of an edge which indexes into [``Verts``]
 #[derive(Clone, Debug)]
-pub struct Edges(pub DynamicTensorInt2D);
+pub struct Edges(pub DMatrix<u32>);
 
 /// Component that represents UV coordinates
 #[derive(Clone)]
-pub struct UVs(pub DynamicTensorFloat2D);
+pub struct UVs(pub DMatrix<f32>);
 // / Component that represents the scale of the uv coordinates. Increasing it
 // will tile the texture on the mesh. #[derive(Clone)]
 // pub struct UvScale(pub f32);
 
 /// Component that represents normal vectors
 #[derive(Clone)]
-pub struct Normals(pub DynamicTensorFloat2D);
+pub struct Normals(pub DMatrix<f32>);
 
 /// Component that represents tangents
 #[derive(Clone)]
-pub struct Tangents(pub DynamicTensorFloat2D);
+pub struct Tangents(pub DMatrix<f32>);
 
 /// Component that represents per vertex colors
 #[derive(Clone)]
-pub struct Colors(pub DynamicTensorFloat2D);
+pub struct Colors(pub DMatrix<f32>);
 
 #[derive(Clone)]
 #[allow(clippy::struct_excessive_bools)]
@@ -598,21 +602,88 @@ impl GenericImageGetter for MetalnessImg {
 // generic function also implement common things like the atom size of an
 // element which is f32 for most or u32 for faces and edges https://stackoverflow.com/a/53085395
 //https://stackoverflow.com/a/66794115
-// pub trait CpuAtrib<T> {
-//     // type TypeElement;
-//     fn byte_size_element(&self) -> usize;
-//     // pub fn get_data(&self) -> DMatrix<Self::TypeElement>;
-//     fn data_ref(&self) -> &DMatrix<T>;
-// }
+pub trait CpuAtrib<T> {
+    // type TypeElement;
+    fn byte_size_element(&self) -> usize;
+    // pub fn get_data(&self) -> DMatrix<Self::TypeElement>;
+    fn data_ref(&self) -> &DMatrix<T>;
+}
 
-// impl CpuAtrib<f32> for Colors {
-//     fn byte_size_element(&self) -> usize {
-//         std::mem::size_of::<f32>()
-//     }
-//     fn data_ref(&self) -> &DMatrix<f32> {
-//         &self.0
-//     }
-// }
+impl CpuAtrib<f32> for Verts {
+    // type TypeElement = f32;
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<f32>()
+    }
+    fn data_ref(&self) -> &DMatrix<f32> {
+        &self.0
+    }
+}
+impl CpuAtrib<f32> for EdgesV1 {
+    // type TypeElement = f32;
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<f32>()
+    }
+    fn data_ref(&self) -> &DMatrix<f32> {
+        &self.0
+    }
+}
+impl CpuAtrib<f32> for EdgesV2 {
+    // type TypeElement = f32;
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<f32>()
+    }
+    fn data_ref(&self) -> &DMatrix<f32> {
+        &self.0
+    }
+}
+impl CpuAtrib<u32> for Edges {
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<u32>()
+    }
+    fn data_ref(&self) -> &DMatrix<u32> {
+        &self.0
+    }
+}
+impl CpuAtrib<u32> for Faces {
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<u32>()
+    }
+    fn data_ref(&self) -> &DMatrix<u32> {
+        &self.0
+    }
+}
+impl CpuAtrib<f32> for UVs {
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<f32>()
+    }
+    fn data_ref(&self) -> &DMatrix<f32> {
+        &self.0
+    }
+}
+impl CpuAtrib<f32> for Normals {
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<f32>()
+    }
+    fn data_ref(&self) -> &DMatrix<f32> {
+        &self.0
+    }
+}
+impl CpuAtrib<f32> for Tangents {
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<f32>()
+    }
+    fn data_ref(&self) -> &DMatrix<f32> {
+        &self.0
+    }
+}
+impl CpuAtrib<f32> for Colors {
+    fn byte_size_element(&self) -> usize {
+        std::mem::size_of::<f32>()
+    }
+    fn data_ref(&self) -> &DMatrix<f32> {
+        &self.0
+    }
+}
 
 /// Environment map based ambient lighting representing light from distant
 /// scenery.

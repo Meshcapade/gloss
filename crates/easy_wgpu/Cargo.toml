@@ -14,17 +14,29 @@ repository.workspace = true
 [features]
 default = ["with-gui"]
 with-gui=["dep:epaint"]
+burn-torch = [
+    "tch",
+    "wgpu-cuda-interop/cuda",
+    "cust_raw",
+    ]
+
 
 [dependencies]
 
 #workspace internal gloss
 gloss-utils.workspace=true
 gloss-img.workspace=true
+#for cuda
+wgpu-cuda-interop = { workspace = true, optional = true }
+tch= { workspace = true, optional = true }
+cust_raw = { workspace = true, optional = true }
+
 
 type-map.workspace=true #needed for egui_renderer
 thiserror.workspace=true
 log.workspace=true
 wgpu.workspace=true
+wgpu-hal.workspace=true
 image.workspace=true
 bytemuck.workspace=true
 futures.workspace=true

@@ -183,7 +183,7 @@ where
     type Out = nalgebra::DVector<T>;
     fn into_nalgebra(self) -> Self::Out {
         let len = Dy(self.len());
-        Self::Out::from_vec_generic(len, nalgebra::Const::<1>, self.into_raw_vec_and_offset().0)
+        Self::Out::from_vec_generic(len, nalgebra::Const::<1>, self.into_raw_vec())
     }
 }
 
@@ -297,7 +297,7 @@ where
                 let res = Self::Out::from_row_slice(self.nrows(), self.ncols(), self.as_slice().unwrap());
                 res
             } else {
-                Self::Out::from_vec_generic(nrows, ncols, self.into_raw_vec_and_offset().0)
+                Self::Out::from_vec_generic(nrows, ncols, self.into_raw_vec())
             }
         };
         // if std_layout {

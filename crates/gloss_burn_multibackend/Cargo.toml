@@ -12,11 +12,11 @@ documentation = "https://docs.rs/gloss-burn-multibackend"
 repository.workspace = true
 
 [features]
-# default = ["burn-candle"]
-default = ["burn-ndarray", "burn-candle","burn-wgpu"]
-burn-candle = []
-burn-ndarray = []
-burn-wgpu = []
+default = ["burn-candle","burn-wgpu"]
+burn-candle = ["burn/candle"]
+burn-ndarray = ["burn/ndarray"]
+burn-wgpu = ["burn/wgpu"]
+burn-torch = ["burn/tch"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

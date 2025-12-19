@@ -4,6 +4,8 @@ pub mod cam_comps;
 pub mod light_comps;
 pub mod mesh_cpu_comps;
 pub mod mesh_gpu_comps;
+#[cfg(feature = "burn-torch")]
+pub mod mesh_interop_comps;
 pub mod misc_comps;
 pub mod render_comps;
 
@@ -14,5 +16,7 @@ pub use cam_comps::*;
 pub use light_comps::*;
 pub use mesh_cpu_comps::*;
 pub use mesh_gpu_comps::*;
+#[cfg(feature = "burn-torch")]
+pub use mesh_interop_comps::*;
 pub use misc_comps::*;
 pub use render_comps::*;

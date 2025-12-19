@@ -939,23 +939,14 @@ pub fn apply_indirection(mat: &na::DMatrix<u32>, indices_orig2destin: &[i32], re
     (reindexed_filtered, mask)
 }
 
-// pub fn compute_dummy_uvs(nr_verts: usize) -> DMatrix<f32> {
-//     DMatrix::<f32>::zeros(nr_verts, 2)
-// }
-// pub fn compute_dummy_colors(nr_verts: usize) -> DMatrix<f32> {
-//     DMatrix::<f32>::zeros(nr_verts, 3)
-// }
-// pub fn compute_dummy_tangents(nr_verts: usize) -> DMatrix<f32> {
-//     DMatrix::<f32>::zeros(nr_verts, 4) //make it 4 because it's both the
-// tangent and the handness as the last element }
-pub fn compute_dummy_uvs<B: Backend>(nr_verts: usize, device: &B::Device) -> Tensor<B, 2, Float> {
-    Tensor::<B, 2, Float>::zeros([nr_verts, 2], device)
+pub fn compute_dummy_uvs(nr_verts: usize) -> DMatrix<f32> {
+    DMatrix::<f32>::zeros(nr_verts, 2)
 }
-pub fn compute_dummy_colors<B: Backend>(nr_verts: usize, device: &B::Device) -> Tensor<B, 2, Float> {
-    Tensor::<B, 2, Float>::zeros([nr_verts, 3], device)
+pub fn compute_dummy_colors(nr_verts: usize) -> DMatrix<f32> {
+    DMatrix::<f32>::zeros(nr_verts, 3)
 }
-pub fn compute_dummy_tangents<B: Backend>(nr_verts: usize, device: &B::Device) -> Tensor<B, 2, Float> {
-    Tensor::<B, 2, Float>::zeros([nr_verts, 4], device)
+pub fn compute_dummy_tangents(nr_verts: usize) -> DMatrix<f32> {
+    DMatrix::<f32>::zeros(nr_verts, 4) //make it 4 because it's both the tangent and the handness as the last element
 }
 
 pub fn create_frustum_verts_and_edges(

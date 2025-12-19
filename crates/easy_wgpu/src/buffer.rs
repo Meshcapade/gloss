@@ -4,6 +4,21 @@ use encase::{
 };
 use wgpu;
 
+#[cfg(feature = "burn-torch")]
+use crate::error::CudaInteropError;
+#[cfg(feature = "burn-torch")]
+use cust_raw;
+
+#[cfg(feature = "burn-torch")]
+use std::sync::Arc;
+#[cfg(feature = "burn-torch")]
+use tch::Tensor;
+#[cfg(feature = "burn-torch")]
+use wgpu_cuda_interop::{vulkan_wgpu_interop::WgpuBufferCudaMem, AllocSize};
+
+#[cfg(feature = "burn-torch")]
+use log::debug;
+
 /// A wrapper for `wgpu::Buffer`. Allows writing of aligned or packed data into
 /// it
 #[derive(Clone)]
@@ -13,6 +28,10 @@ pub struct Buffer {
     cpu_byte_buffer: Vec<u8>,
     offset: usize,
     alignment: AlignmentValue,
+
+    //optional stuff for vulkan-cuda interop
+    #[cfg(feature = "burn-torch")]
+    pub staging_buffer_backed_by_cuda_mem: Option<Arc<WgpuBufferCudaMem>>,
 }
 
 impl Buffer {
@@ -33,6 +52,24 @@ impl Buffer {
             cpu_byte_buffer,
             offset: 0,
             alignment: AlignmentValue::new(256),
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
+        }
+    }
+
+    pub fn new_from_buffer(buffer: wgpu::Buffer) -> Self {
+        let size_bytes = usize::try_from(buffer.size()).unwrap();
+        let cpu_byte_buffer = Vec::new();
+
+        Self {
+            buffer,
+            size_bytes,
+            //for a packed one
+            cpu_byte_buffer,
+            offset: 0,
+            alignment: AlignmentValue::new(256),
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
         }
     }
 
@@ -96,5 +133,91 @@ impl Buffer {
 
     pub fn offset(&self) -> usize {
         self.offset
+    }
+
+    #[cfg(feature = "burn-torch")]
+    pub fn new_from_tensor(
+        tensor: &Tensor,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        adapter: &wgpu::Adapter,
+        usage: wgpu::BufferUsages,
+        label: wgpu::Label,
+    ) -> Self {
+        // create dummy Buffer first
+        let mut buffer = Self::new_empty(device, usage, label, 4);
+
+        //copy te tensor data into it (will recreate the inner buffer if the size is different)
+        buffer
+            .copy_from_tensor(tensor, device, queue, adapter)
+            .expect("Failed to copy from tensor");
+
+        buffer
+    }
+
+    #[cfg(feature = "burn-torch")]
+    pub fn copy_from_tensor(
+        &mut self,
+        tensor: &Tensor,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        adapter: &wgpu::Adapter,
+    ) -> Result<(), CudaInteropError> {
+        // Check tensor requirements
+        if tensor.size().is_empty() || tensor.size()[0] != 1 {
+            return Err(CudaInteropError::InvalidBatchSize(tensor.size().get(0).copied().unwrap_or(0) as usize));
+        }
+
+        // Compute buffer size and stride
+        let shape = tensor.size();
+        let elem_size = match tensor.kind() {
+            tch::Kind::Float => std::mem::size_of::<f32>(),
+            tch::Kind::Int => std::mem::size_of::<i32>(),
+            _ => {
+                return Err(CudaInteropError::InvalidTensorType(tensor.kind()));
+            }
+        };
+        let num_elements: i64 = shape.iter().skip(1).product(); // skip batch dim
+        let num_elements = usize::try_from(num_elements).unwrap();
+        let buf_size = AllocSize {
+            height: 1,
+            width: 1,
+            stride: num_elements * elem_size,
+        };
+
+        // Check for contiguous tensor
+        if !tensor.is_contiguous() {
+            return Err(CudaInteropError::InvalidNonContiguous);
+        }
+
+        // Recreate staging buffer if necessary
+        if self.staging_buffer_backed_by_cuda_mem.is_none()
+            || self.staging_buffer_backed_by_cuda_mem.as_ref().unwrap().cuda_mem.alloc_size != buf_size
+        {
+            debug!("staging_buffer_backed_by_cuda_mem creating because it is none or the size is different");
+            let wgpu_cuda = wgpu_cuda_interop::interop::create_wgpu_cuda_buffer(device, adapter, buf_size, true);
+            self.staging_buffer_backed_by_cuda_mem = Some(Arc::new(wgpu_cuda));
+        }
+
+        // recreate the buffer if the size is different
+        if self.size_bytes != buf_size.stride {
+            debug!("recreating the wgpu buffer because the size is different");
+            self.size_bytes = buf_size.stride;
+            self.buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Buffer::from_tensor wgpu buffer"),
+                size: self.size_bytes as u64,
+                usage: self.buffer.usage(),
+                mapped_at_creation: false,
+            });
+        }
+
+        // Copy tensor data to staging buffer and then to wgpu buffer
+        let source_ptr = tensor.data_ptr() as cust_raw::CUdeviceptr;
+        if let Some(staging_buffer) = self.staging_buffer_backed_by_cuda_mem.as_ref() {
+            // Copy from CUDA memory to staging buffer
+            wgpu_cuda_interop::interop::cuda_buffer_to_wgpu(source_ptr, buf_size, staging_buffer, &self.buffer, device, queue);
+        }
+
+        Ok(())
     }
 }

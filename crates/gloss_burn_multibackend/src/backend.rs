@@ -16,6 +16,8 @@ pub type CandleBackend = burn::backend::Candle<f32, i64>;
 pub type NdArrayBackend = burn::backend::NdArray<f32, i32>;
 #[cfg(feature = "burn-wgpu")]
 pub type WgpuBackend = burn::backend::Wgpu<f32, i32>;
+#[cfg(feature = "burn-torch")]
+pub type TorchBackend = burn::backend::LibTorch<f32>;
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct MultiBackend;
@@ -42,6 +44,8 @@ impl Backend for MultiBackend {
             MultiDevice::NdArray(_) => "ndarray",
             #[cfg(feature = "burn-wgpu")]
             MultiDevice::Wgpu(_) => "wgpu",
+            #[cfg(feature = "burn-torch")]
+            MultiDevice::Torch(_) => "torch",
         }
         .to_string()
     }
@@ -70,6 +74,8 @@ pub enum MultiDevice {
     NdArray(Device<NdArrayBackend>),
     #[cfg(feature = "burn-wgpu")]
     Wgpu(Device<WgpuBackend>),
+    #[cfg(feature = "burn-torch")]
+    Torch(Device<TorchBackend>),
     // #[cfg(feature = "autodiff")]
     // Autodiff(Box<Device<MultiBackend>>),
 }
@@ -89,6 +95,10 @@ impl Default for MultiDevice {
                     let existing_wgpu_device = wgpu_burn_global_device::get_global_wgpu_device();
                     return Self::Wgpu(existing_wgpu_device.unwrap_or_default());
                 }
+                #[cfg(feature = "burn-torch")]
+                global_backend::GlobalBackend::TorchCpu => return Self::Torch(burn::backend::libtorch::LibTorchDevice::Cpu),
+                #[cfg(feature = "burn-torch")]
+                global_backend::GlobalBackend::TorchCuda(idx) => return Self::Torch(burn::backend::libtorch::LibTorchDevice::Cuda(idx)),
                 _ => {
                     panic!("This global device {global_device:?} is not available because the corresponding feature is not enabled. Please enable the feature in Cargo.toml.");
                 }
@@ -110,9 +120,25 @@ impl Default for MultiDevice {
             let existing_wgpu_device = wgpu_burn_global_device::get_global_wgpu_device();
             Self::Wgpu(existing_wgpu_device.unwrap_or_default())
         }
-        #[cfg(all(not(feature = "burn-candle"), not(feature = "burn-ndarray"), not(feature = "burn-wgpu")))]
+        #[cfg(all(
+            not(feature = "burn-candle"),
+            not(feature = "burn-ndarray"),
+            not(feature = "burn-wgpu"),
+            feature = "burn-torch"
+        ))]
         {
-            compile_error!("No backend feature enabled. Please enable at least one of the features: burn-candle, burn-ndarray, burn-wgpu");
+            Self::Torch(burn::backend::torch::TorchDevice::default());
+        }
+        #[cfg(all(
+            not(feature = "burn-candle"),
+            not(feature = "burn-ndarray"),
+            not(feature = "burn-wgpu"),
+            not(feature = "burn-torch")
+        ))]
+        {
+            compile_error!(
+                "No backend feature enabled. Please enable at least one of the features: burn-candle, burn-ndarray, burn-wgpu, burn-torch"
+            );
         }
     }
 }
@@ -127,6 +153,8 @@ impl DeviceOps for MultiDevice {
             MultiDevice::NdArray(_) => burn::tensor::backend::DeviceId::new(1, 0),
             #[cfg(feature = "burn-wgpu")]
             MultiDevice::Wgpu(_) => burn::tensor::backend::DeviceId::new(2, 0),
+            #[cfg(feature = "burn-torch")]
+            MultiDevice::Torch(_) => burn::tensor::backend::DeviceId::new(3, 0),
         }
     }
 }

@@ -1,13 +1,21 @@
 pub mod colors;
+pub mod colors_gpu;
+#[cfg(feature = "burn-torch")]
+pub mod colors_pytensor;
 pub mod diffuse_img;
+pub mod diffuse_tex;
 pub mod edges;
 pub mod faces;
+pub mod img_config;
 pub mod model_matrix;
 pub mod normal_img;
 pub mod normals;
 pub mod tangents;
 pub mod uvs;
 pub mod verts;
+// pub mod verts_gpu;
+#[cfg(feature = "burn-torch")]
+pub mod verts_pytensor;
 pub mod vis_edges;
 pub mod vis_mesh;
 pub mod vis_outline;

@@ -2,17 +2,24 @@
 #![allow(clippy::needless_pass_by_value)] //a lot of py arrays are passed by value but that is actually fine
 #![allow(clippy::return_self_not_must_use)]
 
+#[cfg(feature = "burn-torch")]
+use components::{colors_pytensor::PyColorsPyTensor, verts_pytensor::PyVertsPyTensor};
+
 use components::{
     colors::PyColors,
+    colors_gpu::PyColorsGPU,
     diffuse_img::PyDiffuseImg,
+    diffuse_tex::PyDiffuseTex,
     edges::PyEdges,
     faces::PyFaces,
+    img_config::PyImgConfig,
     model_matrix::PyModelMatrix,
     normal_img::PyNormalImg,
     normals::PyNormals,
     tangents::PyTangents,
     uvs::PyUVs,
     verts::PyVerts,
+    // verts_gpu::PyVertsGPU,
     vis_edges::{PyLineColorType, PyVisLines},
     vis_mesh::{PyMeshColorType, PyVisMesh},
     vis_outline::PyVisOutline,
@@ -37,7 +44,11 @@ pub mod logger;
 pub mod plugin;
 pub mod queue;
 pub mod scene;
+#[cfg(feature = "burn-torch")]
+pub mod tensor_utils;
 pub mod texture;
+#[cfg(feature = "burn-torch")]
+pub mod torch2burn_test;
 pub mod viewer;
 pub mod viewer_dummy;
 pub mod viewer_headless;
@@ -51,6 +62,8 @@ use logger::{gloss_setup_logger, gloss_setup_logger_from_config_file, PyLogLevel
 use queue::PyQueue;
 use scene::PyScene;
 use texture::PyTexture;
+#[cfg(feature = "burn-torch")]
+use torch2burn_test::PyTorch2BurnTest;
 use viewer::PyViewer;
 use viewer_dummy::PyViewerDummy;
 use viewer_headless::PyViewerHeadless;
@@ -86,6 +99,8 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyActorMut>()?;
     m.add_class::<PyDynImage>()?;
     m.add_class::<PyGeom>()?;
+    #[cfg(feature = "burn-torch")]
+    m.add_class::<PyTorch2BurnTest>()?;
 
     // Initialize submodules
     add_submod_log(_py, &log_module)?;
@@ -129,11 +144,13 @@ fn add_submod_backend(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 #[pymodule]
 fn add_submod_components_sm(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyVerts>()?;
+    // m.add_class::<PyVertsGPU>()?;
     m.add_class::<PyNormals>()?;
     m.add_class::<PyUVs>()?;
     m.add_class::<PyEdges>()?;
     m.add_class::<PyTangents>()?;
     m.add_class::<PyColors>()?;
+    m.add_class::<PyColorsGPU>()?;
     m.add_class::<PyFaces>()?;
     m.add_class::<PyVisLines>()?;
     m.add_class::<PyVisMesh>()?;
@@ -141,7 +158,13 @@ fn add_submod_components_sm(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()
     m.add_class::<PyVisOutline>()?;
     m.add_class::<PyModelMatrix>()?;
     m.add_class::<PyDiffuseImg>()?;
+    m.add_class::<PyDiffuseTex>()?;
     m.add_class::<PyNormalImg>()?;
+    #[cfg(feature = "burn-torch")]
+    {
+        m.add_class::<PyColorsPyTensor>()?;
+        m.add_class::<PyVertsPyTensor>()?;
+    }
     Ok(())
 }
 
@@ -152,6 +175,7 @@ fn add_submod_types(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyLineColorType>()?;
     m.add_class::<PySplatType>()?;
     m.add_class::<PyIndirRemovalPolicy>()?;
+    m.add_class::<PyImgConfig>()?;
     Ok(())
 }
 

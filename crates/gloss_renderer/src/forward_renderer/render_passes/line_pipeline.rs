@@ -1,3 +1,5 @@
+#![allow(dead_code)] //needed to supress warning of the check function of encase. To be removed after encase 0.11
+
 use std::collections::HashMap;
 
 use crate::{
@@ -128,8 +130,8 @@ impl PipelineRunner for LinePipeline {
             //local bindings
             let (local_bg, offset) = &self.locals_bind_groups.mesh2local_bind[&name.0.clone()];
             render_pass.set_bind_group(1, local_bg.bg(), &[*offset]);
-            render_pass.set_vertex_buffer(0, ev1.buf.slice(..));
-            render_pass.set_vertex_buffer(1, ev2.buf.slice(..));
+            render_pass.set_vertex_buffer(0, ev1.buf.buffer.slice(..));
+            render_pass.set_vertex_buffer(1, ev2.buf.buffer.slice(..));
             render_pass.draw(0..6, 0..ev1.nr_vertices);
         }
     }

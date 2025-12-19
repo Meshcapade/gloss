@@ -7,10 +7,12 @@ use ktx2;
 use pollster::FutureExt;
 use wgpu;
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct VertsGPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_vertices: u32,
+    // #[cfg(feature = "burn-torch")]
+    // pub tensor: Option<tch::Tensor>,
 }
 impl VertsGPU {
     //returning a vertex layout witha  dynamic shader location //https://github.com/gfx-rs/wgpu/discussions/2050
@@ -34,9 +36,9 @@ impl VertsGPU {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct EdgesV1GPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_vertices: u32,
 }
 impl EdgesV1GPU {
@@ -60,9 +62,9 @@ impl EdgesV1GPU {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct EdgesV2GPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_vertices: u32,
 }
 impl EdgesV2GPU {
@@ -88,7 +90,7 @@ impl EdgesV2GPU {
 }
 
 pub struct UVsGPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_vertices: u32,
 }
 impl UVsGPU {
@@ -103,7 +105,7 @@ impl UVsGPU {
     }
 }
 pub struct NormalsGPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_vertices: u32,
 }
 impl NormalsGPU {
@@ -120,7 +122,7 @@ impl NormalsGPU {
 }
 
 pub struct TangentsGPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_vertices: u32,
 }
 impl TangentsGPU {
@@ -137,8 +139,9 @@ impl TangentsGPU {
     }
 }
 
+#[derive(Clone)]
 pub struct ColorsGPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_vertices: u32,
 }
 impl ColorsGPU {
@@ -162,9 +165,9 @@ impl ColorsGPU {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct EdgesGPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_edges: u32,
 }
 impl EdgesGPU {
@@ -190,19 +193,16 @@ impl EdgesGPU {
 }
 
 pub struct FacesGPU {
-    pub buf: wgpu::Buffer,
+    pub buf: easy_wgpu::buffer::Buffer,
     pub nr_triangles: u32,
 }
 
 #[derive(Clone)]
 pub struct DiffuseTex(pub easy_wgpu::texture::Texture);
-
 #[derive(Clone)]
 pub struct NormalTex(pub easy_wgpu::texture::Texture);
-
 #[derive(Clone)]
 pub struct MetalnessTex(pub easy_wgpu::texture::Texture);
-
 #[derive(Clone)]
 pub struct RoughnessTex(pub easy_wgpu::texture::Texture);
 
@@ -323,6 +323,8 @@ impl EnvironmentMapGpu {
             view,
             sampler,
             tex_params,
+            #[cfg(feature = "burn-torch")]
+            staging_buffer_backed_by_cuda_mem: None,
         }
     }
 }
@@ -336,74 +338,103 @@ pub trait GpuAtrib {
 
 impl GpuAtrib for VertsGPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_vertices: u32) -> Self {
-        Self { buf, nr_vertices }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_vertices,
+            // #[cfg(feature = "burn-torch")]
+            // None,
+        }
     }
 }
 impl GpuAtrib for EdgesV1GPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_vertices: u32) -> Self {
-        Self { buf, nr_vertices }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_vertices,
+        }
     }
 }
 impl GpuAtrib for EdgesV2GPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_vertices: u32) -> Self {
-        Self { buf, nr_vertices }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_vertices,
+        }
     }
 }
 impl GpuAtrib for EdgesGPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_edges: u32) -> Self {
-        Self { buf, nr_edges }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_edges,
+        }
     }
 }
 impl GpuAtrib for FacesGPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_triangles: u32) -> Self {
-        Self { buf, nr_triangles }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_triangles,
+        }
     }
 }
 impl GpuAtrib for UVsGPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_vertices: u32) -> Self {
-        Self { buf, nr_vertices }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_vertices,
+        }
     }
 }
 impl GpuAtrib for NormalsGPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_vertices: u32) -> Self {
-        Self { buf, nr_vertices }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_vertices,
+        }
     }
 }
 impl GpuAtrib for TangentsGPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_vertices: u32) -> Self {
-        Self { buf, nr_vertices }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_vertices,
+        }
     }
 }
 impl GpuAtrib for ColorsGPU {
     fn data_ref(&self) -> &wgpu::Buffer {
-        &self.buf
+        &self.buf.buffer
     }
     fn new_from(buf: wgpu::Buffer, nr_vertices: u32) -> Self {
-        Self { buf, nr_vertices }
+        Self {
+            buf: easy_wgpu::buffer::Buffer::new_from_buffer(buf),
+            nr_vertices,
+        }
     }
 }
 
@@ -480,3 +511,7 @@ unsafe impl Sync for RoughnessTex {}
 unsafe impl Send for EnvironmentMapGpu {}
 #[cfg(target_arch = "wasm32")]
 unsafe impl Sync for EnvironmentMapGpu {}
+// #[cfg(target_arch = "wasm32")]
+// unsafe impl Send for torch_sys::C_tensor {}
+// #[cfg(target_arch = "wasm32")]
+// unsafe impl Sync for torch_sys::C_tensor {}

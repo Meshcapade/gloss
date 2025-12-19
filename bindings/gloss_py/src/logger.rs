@@ -4,7 +4,7 @@ use gloss_renderer::{config::LogLevel, logger::LogLevelCaps};
 use gloss_utils::convert_enum_from;
 use pyo3::prelude::*;
 
-#[pyclass(name = "LogLevel", module = "gloss.log", unsendable, eq, eq_int)]
+#[pyclass(name = "LogLevel", module = "gloss.log", unsendable)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PyLogLevel {
     Off = 0,

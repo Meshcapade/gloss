@@ -8,6 +8,8 @@ use burn::tensor::{ops::FloatTensorOps, Distribution, FloatDType, Shape, TensorD
 use crate::backend::CandleBackend;
 #[cfg(feature = "burn-ndarray")]
 use crate::backend::NdArrayBackend;
+#[cfg(feature = "burn-torch")]
+use crate::backend::TorchBackend;
 #[cfg(feature = "burn-wgpu")]
 use crate::backend::WgpuBackend;
 use crate::{
@@ -41,6 +43,8 @@ impl FloatTensorOps<Self> for MultiBackend {
             MultiFloatTensor::NdArray(t) => <NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t).await,
             #[cfg(feature = "burn-wgpu")]
             MultiFloatTensor::Wgpu(t) => <WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t).await,
+            #[cfg(feature = "burn-torch")]
+            MultiFloatTensor::Torch(t) => <TorchBackend as FloatTensorOps<TorchBackend>>::float_into_data(t).await,
         }
     }
     fn float_device(tensor: &MultiFloatTensor) -> MultiDevice {
@@ -51,9 +55,16 @@ impl FloatTensorOps<Self> for MultiBackend {
             MultiFloatTensor::NdArray(t) => MultiDevice::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_device(t)),
             #[cfg(feature = "burn-wgpu")]
             MultiFloatTensor::Wgpu(t) => MultiDevice::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_device(t)),
+            #[cfg(feature = "burn-torch")]
+            MultiFloatTensor::Torch(t) => MultiDevice::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::float_device(t)),
         }
     }
+    #[allow(clippy::too_many_lines)]
     fn float_to_device(tensor: MultiFloatTensor, device: &MultiDevice) -> MultiFloatTensor {
+        let err_async = "Failed to read tensor data synchronously.
+        This can happen on platforms that don't support blocking futures like WASM.
+        If possible, try using into_data_async instead.";
+
         match tensor {
             //current tensor is on candle
             #[cfg(feature = "burn-candle")]
@@ -65,22 +76,23 @@ impl FloatTensorOps<Self> for MultiBackend {
                 #[cfg(feature = "burn-wgpu")]
                 MultiDevice::Wgpu(d) => {
                     //need to move ndarray to wgpu
-                    let data = burn::tensor::try_read_sync(<CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t.clone())).expect(
-                        "Failed to read tensor data synchronously.
-        This can happen on platforms that don't support blocking futures like WASM.
-        If possible, try using into_data_async instead.",
-                    );
+                    let data =
+                        burn::tensor::try_read_sync(<CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t.clone())).expect(err_async);
                     MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_from_data(data, d))
                 }
                 #[cfg(feature = "burn-ndarray")]
                 MultiDevice::NdArray(d) => {
                     //need to move candle to ndarray
-                    let data = burn::tensor::try_read_sync(<CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t.clone())).expect(
-                        "Failed to read tensor data synchronously.
-        This can happen on platforms that don't support blocking futures like WASM.
-        If possible, try using into_data_async instead.",
-                    );
+                    let data =
+                        burn::tensor::try_read_sync(<CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t.clone())).expect(err_async);
                     MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_from_data(data, d))
+                }
+                #[cfg(feature = "burn-torch")]
+                MultiDevice::Torch(d) => {
+                    //need to move candle to torch
+                    let data =
+                        burn::tensor::try_read_sync(<CandleBackend as FloatTensorOps<CandleBackend>>::float_into_data(t.clone())).expect(err_async);
+                    MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::float_from_data(data, d))
                 }
             },
 
@@ -94,22 +106,23 @@ impl FloatTensorOps<Self> for MultiBackend {
                 #[cfg(feature = "burn-wgpu")]
                 MultiDevice::Wgpu(d) => {
                     //need to move ndarray to wgpu
-                    let data = burn::tensor::try_read_sync(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t.clone())).expect(
-                        "Failed to read tensor data synchronously.
-        This can happen on platforms that don't support blocking futures like WASM.
-        If possible, try using into_data_async instead.",
-                    );
+                    let data =
+                        burn::tensor::try_read_sync(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t.clone())).expect(err_async);
                     MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_from_data(data, d))
                 }
                 #[cfg(feature = "burn-candle")]
                 MultiDevice::Candle(d) => {
                     //need to move ndarray to candle
-                    let data = burn::tensor::try_read_sync(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t.clone())).expect(
-                        "Failed to read tensor data synchronously.
-        This can happen on platforms that don't support blocking futures like WASM.
-        If possible, try using into_data_async instead.",
-                    );
+                    let data =
+                        burn::tensor::try_read_sync(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t.clone())).expect(err_async);
                     MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::float_from_data(data, d))
+                }
+                #[cfg(feature = "burn-torch")]
+                MultiDevice::Torch(d) => {
+                    //need to move ndarray to torch
+                    let data =
+                        burn::tensor::try_read_sync(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_into_data(t.clone())).expect(err_async);
+                    MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::float_from_data(data, d))
                 }
             },
 
@@ -123,22 +136,53 @@ impl FloatTensorOps<Self> for MultiBackend {
                 #[cfg(feature = "burn-ndarray")]
                 MultiDevice::NdArray(d) => {
                     //need to move wgpu to ndarray
-                    let data = burn::tensor::try_read_sync(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t.clone())).expect(
-                        "Failed to read tensor data synchronously.
-        This can happen on platforms that don't support blocking futures like WASM.
-        If possible, try using into_data_async instead.",
-                    );
+                    let data =
+                        burn::tensor::try_read_sync(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t.clone())).expect(err_async);
                     MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_from_data(data, d))
                 }
                 #[cfg(feature = "burn-candle")]
                 MultiDevice::Candle(d) => {
                     //need to move wgpu to candle
-                    let data = burn::tensor::try_read_sync(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t.clone())).expect(
-                        "Failed to read tensor data synchronously.
-        This can happen on platforms that don't support blocking futures like WASM.
-        If possible, try using into_data_async instead.",
-                    );
+                    let data =
+                        burn::tensor::try_read_sync(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t.clone())).expect(err_async);
                     MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::float_from_data(data, d))
+                }
+                #[cfg(feature = "burn-torch")]
+                MultiDevice::Torch(d) => {
+                    //need to move wgpu to torch
+                    let data =
+                        burn::tensor::try_read_sync(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_into_data(t.clone())).expect(err_async);
+                    MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::float_from_data(data, d))
+                }
+            },
+
+            //current tensor is on torch
+            #[cfg(feature = "burn-torch")]
+            MultiFloatTensor::Torch(ref t) => match device {
+                MultiDevice::Torch(_) => {
+                    // No need to move anything
+                    tensor.clone()
+                }
+                #[cfg(feature = "burn-ndarray")]
+                MultiDevice::NdArray(d) => {
+                    //need to move torch to ndarray
+                    let data =
+                        burn::tensor::try_read_sync(<TorchBackend as FloatTensorOps<TorchBackend>>::float_into_data(t.clone())).expect(err_async);
+                    MultiFloatTensor::NdArray(<NdArrayBackend as FloatTensorOps<NdArrayBackend>>::float_from_data(data, d))
+                }
+                #[cfg(feature = "burn-candle")]
+                MultiDevice::Candle(d) => {
+                    //need to move torch to candle
+                    let data =
+                        burn::tensor::try_read_sync(<TorchBackend as FloatTensorOps<TorchBackend>>::float_into_data(t.clone())).expect(err_async);
+                    MultiFloatTensor::Candle(<CandleBackend as FloatTensorOps<CandleBackend>>::float_from_data(data, d))
+                }
+                #[cfg(feature = "burn-wgpu")]
+                MultiDevice::Wgpu(d) => {
+                    //need to move torch to wgpu
+                    let data =
+                        burn::tensor::try_read_sync(<TorchBackend as FloatTensorOps<TorchBackend>>::float_into_data(t.clone())).expect(err_async);
+                    MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_from_data(data, d))
                 }
             },
         }
@@ -362,6 +406,19 @@ impl FloatTensorOps<Self> for MultiBackend {
                     })
                     .collect();
                 MultiFloatTensor::Wgpu(<WgpuBackend as FloatTensorOps<WgpuBackend>>::float_cat(inner, dim))
+            }
+
+            #[cfg(feature = "burn-torch")]
+            MultiFloatTensor::Torch(_) => {
+                use crate::backend::TorchBackend;
+                let inner: Vec<_> = tensors
+                    .into_iter()
+                    .map(|t| match t {
+                        MultiFloatTensor::Torch(inner) => inner,
+                        _ => panic!("Mismatched tensor backends in float_cat: expected Torch"),
+                    })
+                    .collect();
+                MultiFloatTensor::Torch(<TorchBackend as FloatTensorOps<TorchBackend>>::float_cat(inner, dim))
             }
         }
     }

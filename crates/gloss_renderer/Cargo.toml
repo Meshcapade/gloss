@@ -23,6 +23,7 @@ default = ["with-gui", "selector"]
 # with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "dep:transform-gizmo", "easy-wgpu/with-gui"]
 with-gui=["dep:egui", "dep:egui-winit", "dep:egui-wgpu", "easy-wgpu/with-gui"]
 selector=[]
+burn-torch = ["burn/tch", "easy-wgpu/burn-torch", "tch", "wgpu-cuda-interop/cuda"]
 
 [dependencies]
 # workspace internal gloss
@@ -32,6 +33,7 @@ gloss-img.workspace=true
 gloss-hecs.workspace=true
 gloss-geometry.workspace=true
 wgpu-burn-global-device.workspace=true
+wgpu-cuda-interop= { workspace = true, optional = true }
 
 # workspace third-party
 cfg-if.workspace=true
@@ -43,6 +45,7 @@ burn.workspace=true
 cubecl.workspace=true
 winit.workspace=true
 wgpu.workspace=true
+wgpu-hal.workspace=true
 nalgebra.workspace=true
 nalgebra-glm.workspace=true
 image.workspace=true
@@ -75,6 +78,8 @@ itertools.workspace=true
 re_memory.workspace=true
 strum_macros.workspace=true
 crossbeam-channel.workspace=true
+# pyo3-tch = { workspace = true, optional = true }
+tch = { workspace=true, optional=true }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

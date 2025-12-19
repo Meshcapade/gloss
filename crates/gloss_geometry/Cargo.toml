@@ -13,6 +13,11 @@ repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[features]
+default = []
+burn-torch = ["burn/burn-tch"]
+
 [dependencies]
 #local to package
 
