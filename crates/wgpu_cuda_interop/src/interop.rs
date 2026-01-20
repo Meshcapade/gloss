@@ -92,18 +92,23 @@ pub fn cuda_buffer_to_wgpu(
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     encoder.copy_buffer_to_buffer(&staging_buffer.buffer, 0, dst_buffer, 0, buf_size.stride as u64);
 
-    //for some reason without, we sometimes end up in a freeze or a crash
+    //for some reason without, we sometimes end up in a freeze or a crash so we need to add this wait here
     let sub_index = queue.submit(Some(encoder.finish()));
-    device.poll(wgpu::PollType::WaitForSubmissionIndex(sub_index)).unwrap(); //TODO probably not needed
+    device.poll(wgpu::PollType::WaitForSubmissionIndex(sub_index)).unwrap(); //TODO why is this needed?
 }
 
-pub fn create_wgpu_cuda_buffer(device: &wgpu::Device, adapter: &wgpu::Adapter, size: AllocSize, is_in: bool) -> WgpuBufferCudaMem {
+pub fn create_wgpu_cuda_buffer(
+    device: &wgpu::Device,
+    adapter: &wgpu::Adapter,
+    size: AllocSize,
+    additional_usages: wgpu::BufferUsages,
+) -> WgpuBufferCudaMem {
     assert!(
         adapter.get_info().backend == wgpu::Backend::Vulkan,
         "cuda-wgpu interop only available for vulkan backend"
     );
 
-    let vk_buffer_cuda_mem = cuda_vulkan_interop::create_vk_buffer_backed_by_cuda_memory(device, size).unwrap();
+    let vk_buffer_cuda_mem = cuda_vulkan_interop::VkBufferCudaMem::new(device, size);
 
-    vulkan_wgpu_interop::create_wgpu_cuda_buffer_from_vk_cuda_buffer(device, vk_buffer_cuda_mem, size.full_size_padded() as u64, is_in)
+    vulkan_wgpu_interop::WgpuBufferCudaMem::new(device, vk_buffer_cuda_mem, size.full_size_padded() as u64, additional_usages)
 }

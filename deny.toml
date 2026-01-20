@@ -79,6 +79,7 @@ ignore = [
     "RUSTSEC-2025-0014", # humantime by env_logger
     "RUSTSEC-2024-0436", #paste by abi_stable
     "RUSTSEC-2025-0020", #pyo3 being outdated. 0.24.1 would solve this but it comes with API changes so we will update later
+    "RUSTSEC-2025-0141"  #TODO: bincode is unmaintained but used by burn. Currently allowing the usage of bincode until further burn updates
 ]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.

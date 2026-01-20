@@ -1286,7 +1286,7 @@ impl Texture {
             || self.staging_buffer_backed_by_cuda_mem.as_ref().unwrap().cuda_mem.alloc_size != img_size
         {
             debug!("staging_buffer_backed_by_cuda_mem creating because it is none or the size is different");
-            let wgpu_cuda = wgpu_cuda_interop::interop::create_wgpu_cuda_buffer(device, adapter, img_size, true);
+            let wgpu_cuda = wgpu_cuda_interop::interop::create_wgpu_cuda_buffer(device, adapter, img_size, wgpu::BufferUsages::COPY_SRC);
             self.staging_buffer_backed_by_cuda_mem = Some(Arc::new(wgpu_cuda));
         }
 

@@ -40,6 +40,107 @@ impl Drop for CudaSharedMemory {
     }
 }
 
+impl CudaSharedMemory {
+    //more info in https://github.com/NVIDIA/cuda-samples/tree/master/Samples/5_Domain_Specific/simpleVulkanMMAP
+    /// Allocates CUDA shared memory exported as a POSIX file descriptor for interop with Vulkan.
+    pub fn new(alloc_size: AllocSize) -> Self {
+        let size = alloc_size.full_size_padded();
+        unsafe {
+            // Get current CUDA device
+            //TODO we should read the device from CUDA_VISIBLE_DEVICES if it exists
+            let mut dev: cust_raw::CUdevice = 0;
+            cust_raw::cuInit(0).to_result().expect("Failed to initialize CUDA");
+            cust_raw::cuDeviceGet(&raw mut dev, 0).to_result().expect("Failed to get CUDA device");
+
+            // Check for existing context
+            let mut existing_ctx: cust_raw::CUcontext = std::ptr::null_mut();
+            cust_raw::cuCtxGetCurrent(&raw mut existing_ctx)
+                .to_result()
+                .expect("Failed to get current CUDA context");
+
+            // We'll only retain & set primary if no context exists
+            let mut primary_ctx: cust_raw::CUcontext = std::ptr::null_mut();
+            #[allow(unused_assignments)]
+            let _created_ctx = if existing_ctx.is_null() {
+                cust_raw::cuDevicePrimaryCtxRetain(&raw mut primary_ctx, dev)
+                    .to_result()
+                    .expect("Failed to retain primary CUDA context");
+                cust_raw::cuCtxSetCurrent(primary_ctx)
+                    .to_result()
+                    .expect("Failed to set current CUDA context");
+                true
+            } else {
+                primary_ctx = existing_ctx;
+                false
+            };
+
+            // Set up allocation properties
+            let share_type = cust_raw::CUmemAllocationHandleType_enum::CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
+            let location = cust_raw::CUmemLocation {
+                type_: cust_raw::CUmemLocationType_enum::CU_MEM_LOCATION_TYPE_DEVICE,
+                id: dev,
+            };
+            let prop = cust_raw::CUmemAllocationProp {
+                type_: cust_raw::CUmemAllocationType_enum::CU_MEM_ALLOCATION_TYPE_PINNED,
+                requestedHandleTypes: share_type,
+                location,
+                win32HandleMetaData: std::ptr::null_mut(),
+                allocFlags: cust_raw::CUmemAllocationProp_st__bindgen_ty_1::default(),
+            };
+
+            // Determine granularity & align size
+            let mut granularity = 0;
+            cust_raw::cuMemGetAllocationGranularity(
+                &raw mut granularity,
+                &raw const prop,
+                cust_raw::CUmemAllocationGranularity_flags_enum::CU_MEM_ALLOC_GRANULARITY_MINIMUM,
+            )
+            .to_result()
+            .expect("Failed to get allocation granularity");
+            let aligned = (size + granularity - 1) & !(granularity - 1);
+
+            // Reserve, create and export
+            let mut device_ptr: cust_raw::CUdeviceptr = 0;
+            cust_raw::cuMemAddressReserve(&raw mut device_ptr, aligned, granularity, 0, 0)
+                .to_result()
+                .expect("Failed to reserve device address");
+
+            let mut alloc_handle: cust_raw::CUmemGenericAllocationHandle = 0;
+            cust_raw::cuMemCreate(&raw mut alloc_handle, aligned, &raw const prop, 0)
+                .to_result()
+                .expect("Failed to create CUDA memory");
+
+            let mut shared_handle: usize = 0;
+            cust_raw::cuMemExportToShareableHandle((&raw mut shared_handle).cast::<c_void>(), alloc_handle, share_type, 0)
+                .to_result()
+                .expect("Failed to export CUDA memory to shareable handle");
+
+            // Map & release
+            cust_raw::cuMemMap(device_ptr, aligned, 0, alloc_handle, 0)
+                .to_result()
+                .expect("Failed to map CUDA memory");
+            cust_raw::cuMemRelease(alloc_handle).to_result().expect("Failed to release CUDA memory");
+
+            // Set access
+            let desc = cust_raw::CUmemAccessDesc_st {
+                location,
+                flags: cust_raw::CUmemAccess_flags_enum::CU_MEM_ACCESS_FLAGS_PROT_READWRITE,
+            };
+            cust_raw::cuMemSetAccess(device_ptr, aligned, &raw const desc, 1)
+                .to_result()
+                .expect("Failed to set CUDA memory access");
+
+            Self {
+                device_ptr,
+                shared_handle,
+                cuda_alloc_size: aligned,
+                vulkan_pitch_alignment: 1,
+                alloc_size,
+            }
+        }
+    }
+}
+
 fn align(a: usize, b: usize) -> usize {
     a.div_ceil(b) * b
 }
@@ -57,10 +158,7 @@ pub fn cuda_2d_copy_on_device(
     dst_alignment: usize,
     src_alignment: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // let (height, _width, width_in_bytes) = size;
     let height = size.height;
-    // let width_in_bytes = size.stride;
-    // let width_in_bytes = size.stride_padded();
     let desc = cust_raw::CUDA_MEMCPY2D_st {
         Height: height,
         WidthInBytes: size.stride,
@@ -81,99 +179,9 @@ pub fn cuda_2d_copy_on_device(
         srcXInBytes: 0,
         srcY: 0,
     };
-    // if let Ok(cuda) = CUDA.as_ref() {
-    //     cuda!(cuda.cuMemcpy2D_v2(&desc as *const _));
-    // }
     unsafe { cust_raw::cuMemcpy2D_v2(&raw const desc).to_result() }
 }
 
 pub fn cuda_synchronize() {
     unsafe { cust_raw::cuCtxSynchronize() };
-}
-
-//more info in https://github.com/NVIDIA/cuda-samples/tree/master/Samples/5_Domain_Specific/simpleVulkanMMAP
-/// Allocates CUDA shared memory exported as a POSIX file descriptor for interop with Vulkan.
-///
-/// # Errors
-///
-/// Returns an `Err` if any underlying CUDA operation fails; CUDA errors from `cust_raw`
-/// are propagated and returned as a `Box<dyn std::error::Error>`.
-pub fn allocate_shared_cuda_memory(alloc_size: AllocSize) -> Result<CudaSharedMemory, Box<dyn std::error::Error>> {
-    let size = alloc_size.full_size_padded();
-    unsafe {
-        // 1) Get current CUDA device
-        //TODO we should read the device from CUDA_VISIBLE_DEVICES if it exists
-        let mut dev: cust_raw::CUdevice = 0;
-        cust_raw::cuInit(0).to_result()?;
-        cust_raw::cuDeviceGet(&raw mut dev, 0).to_result()?;
-
-        // 2) Check for existing context
-        let mut existing_ctx: cust_raw::CUcontext = std::ptr::null_mut();
-        cust_raw::cuCtxGetCurrent(&raw mut existing_ctx).to_result()?;
-
-        // We'll only retain & set primary if no context exists
-        let mut primary_ctx: cust_raw::CUcontext = std::ptr::null_mut();
-        #[allow(unused_assignments)]
-        let _created_ctx = if existing_ctx.is_null() {
-            cust_raw::cuDevicePrimaryCtxRetain(&raw mut primary_ctx, dev).to_result()?;
-            cust_raw::cuCtxSetCurrent(primary_ctx).to_result()?;
-            true
-        } else {
-            primary_ctx = existing_ctx;
-            false
-        };
-
-        // 3) Set up allocation properties
-        let share_type = cust_raw::CUmemAllocationHandleType_enum::CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
-        let location = cust_raw::CUmemLocation {
-            type_: cust_raw::CUmemLocationType_enum::CU_MEM_LOCATION_TYPE_DEVICE,
-            id: dev,
-        };
-        let prop = cust_raw::CUmemAllocationProp {
-            type_: cust_raw::CUmemAllocationType_enum::CU_MEM_ALLOCATION_TYPE_PINNED,
-            requestedHandleTypes: share_type,
-            location,
-            win32HandleMetaData: std::ptr::null_mut(),
-            allocFlags: cust_raw::CUmemAllocationProp_st__bindgen_ty_1::default(),
-        };
-
-        // 4) Determine granularity & align size
-        let mut granularity = 0;
-        cust_raw::cuMemGetAllocationGranularity(
-            &raw mut granularity,
-            &raw const prop,
-            cust_raw::CUmemAllocationGranularity_flags_enum::CU_MEM_ALLOC_GRANULARITY_MINIMUM,
-        )
-        .to_result()?;
-        let aligned = (size + granularity - 1) & !(granularity - 1);
-
-        // 5) Reserve, create and export
-        let mut device_ptr: cust_raw::CUdeviceptr = 0;
-        cust_raw::cuMemAddressReserve(&raw mut device_ptr, aligned, granularity, 0, 0).to_result()?;
-
-        let mut alloc_handle: cust_raw::CUmemGenericAllocationHandle = 0;
-        cust_raw::cuMemCreate(&raw mut alloc_handle, aligned, &raw const prop, 0).to_result()?;
-
-        let mut shared_handle: usize = 0;
-        cust_raw::cuMemExportToShareableHandle((&raw mut shared_handle).cast::<c_void>(), alloc_handle, share_type, 0).to_result()?;
-
-        // 6) Map & release
-        cust_raw::cuMemMap(device_ptr, aligned, 0, alloc_handle, 0).to_result()?;
-        cust_raw::cuMemRelease(alloc_handle).to_result()?;
-
-        // 7) Set access
-        let desc = cust_raw::CUmemAccessDesc_st {
-            location,
-            flags: cust_raw::CUmemAccess_flags_enum::CU_MEM_ACCESS_FLAGS_PROT_READWRITE,
-        };
-        cust_raw::cuMemSetAccess(device_ptr, aligned, &raw const desc, 1).to_result()?;
-
-        Ok(CudaSharedMemory {
-            device_ptr,
-            shared_handle,
-            cuda_alloc_size: aligned,
-            vulkan_pitch_alignment: 1,
-            alloc_size,
-        })
-    }
 }

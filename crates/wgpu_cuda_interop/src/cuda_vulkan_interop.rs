@@ -1,4 +1,3 @@
-use crate::cuda::allocate_shared_cuda_memory;
 use crate::cuda::CudaSharedMemory;
 use crate::AllocSize;
 use crate::VulkanGpu;
@@ -6,7 +5,7 @@ use ash::vk::{self, BufferCreateInfo};
 use std::sync::Arc;
 use wgpu_hal::api::Vulkan;
 
-//this is a vk buffer that is backed by cuda memory so changing data from cuda_mem.device_ptr will change the memory in the vulkan buffer
+/// A Vulkan buffer that is backed by CUDA memory so changing data from `cuda_mem.device_ptr` will change the memory in the vulkan buffer
 pub struct VkBufferCudaMem {
     pub buffer: vk::Buffer,
     pub cuda_mem: Arc<CudaSharedMemory>,
@@ -30,6 +29,43 @@ impl Drop for VkBufferCudaMem {
                     dv.raw_device().free_memory(self.memory, None);
                 }
             });
+        }
+    }
+}
+impl VkBufferCudaMem {
+    /// Create a Vulkan buffer backed by CUDA shared memory for the given WGPU device and allocation size.
+    ///
+    /// Note: this function assumes the `wgpu::Device` is using the Vulkan backend; the current
+    /// implementation calls `unwrap()` on the backend conversion and will panic if the device is not
+    /// backed by Vulkan.
+    pub fn new(device: &wgpu::Device, size: AllocSize) -> Self {
+        unsafe {
+            let vk_cuda_buffer_mem = device
+                .as_hal::<Vulkan, _, _>(|hal_device: Option<&wgpu_hal::vulkan::Device>| {
+                    hal_device.map(|hal_device| {
+                        let raw_device = hal_device.raw_device();
+                        let raw_instance = hal_device.shared_instance().raw_instance();
+                        let physical_device = hal_device.raw_physical_device();
+                        let raw_gpu = VulkanGpu {
+                            device: raw_device.clone(),
+                            instance: raw_instance.clone(),
+                            physical_device,
+                        };
+
+                        let cuda_mem = CudaSharedMemory::new(size);
+                        let (raw_buffer, allocated_memory) = wrap_cuda_mem_with_vk_buffer(&raw_gpu, &cuda_mem).unwrap();
+
+                        VkBufferCudaMem {
+                            buffer: raw_buffer,
+                            cuda_mem: Arc::new(cuda_mem),
+                            device: device.clone(),
+                            memory: allocated_memory,
+                        }
+                    })
+                })
+                .expect("Device is not on a Vulkan backend");
+
+            vk_cuda_buffer_mem
         }
     }
 }
@@ -86,64 +122,6 @@ pub unsafe fn wrap_cuda_mem_with_vk_buffer(raw_gpu: &VulkanGpu, cuda_mem: &CudaS
     raw_device.bind_buffer_memory(raw_buffer, allocated_memory, 0)?;
 
     Ok::<_, vk::Result>((raw_buffer, allocated_memory))
-}
-
-/// Create a Vulkan buffer backed by CUDA shared memory for the given WGPU device and allocation size.
-///
-/// # Errors
-/// Returns an error if converting the provided `wgpu::Device` into its raw Vulkan handles fails
-/// or if creating the underlying Vulkan buffer/device memory fails.
-///
-/// Note: this function assumes the `wgpu::Device` is using the Vulkan backend; the current
-/// implementation calls `unwrap()` on the backend conversion and will panic if the device is not
-/// backed by Vulkan.
-pub fn create_vk_buffer_backed_by_cuda_memory(device: &wgpu::Device, size: AllocSize) -> Result<VkBufferCudaMem, Box<dyn std::error::Error>> {
-    unsafe {
-        let vk_cuda_buffer_mem = device
-            .as_hal::<Vulkan, _, _>(|hal_device: Option<&wgpu_hal::vulkan::Device>| {
-                hal_device.map(|hal_device| {
-                    let raw_device = hal_device.raw_device();
-                    let raw_instance = hal_device.shared_instance().raw_instance();
-                    let physical_device = hal_device.raw_physical_device();
-                    let raw_gpu = VulkanGpu {
-                        device: raw_device.clone(),
-                        instance: raw_instance.clone(),
-                        physical_device,
-                    };
-
-                    create_vk_buffer_backed_by_cuda_memory_raw(device, &raw_gpu, size)
-                })
-            })
-            .unwrap()?; // TODO: unwrap
-
-        Ok(vk_cuda_buffer_mem)
-    }
-}
-
-/// Create a Vulkan buffer backed by CUDA shared memory for the given WGPU device and allocation size.
-///
-/// # Errors
-/// Returns an error if:
-/// - allocating the shared CUDA memory fails (returned from `allocate_shared_cuda_memory`), or
-/// - wrapping the CUDA memory into a Vulkan buffer/device memory fails (returned from `wrap_cuda_mem_with_vk_buffer`).
-///   The error is returned boxed as `Box<dyn std::error::Error>`.
-pub fn create_vk_buffer_backed_by_cuda_memory_raw(
-    device: &wgpu::Device,
-    raw_gpu: &VulkanGpu,
-    size: AllocSize,
-) -> Result<VkBufferCudaMem, Box<dyn std::error::Error>> {
-    let cuda_mem = allocate_shared_cuda_memory(size)?;
-
-    unsafe {
-        let (raw_buffer, allocated_memory) = wrap_cuda_mem_with_vk_buffer(raw_gpu, &cuda_mem).unwrap();
-
-        Ok(VkBufferCudaMem {
-            buffer: raw_buffer,
-            cuda_mem: Arc::new(cuda_mem),
-            device: device.clone(),
-            memory: allocated_memory,
-        })
-    }
 }
 
 // A helper to pick a `DEVICE_LOCAL` memory type
