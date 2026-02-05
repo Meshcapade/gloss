@@ -10,6 +10,7 @@ use gloss_utils::io::FileLoader;
 use image::ImageReader;
 use log::warn;
 use na::DMatrix;
+use num_derive::FromPrimitive;
 use std::io::{BufReader, Cursor, Read, Seek};
 /// Component that modifications to the config
 #[derive(Clone)]
@@ -18,21 +19,21 @@ pub struct ConfigChanges {
 }
 
 /// Defines the color type an entity which is displayed as a point cloud
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromPrimitive)]
 pub enum PointColorType {
     Solid = 0,
     PerVert,
 }
 
 /// Defines the color type an entity which is displayed as a point cloud
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromPrimitive)]
 pub enum LineColorType {
     Solid = 0,
     PerVert,
 }
 
 /// Defines the color type an entity which is displayed as a mesh
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, FromPrimitive)]
 pub enum MeshColorType {
     Solid = 0,
     PerVert,

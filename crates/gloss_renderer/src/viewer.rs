@@ -620,7 +620,7 @@ impl Viewer {
             }
             let scene = self.scene.as_mut().unwrap();
             let mut camera = scene.get_current_cam().unwrap();
-            if scene.world.has::<Projection>(camera.entity).unwrap() {
+            if scene.world().has::<Projection>(camera.entity).unwrap() {
                 camera.set_aspect_ratio(new_size.width as f32 / new_size.height as f32, scene);
             }
 
@@ -1422,7 +1422,7 @@ impl Viewer {
         // We set all the components to changed because we want them to be reuploaded to
         // gpu. Don't set them as added because some systems rely on components being
         // added to run only once.
-        scene.world.set_trackers_changed();
+        scene.world_mut().set_trackers_changed();
         //add the GPU structure as a resource so systems in the ECS world can access it to schedule gpu based computations
         // scene.add_resource(self.gpu_res.as_ref().unwrap().gpu.clone());
 
@@ -1550,7 +1550,11 @@ impl Viewer {
     }
 
     pub fn insert_plugin<T: Plugin + 'static>(&mut self, plugin: &T) {
-        self.plugins.insert_plugin(plugin);
+        if self.scene.is_none() {
+            error!("Inserting plugin before scene creation. The plugin will not be able to access the scene during its initialization.");
+        }
+        let scene = self.scene.as_mut().unwrap();
+        self.plugins.insert_plugin(plugin, scene);
     }
 
     // #[allow(private_bounds)]

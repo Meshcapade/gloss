@@ -92,7 +92,8 @@ impl ViewerDummy {
     }
 
     pub fn insert_plugin<T: Plugin + 'static>(&mut self, plugin: &T) {
-        self.plugins.insert_plugin(plugin);
+        // self.plugins.insert_plugin(plugin);
+        self.plugins.insert_plugin(plugin, &mut self.scene);
     }
     #[allow(clippy::missing_panics_doc)]
     pub fn run_manual_plugins(&mut self) {
@@ -101,5 +102,16 @@ impl ViewerDummy {
 
     pub fn reset_for_first_time(&mut self) {
         self.runner.first_time = true;
+    }
+
+    pub fn start_batch_net_sending(&mut self) {
+        if let Ok(mut sender) = self.scene.get_resource::<&mut crate::network::SceneSender>() {
+            sender.start_frame();
+        }
+    }
+    pub fn end_batch_net_sending(&mut self) {
+        if let Ok(mut sender) = self.scene.get_resource::<&mut crate::network::SceneSender>() {
+            sender.end_frame();
+        }
     }
 }

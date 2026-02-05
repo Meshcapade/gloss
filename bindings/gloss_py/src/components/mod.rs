@@ -14,6 +14,7 @@ pub mod tangents;
 pub mod uvs;
 pub mod verts;
 // pub mod verts_gpu;
+pub mod transport_config;
 #[cfg(feature = "burn-torch")]
 pub mod verts_pytensor;
 pub mod vis_edges;

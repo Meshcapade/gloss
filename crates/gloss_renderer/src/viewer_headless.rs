@@ -204,7 +204,7 @@ impl ViewerHeadless {
         let gpu = Gpu::new(adapter, instance, device, queue);
         let mut scene = Scene::new();
         let camera = Camera::new(GLOSS_CAM_NAME, &mut scene, false);
-        let _ = scene.world.insert_one(
+        let _ = scene.world_mut().insert_one(
             camera.entity,
             TargetResolution {
                 width,
@@ -226,7 +226,7 @@ impl ViewerHeadless {
     }
 
     pub fn insert_plugin<T: Plugin + 'static>(&mut self, plugin: &T) {
-        self.plugins.insert_plugin(plugin);
+        self.plugins.insert_plugin(plugin, &mut self.scene);
     }
     #[allow(clippy::missing_panics_doc)]
     pub fn run_manual_plugins(&mut self) {

@@ -19,6 +19,7 @@ impl PyEntityBuilder {
         let scene_ptr = scene_ptr_idx as *mut Scene;
         let scene: &mut Scene = unsafe { &mut *scene_ptr };
 
-        scene.world.insert(entity, self.inner.take().unwrap().build()).ok();
+        let mut world = scene.world_mut();
+        world.insert(entity, self.inner.take().unwrap().build()).ok();
     }
 }

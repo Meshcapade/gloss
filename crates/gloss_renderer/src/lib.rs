@@ -26,6 +26,7 @@ pub mod forward_renderer;
 pub mod gui;
 pub mod light;
 pub mod logger;
+pub mod network;
 pub mod plugin_manager;
 pub mod scene;
 pub mod selector;

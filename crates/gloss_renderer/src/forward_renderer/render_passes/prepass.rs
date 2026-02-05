@@ -37,9 +37,9 @@ impl PrePass {
         //this adds a lot of components automatically if they are needed
         self.add_model_matrix(scene);
         self.add_vertex_normals(scene);
-        self.command_buffer.run_on(&mut scene.world); //run the command buffer so now all entities actually have Normals, this is
-                                                      // necessary so that the add_tangents correctly computes tangents for all
-                                                      // entities which have Verts,Faces,Normals and UVs
+        scene.world_mut().run_command_buffer(&mut self.command_buffer); //run the command buffer so now all entities actually have Normals, this is
+                                                                        // necessary so that the add_tangents correctly computes tangents for all
+                                                                        // entities which have Verts,Faces,Normals and UVs
         self.add_tangents(scene); //keep before adding dummy uvs so if we don't have uvs we just add some dumym
                                   // tangents
         self.add_dummy_uvs(scene);
@@ -57,10 +57,10 @@ impl PrePass {
         self.add_vis_points(scene);
         self.add_vis_mesh(scene);
         self.add_vis_outline(scene);
-        self.command_buffer.run_on(&mut scene.world); //in order to actually
-                                                      // create the model matrix
-                                                      // so that adding lights
-                                                      // works
+        scene.world_mut().run_command_buffer(&mut self.command_buffer); //in order to actually
+                                                                        // create the model matrix
+                                                                        // so that adding lights
+                                                                        // works
     }
 
     pub fn run(
@@ -122,18 +122,18 @@ impl PrePass {
     fn begin_pass(&self) {}
 
     fn end_pass(&mut self, scene: &mut Scene) {
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn check_entity_names(&mut self, scene: &mut Scene) {
-        let mut query = scene.world.query::<()>().without::<&Name>();
+        let mut query = scene.world().query::<()>().without::<&Name>();
         for (_entity, _comp) in query.iter() {
             warn!("Entity does not have a name, please assign name to all of them");
         }
     }
 
     fn add_vis_lines(&mut self, scene: &mut Scene) {
-        let mut query = scene.world.query::<Option<&Faces>>().with::<(&Verts, &Edges)>().without::<&VisLines>();
+        let mut query = scene.world().query::<Option<&Faces>>().with::<(&Verts, &Edges)>().without::<&VisLines>();
         for (entity, faces) in query.iter() {
             //we automatically enable vis_lines if we don't have faces so we have only
             // edges component
@@ -151,7 +151,7 @@ impl PrePass {
     }
 
     fn add_vis_wireframe(&mut self, scene: &mut Scene) {
-        let mut query = scene.world.query::<()>().with::<(&Verts, &Faces)>().without::<&VisWireframe>();
+        let mut query = scene.world().query::<()>().with::<(&Verts, &Faces)>().without::<&VisWireframe>();
         for (entity, _comp) in query.iter() {
             self.command_buffer.insert_one(
                 entity,
@@ -164,7 +164,7 @@ impl PrePass {
     }
 
     fn add_vis_normals(&mut self, scene: &mut Scene) {
-        let mut query = scene.world.query::<()>().with::<(&Verts, &Normals)>().without::<&VisNormals>();
+        let mut query = scene.world().query::<()>().with::<(&Verts, &Normals)>().without::<&VisNormals>();
         for (entity, _comp) in query.iter() {
             self.command_buffer.insert_one(
                 entity,
@@ -178,7 +178,7 @@ impl PrePass {
 
     fn add_vis_points(&mut self, scene: &mut Scene) {
         let mut query = scene
-            .world
+            .world()
             .query::<(Option<&Faces>, Option<&Edges>)>()
             .with::<&Verts>()
             .without::<&VisPoints>();
@@ -199,7 +199,7 @@ impl PrePass {
     }
 
     fn add_vis_mesh(&mut self, scene: &mut Scene) {
-        let mut query = scene.world.query::<()>().with::<(&Verts, &Faces)>().without::<&VisMesh>();
+        let mut query = scene.world().query::<()>().with::<(&Verts, &Faces)>().without::<&VisMesh>();
         for (entity, _comp) in query.iter() {
             self.command_buffer.insert_one(
                 entity,
@@ -212,7 +212,7 @@ impl PrePass {
     }
 
     fn add_vis_outline(&mut self, scene: &mut Scene) {
-        let mut query = scene.world.query::<&Name>().with::<(&Verts, &Faces)>().without::<&VisOutline>();
+        let mut query = scene.world().query::<&Name>().with::<(&Verts, &Faces)>().without::<&VisOutline>();
         for (entity, name) in query.iter() {
             // don't add outline to floor
             if name.0 == "floor" {
@@ -229,7 +229,7 @@ impl PrePass {
     }
 
     fn add_model_matrix(&mut self, scene: &mut Scene) {
-        let mut query = scene.world.query::<()>().with::<&Renderable>().without::<&ModelMatrix>();
+        let mut query = scene.world().query::<()>().with::<&Renderable>().without::<&ModelMatrix>();
         for (entity, _comp) in query.iter() {
             self.command_buffer.insert_one(entity, ModelMatrix::default());
         }
@@ -244,7 +244,7 @@ impl PrePass {
         };
 
         //add normals to all entities that have verts and faces but don't have Normals
-        let mut query = scene.world.query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&Normals>();
+        let mut query = scene.world().query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&Normals>();
         for (entity, (verts, faces)) in query.iter() {
             insert_normals(entity, verts, faces, &mut self.command_buffer);
         }
@@ -253,7 +253,7 @@ impl PrePass {
         // correspond in size to the verts this can happen when we update a
         // entity with a different Verts and Faces but don't update the Normals for some
         // reason
-        let mut query = scene.world.query::<(&Verts, &Faces, &Normals)>().with::<&Renderable>();
+        let mut query = scene.world().query::<(&Verts, &Faces, &Normals)>().with::<&Renderable>();
         for (entity, (verts, faces, normals)) in query.iter() {
             if verts.0.nrows() != normals.0.nrows() {
                 insert_normals(entity, verts, faces, &mut self.command_buffer);
@@ -269,7 +269,7 @@ impl PrePass {
 
         //all the entities that have verts, faces, normals and uvs but NO tangents
         let mut query = scene
-            .world
+            .world()
             .query::<(&Verts, &Faces, &Normals, &UVs)>()
             .with::<&Renderable>()
             .without::<&Tangents>();
@@ -281,7 +281,7 @@ impl PrePass {
         // tangents don't correspond in size to the verts this can happen when
         // we update a entity with a different Verts and Faces but don't update the
         // Tangents for some reason
-        let mut query = scene.world.query::<(&Verts, &Faces, &Normals, &UVs, &Tangents)>().with::<&Renderable>();
+        let mut query = scene.world().query::<(&Verts, &Faces, &Normals, &UVs, &Tangents)>().with::<&Renderable>();
         for (entity, (verts, faces, normals, uvs, tangents)) in query.iter() {
             if verts.0.nrows() != tangents.0.nrows() {
                 insert_tangents(entity, verts, faces, normals, uvs, &mut self.command_buffer);
@@ -290,7 +290,7 @@ impl PrePass {
 
         //if we don't have real uvs then we add dummy tangents and the next function
         // will also just add dummy uvs
-        let mut query = scene.world.query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&UVs>();
+        let mut query = scene.world().query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&UVs>();
         for (entity, (verts, _faces)) in query.iter() {
             let tangents = geom::compute_dummy_tangents(verts.0.nrows());
             self.command_buffer.insert_one(entity, Tangents(tangents));
@@ -298,7 +298,11 @@ impl PrePass {
 
         // If we have verts, faces, NO uvs but we do have tangents, make sure the
         // tangents have the same size as verts
-        let mut query = scene.world.query::<(&Verts, &Faces, &Tangents)>().with::<&Renderable>().without::<&UVs>();
+        let mut query = scene
+            .world()
+            .query::<(&Verts, &Faces, &Tangents)>()
+            .with::<&Renderable>()
+            .without::<&UVs>();
 
         for (entity, (verts, _faces, tangents)) in query.iter() {
             if verts.0.nrows() != tangents.0.nrows() {
@@ -336,7 +340,7 @@ impl PrePass {
     // }
     fn add_dummy_uvs(&mut self, scene: &mut Scene) {
         // Add dummy uvs if we don't have them
-        let mut query = scene.world.query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&UVs>();
+        let mut query = scene.world().query::<(&Verts, &Faces)>().with::<&Renderable>().without::<&UVs>();
 
         for (entity, (verts, _faces)) in query.iter() {
             let uvs = geom::compute_dummy_uvs(verts.0.nrows());
@@ -344,7 +348,7 @@ impl PrePass {
         }
 
         // If we do have uvs, make sure that they are the same size
-        let mut query = scene.world.query::<(&Verts, &Faces, &UVs)>().with::<&Renderable>();
+        let mut query = scene.world().query::<(&Verts, &Faces, &UVs)>().with::<&Renderable>();
 
         for (entity, (verts, _faces, uvs)) in query.iter() {
             if verts.0.nrows() != uvs.0.nrows() {
@@ -383,7 +387,7 @@ impl PrePass {
     // }
     fn add_dummy_colors(&mut self, scene: &mut Scene) {
         // We add dummy colors if we don't have them
-        let mut query = scene.world.query::<&Verts>().with::<&Renderable>().without::<&Colors>();
+        let mut query = scene.world().query::<&Verts>().with::<&Renderable>().without::<&Colors>();
 
         for (entity, verts) in query.iter() {
             let colors = geom::compute_dummy_colors(verts.0.nrows());
@@ -391,7 +395,7 @@ impl PrePass {
         }
 
         // If we do have colors, make sure they are the same size as verts
-        let mut query = scene.world.query::<(&Verts, &Colors)>().with::<&Renderable>();
+        let mut query = scene.world().query::<(&Verts, &Colors)>().with::<&Renderable>();
 
         for (entity, (verts, colors)) in query.iter() {
             if verts.0.nrows() != colors.0.nrows() {
@@ -402,7 +406,7 @@ impl PrePass {
     }
 
     fn add_dummy_diffuse_tex(&mut self, scene: &mut Scene, gpu: &Gpu) {
-        let mut query = scene.world.query::<()>().with::<&Renderable>().without::<&DiffuseTex>();
+        let mut query = scene.world().query::<()>().with::<&Renderable>().without::<&DiffuseTex>();
         for (entity, _comp) in query.iter() {
             let tex = Texture::create_default_texture(gpu.device(), gpu.queue());
             self.command_buffer.insert_one(entity, DiffuseTex(tex));
@@ -410,7 +414,7 @@ impl PrePass {
     }
 
     fn add_dummy_normal_tex(&mut self, scene: &mut Scene, gpu: &Gpu) {
-        let mut query = scene.world.query::<()>().with::<&Renderable>().without::<&NormalTex>();
+        let mut query = scene.world().query::<()>().with::<&Renderable>().without::<&NormalTex>();
         for (entity, _comp) in query.iter() {
             let tex = Texture::create_default_texture(gpu.device(), gpu.queue());
             self.command_buffer.insert_one(entity, NormalTex(tex));
@@ -418,7 +422,7 @@ impl PrePass {
     }
 
     fn add_dummy_roughness_tex(&mut self, scene: &mut Scene, gpu: &Gpu) {
-        let mut query = scene.world.query::<()>().with::<&Renderable>().without::<&RoughnessTex>();
+        let mut query = scene.world().query::<()>().with::<&Renderable>().without::<&RoughnessTex>();
         for (entity, _comp) in query.iter() {
             let tex = Texture::create_default_texture(gpu.device(), gpu.queue());
             self.command_buffer.insert_one(entity, RoughnessTex(tex));
@@ -437,7 +441,7 @@ impl PrePass {
     // component
     fn add_shadow_maps(&mut self, scene: &mut Scene, gpu: &Gpu) {
         let mut query = scene
-            .world
+            .world()
             .query::<(&ShadowCaster, Changed<ShadowCaster>, Option<&ShadowMap>)>()
             .with::<&LightEmit>();
 
@@ -477,7 +481,7 @@ impl PrePass {
     fn end_pass_sanity_check(&mut self, scene: &mut Scene) {
         //check that entities that have verts and colors, have the same number of
         // vertices and colors
-        let mut query = scene.world.query::<(&Verts, &Colors)>();
+        let mut query = scene.world().query::<(&Verts, &Colors)>();
         for (_entity, (verts, colors)) in query.iter() {
             assert!(
                 verts.0.shape() == colors.0.shape(),

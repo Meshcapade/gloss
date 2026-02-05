@@ -33,8 +33,8 @@ impl Camera {
             .insert(TargetResolution::default())
             .entity();
         if initialize {
-            scene.world.insert_one(entity, PosLookat::default()).ok();
-            scene.world.insert_one(entity, Projection::default()).ok();
+            scene.world_mut().insert_one(entity, PosLookat::default()).ok();
+            scene.world_mut().insert_one(entity, Projection::default()).ok();
         }
         Self { entity }
     }
@@ -45,8 +45,8 @@ impl Camera {
 
     #[allow(clippy::missing_panics_doc)]
     pub fn is_initialized(&self, scene: &Scene) -> bool {
-        scene.world.has::<PosLookat>(self.entity).unwrap()
-            && (scene.world.has::<Projection>(self.entity).unwrap() || scene.world.has::<ProjectionWithIntrinsics>(self.entity).unwrap())
+        scene.world().has::<PosLookat>(self.entity).unwrap()
+            && (scene.world().has::<Projection>(self.entity).unwrap() || scene.world().has::<ProjectionWithIntrinsics>(self.entity).unwrap())
     }
 
     /// # Panics

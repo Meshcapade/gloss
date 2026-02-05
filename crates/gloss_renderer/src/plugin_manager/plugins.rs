@@ -1,3 +1,4 @@
+use crate::plugin_manager::InitSystem;
 /// TODO Technically we also need to add [no-mangle] as in here:
 /// <https://docs.rust-embedded.org/book/interoperability/rust-with-c.html>
 /// However since we only create the mangles by the same rust compiler it should
@@ -30,6 +31,7 @@ pub enum Event {
 /// Trait for defining a plugin for gloss, to be used when defining Plugins in external crates
 /// This is FFI safe
 pub trait Plugin {
+    fn init_system(&self) -> Option<InitSystem>;
     fn event_systems(&self) -> Vec<EventSystem>;
     fn logic_systems(&self) -> Vec<LogicSystem>;
     fn gui_systems(&self) -> Vec<GuiSystem>;
@@ -72,7 +74,12 @@ impl Plugins {
         }
     }
     #[allow(clippy::needless_update)]
-    pub fn insert_plugin<T: Plugin + 'static>(&mut self, plugin: &T) {
+    pub fn insert_plugin<T: Plugin + 'static>(&mut self, plugin: &T, scene: &mut Scene) {
+        //run the init function
+        if let Some(func) = plugin.init_system() {
+            (func.f)(scene);
+        }
+
         for sys in plugin.event_systems().iter() {
             let metadata = SystemMetadata {
                 autorun: plugin.autorun(),

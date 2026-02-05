@@ -17,6 +17,7 @@ use components::{
     normal_img::PyNormalImg,
     normals::PyNormals,
     tangents::PyTangents,
+    transport_config::PyTransportConfig,
     uvs::PyUVs,
     verts::PyVerts,
     // verts_gpu::PyVertsGPU,
@@ -29,6 +30,8 @@ use entity_builder::PyEntityBuilder;
 use img::PyDynImage;
 use plugin::PyPluginList;
 use pyo3::prelude::*;
+use resources::scene_receiver::PySceneReceiver;
+use resources::scene_sender::PySceneSender;
 
 pub mod actor;
 pub mod builders;
@@ -43,7 +46,9 @@ pub mod img;
 pub mod logger;
 pub mod plugin;
 pub mod queue;
+pub mod resources;
 pub mod scene;
+pub mod scene_receiver_plugin;
 #[cfg(feature = "burn-torch")]
 pub mod tensor_utils;
 pub mod texture;
@@ -68,7 +73,7 @@ use viewer::PyViewer;
 use viewer_dummy::PyViewerDummy;
 use viewer_headless::PyViewerHeadless;
 
-use crate::builders::PyBuilders;
+use crate::{builders::PyBuilders, scene_receiver_plugin::PySceneReceiverPlugin};
 
 use crate::global_backend::init_global_burn_backend;
 
@@ -84,6 +89,7 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     let components_module = PyModule::new_bound(_py, "components")?;
     let types_module = PyModule::new_bound(_py, "types")?;
     let builders_module = PyModule::new_bound(_py, "builders")?;
+    let network_module = PyModule::new_bound(_py, "network")?;
 
     // Add core classes to main module
     m.add_class::<PyTexture>()?;
@@ -108,6 +114,7 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     add_submod_components_sm(_py, &components_module)?;
     add_submod_types(_py, &types_module)?;
     add_submod_builders(_py, &builders_module)?;
+    add_submod_network(_py, &network_module)?;
 
     // Register submodules in sys.modules
     let sys = _py.import_bound("sys")?.getattr("modules")?;
@@ -116,12 +123,14 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     sys.set_item("gloss.components", components_module.as_ref())?;
     sys.set_item("gloss.types", types_module.as_ref())?;
     sys.set_item("gloss.builders", builders_module.as_ref())?;
+    sys.set_item("gloss.network", network_module.as_ref())?;
 
     // Add submodules to main module
     m.add_submodule(&log_module)?;
     m.add_submodule(&components_module)?;
     m.add_submodule(&types_module)?;
     m.add_submodule(&builders_module)?;
+    m.add_submodule(&network_module)?;
 
     Ok(())
 }
@@ -183,5 +192,14 @@ fn add_submod_types(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 fn add_submod_builders(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyEntityBuilder>()?;
     m.add_class::<PyBuilders>()?;
+    Ok(())
+}
+
+#[pymodule]
+fn add_submod_network(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyTransportConfig>()?;
+    m.add_class::<PySceneSender>()?;
+    m.add_class::<PySceneReceiver>()?;
+    m.add_class::<PySceneReceiverPlugin>()?;
     Ok(())
 }

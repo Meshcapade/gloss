@@ -1,6 +1,8 @@
 #![allow(clippy::doc_markdown)]
 
-use gloss_hecs::{CommandBuffer, Component, ComponentRef, DynamicBundle, Entity, EntityBuilder, EntityRef, World};
+use gloss_hecs::{
+    CommandBuffer, Component, ComponentError, ComponentRef, DynamicBundle, Entity, EntityBuilder, EntityRef, NoSuchEntity, Query, QueryMut, World,
+};
 use log::{error, trace};
 
 use crate::{
@@ -14,6 +16,7 @@ use crate::{
     },
     config::{Config, FloorTexture, FloorType, LightConfig},
     light::Light,
+    network::{ComponentTypeId, SceneSender},
     selector::Selectable,
 };
 
@@ -34,7 +37,7 @@ static CHECKERBOARD_BYTES: &[u8; 2324] = include_bytes!("../data/checkerboard.pn
 #[cfg_attr(not(target_arch = "wasm32"), derive(StableAbi))]
 #[allow(non_upper_case_globals, non_camel_case_types)]
 pub struct Scene {
-    pub world: World,
+    world: World,
     name2entity: RHashMap<RString, Entity>,
     pub command_buffer: CommandBuffer, //defer insertions and deletion of scene entities for whenever we apply this command buffer
     entity_resource: Entity,           //unique entity that contains resources, so unique componentes
@@ -58,7 +61,6 @@ impl Scene {
             entity_resource,
         }
     }
-
     /// Gets the entity that contains all the resources
     pub fn get_entity_resource(&self) -> Entity {
         self.entity_resource
@@ -97,7 +99,13 @@ impl Scene {
         let entity_ref = self
             .name2entity
             .entry(r_name)
-            .or_insert_with(|| self.world.spawn((Name(name.to_string()), Renderable, Selectable))); //to insert a single component we use a tuple like (x,)
+            .or_insert_with(|| self.world.spawn((Name(name.to_string()), Renderable, Selectable)));
+
+        //regardless of weather it exists or not we issue a spawn message
+        if let Ok(mut sender) = self.world.get::<&mut SceneSender>(self.entity_resource) {
+            sender.send_entity_spawn(name, true);
+        }
+
         EntityMut::new(&mut self.world, *entity_ref)
     }
 
@@ -713,6 +721,84 @@ impl Scene {
         }
 
         command_buffer.run_on(&mut self.world);
+    }
+
+    //useful for when a network receiver creates entities in in the scene using a command buffer but doesn't update the name2entity. We can then use this to keep the name2entity mapping in sync
+    //ideally we would make the scene.run_command buffer call this but it's difficult to work with the internals of the command buffer
+    pub fn update_name2entity(&mut self, name_new_entity: &str) {
+        for entity in self.get_all_entities(false) {
+            let name = self.get_comp::<&Name>(&entity).unwrap().0.clone();
+            if name == name_new_entity {
+                self.name2entity.insert(name_new_entity.to_string().into(), entity);
+            }
+        }
+    }
+
+    //provide ONLY unmutable reference to the world.
+    //we want all the mutable functions to go dirreclty thoguh scene (scene.insert_one rather than scene.world.insert_one) so that we can optionally send the components through the network
+    pub fn world(&self) -> &World {
+        &self.world
+    }
+
+    pub fn world_mut(&mut self) -> WorldMut {
+        WorldMut {
+            world: &mut self.world,
+            entity_resource: self.entity_resource,
+        }
+    }
+}
+//a mutable wrapper around the world functions . We do this so anything that mutates the world can optionally also send components through the network
+pub struct WorldMut<'w> {
+    world: &'w mut World,
+    entity_resource: Entity,
+}
+impl WorldMut<'_> {
+    pub fn run_command_buffer(&mut self, command_buffer: &mut CommandBuffer) {
+        command_buffer.run_on(self.world);
+
+        // self.clear();
+    }
+    pub fn query_mut<Q: Query>(&mut self) -> QueryMut<'_, Q> {
+        self.world.query_mut::<Q>()
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn insert_one<T: Component>(&mut self, entity: Entity, component: T) -> Result<(), NoSuchEntity> {
+        // Try to send the component over the network using the sender's component registry
+        let type_id = ComponentTypeId::of::<T>();
+        if let Ok(mut sender) = self.world.get::<&mut SceneSender>(self.entity_resource) {
+            // Check if this component type is sendable
+            if sender.is_component_sendable::<T>() {
+                let entity_name = self.world.get::<&Name>(entity).ok().map(|n| n.0.clone()).unwrap_or_default();
+
+                // Try to serialize the component using the sender's registry
+                if let Some(serialized_component) = sender.try_serialize_component(&type_id, &component as &dyn std::any::Any) {
+                    if let Err(e) = sender.send_component(&entity_name, serialized_component) {
+                        log::warn!("Failed to send component: {e}");
+                    }
+                }
+            }
+        }
+
+        // Insert the component locally
+        self.world.insert_one(entity, component)
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn insert(&mut self, entity: Entity, component: impl DynamicBundle) -> Result<(), NoSuchEntity> {
+        self.world.insert(entity, component)
+    }
+
+    #[allow(clippy::missing_errors_doc)]
+    pub fn remove_one<T: Component>(&mut self, entity: Entity) -> Result<T, ComponentError> {
+        self.world.remove_one::<T>(entity)
+    }
+
+    pub fn set_trackers_changed(&mut self) {
+        self.world.set_trackers_changed();
+    }
+    pub fn clear_trackers(&mut self) {
+        self.world.clear_trackers();
     }
 }
 

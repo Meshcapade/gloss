@@ -103,6 +103,10 @@ cuda_std="0.2.2"
 cust_raw="0.11.3"
 libloading = "0.8"
 # pyo3-tch = "0.19"
+#for network
+bincode = { version = "2.0", features = ["serde"] }
+erased-serde = "0.4"
+num-derive = "0.4"
 
 # =====================================================================
 # Dependencies for wasm https://sotrh.github.io/learn-wgpu/beginner/tutorial1-window/#added-support-for-the-web

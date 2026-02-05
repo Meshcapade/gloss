@@ -76,6 +76,26 @@ impl EventSystem {
     }
 }
 
+#[repr(C)]
+#[derive(Clone)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(StableAbi))]
+pub struct InitSystem {
+    pub f: extern "C" fn(scene: &mut Scene) -> bool,
+    pub name: ROption<RString>,
+}
+impl InitSystem {
+    pub fn new(f: extern "C" fn(scene: &mut Scene) -> bool) -> Self {
+        Self { f, name: RNone }
+    }
+    #[must_use]
+    pub fn with_name(self, name: &str) -> Self {
+        Self {
+            f: self.f,
+            name: RSome(name.to_string().into()),
+        }
+    }
+}
+
 // We do not need to derive StableAbi and do #[repr(C)] because we do not need this to be FFI safe
 // These systems can only be added from within gloss
 #[derive(Clone)]

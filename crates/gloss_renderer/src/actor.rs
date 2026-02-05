@@ -50,7 +50,7 @@ impl Actor {
             command_buffer.insert_one(self.entity, ModelMatrix::default());
         }
 
-        command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut command_buffer);
     }
 
     //methods that are not static and act directly on the entity

@@ -215,16 +215,19 @@ impl Gui {
         let entity = self.gui_main_widget.selected_entity.unwrap();
         if self.gui_main_widget.hovered_diffuse_tex {
             scene
-                .world
+                .world_mut()
                 .insert_one(entity, DiffuseImg::new_from_path(path, &ImgConfig::default()))
                 .ok();
         }
         if self.gui_main_widget.hovered_normal_tex {
-            scene.world.insert_one(entity, NormalImg::new_from_path(path, &ImgConfig::default())).ok();
+            scene
+                .world_mut()
+                .insert_one(entity, NormalImg::new_from_path(path, &ImgConfig::default()))
+                .ok();
         }
         if self.gui_main_widget.hovered_roughness_tex {
             scene
-                .world
+                .world_mut()
                 .insert_one(entity, RoughnessImg::new_from_path(path, &ImgConfig::default()))
                 .ok();
         }
@@ -321,7 +324,7 @@ impl Gui {
     fn begin_frame(&self) {}
 
     fn end_frame(&mut self, scene: &mut Scene) {
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     pub fn add_callback(
@@ -411,7 +414,7 @@ impl GuiMainWidget {
                                     // Manage selection via the GUI
                                     // Go through all visible meshes and show their names as selectable options
                                     for entity in entities {
-                                        let e_ref = scene.world.entity(entity).unwrap();
+                                        let e_ref = scene.world().entity(entity).unwrap();
                                         // get the name of the mesh which acts like a unique id
                                         let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
                                         // GUI for this concrete mesh
@@ -421,7 +424,7 @@ impl GuiMainWidget {
                                         if name == self.selected_mesh_name {
                                             // First, turn off outline for previous selection
                                             if let Some(prev_entity) = self.selected_entity {
-                                                if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(prev_entity) {
+                                                if let Ok(mut vis_outline) = scene.world().get::<&mut VisOutline>(prev_entity) {
                                                     vis_outline.show_outline = false;
                                                 }
                                             }
@@ -434,7 +437,7 @@ impl GuiMainWidget {
                                                 current_selected: Some(name.clone()),
                                             };
                                             scene.add_resource(selector);
-                                            if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(entity) {
+                                            if let Ok(mut vis_outline) = scene.world().get::<&mut VisOutline>(entity) {
                                                 vis_outline.show_outline = true;
                                             }
                                             //make a side window
@@ -645,7 +648,7 @@ impl GuiMainWidget {
     // we can use this function to set it to some default value(usually the first
     // mesh in my list)
     fn set_default_selected_entity(&mut self, scene: &Scene) {
-        for e_ref in scene.world.iter() {
+        for e_ref in scene.world().iter() {
             // let entity = e_ref.entity();
             let is_renderable = e_ref.has::<Renderable>();
             if is_renderable {
@@ -672,7 +675,7 @@ impl GuiMainWidget {
         command_buffer: &mut CommandBuffer,
         callbacks_for_selected_mesh: &mut [CbFnType],
     ) {
-        let e_ref = scene.world.entity(entity).unwrap();
+        let e_ref = scene.world().entity(entity).unwrap();
         let has_vis_points = e_ref.has::<VisPoints>();
         let has_vis_lines = e_ref.has::<VisLines>();
         let has_vis_outline = e_ref.has::<VisOutline>();
@@ -1065,7 +1068,7 @@ impl GuiMainWidget {
     // }
 
     fn draw_comps(&mut self, ui: &mut Ui, scene: &Scene, entity: Entity, _command_buffer: &mut CommandBuffer) {
-        let e_ref = scene.world.entity(entity).unwrap();
+        let e_ref = scene.world().entity(entity).unwrap();
         //print component names
         let comp_infos: Vec<gloss_hecs::TypeInfo> = e_ref.component_infos().collect();
         let comp_full_names: Vec<String> = comp_infos.iter().map(gloss_hecs::TypeInfo::name).collect();
@@ -1123,7 +1126,7 @@ impl GuiMainWidget {
         let diffuse_tex = scene.get_comp::<&DiffuseTex>(&entity).unwrap();
         //if we have a CPU texture, we get the corresponding GPU texture, if not, we get a default GPU tex
         let tex: &easy_wgpu::texture::Texture = scene
-            .world
+            .world()
             .get::<&DiffuseImg>(entity)
             .map_or_else(|_| self.default_texture.as_ref().unwrap(), |_| &diffuse_tex.0);
         //get egui textureid
@@ -1141,7 +1144,7 @@ impl GuiMainWidget {
         let normal_tex = scene.get_comp::<&NormalTex>(&entity).unwrap();
         //if we have a CPU texture, we get the corresponding GPU texture, if not, we get a default GPU tex
         let tex: &easy_wgpu::texture::Texture = scene
-            .world
+            .world()
             .get::<&NormalImg>(entity)
             .map_or_else(|_| self.default_texture.as_ref().unwrap(), |_| &normal_tex.0);
         //get egui textureid
@@ -1159,7 +1162,7 @@ impl GuiMainWidget {
         let roughness_tex = scene.get_comp::<&RoughnessTex>(&entity).unwrap();
         //if we have a CPU texture, we get the corresponding GPU texture, if not, we get a default GPU tex
         let tex: &easy_wgpu::texture::Texture = scene
-            .world
+            .world()
             .get::<&RoughnessImg>(entity)
             .map_or_else(|_| self.default_texture.as_ref().unwrap(), |_| &roughness_tex.0);
         //get egui textureid
@@ -1339,7 +1342,7 @@ impl GuiMainWidget {
                         ui.spacing_mut().item_spacing.y = 0.0;
                         ui.spacing_mut().button_padding.y = 4.0;
                         for entity in entities {
-                            let e_ref = scene.world.entity(entity).unwrap();
+                            let e_ref = scene.world().entity(entity).unwrap();
 
                             //get the name of the mesh which acts like a unique id
                             let name = e_ref.get::<&Name>().expect("The entity has no name").0.clone();
@@ -1378,7 +1381,7 @@ impl GuiMainWidget {
                 ui.add(Slider::new(&mut comp_light_emit.intensity, 0.0..=1_000_000.0).text("intensity"))
             });
             //cast shadows
-            let mut is_shadow_casting: bool = scene.world.has::<ShadowCaster>(entity).unwrap();
+            let mut is_shadow_casting: bool = scene.world().has::<ShadowCaster>(entity).unwrap();
             let res = ui.checkbox(&mut is_shadow_casting, "CastShadows");
             if res.changed() {
                 if is_shadow_casting {
@@ -1398,7 +1401,7 @@ impl GuiMainWidget {
                 }
             }
             // shadow_res
-            if scene.world.has::<ShadowCaster>(entity).unwrap() {
+            if scene.world().has::<ShadowCaster>(entity).unwrap() {
                 //we only mutate the component if we modify the slider because we want the
                 // change detection of hecs to only pick-up and detect when we actually change
                 // the value
@@ -1492,7 +1495,7 @@ impl GuiMainWidget {
                 ui.add(Slider::new(&mut poslookat.position.z, -40.0..=40.0).text("z"));
             }
             //view plane that cna be used to manipulate the light
-            let mut has_mesh = scene.world.has::<Renderable>(entity).unwrap();
+            let mut has_mesh = scene.world().has::<Renderable>(entity).unwrap();
             let res = ui.checkbox(&mut has_mesh, "ShowLight");
             if res.changed() {
                 if has_mesh {
@@ -1502,15 +1505,15 @@ impl GuiMainWidget {
                     //move the plane a bit behind the light so it doesn't cast a shadow
                     let center = center - normal * 0.03;
                     let mut builder = builders::build_plane(center, normal, 0.3, 0.3, false);
-                    let _ = scene.world.insert(entity, builder.build());
-                    let _ = scene.world.insert_one(
+                    let _ = scene.world_mut().insert(entity, builder.build());
+                    let _ = scene.world_mut().insert_one(
                         entity,
                         VisMesh {
                             solid_color: na::Vector4::<f32>::new(1.0, 1.0, 1.0, 1.0),
                             ..Default::default()
                         },
                     );
-                    let _ = scene.world.insert_one(entity, Renderable);
+                    let _ = scene.world_mut().insert_one(entity, Renderable);
                 } else {
                     command_buffer.remove_one::<Renderable>(entity);
                 }
@@ -1524,7 +1527,7 @@ impl GuiMainWidget {
         let _entities = scene.get_lights(true);
         let cam = scene.get_current_cam().unwrap();
 
-        if let Ok(mut projection) = scene.world.get::<&mut Projection>(cam.entity) {
+        if let Ok(mut projection) = scene.world().get::<&mut Projection>(cam.entity) {
             let (mut near, mut far) = projection.near_far();
             ui.label("Projection");
             ui.separator();
@@ -1617,7 +1620,7 @@ impl GuiMainWidget {
         if let Some(selected_entity) = selected_entity {
             if ui.add(egui::Button::new("Save Obj")).clicked() {
                 //get v, f and possibly uv from the entity
-                if scene.world.has::<Verts>(selected_entity).unwrap() && scene.world.has::<Faces>(selected_entity).unwrap() {
+                if scene.world().has::<Verts>(selected_entity).unwrap() && scene.world().has::<Faces>(selected_entity).unwrap() {
                     let v = scene.get_comp::<&Verts>(&selected_entity).unwrap();
                     // let uv = scene.get_comp::<&UVs>(&selected_entity);
 
@@ -1651,7 +1654,7 @@ impl GuiMainWidget {
         if let Some(selected_entity) = selected_entity {
             if ui.add(egui::Button::new("Save Ply")).clicked() {
                 //get v, f and possibly uv from the entity
-                if scene.world.has::<Verts>(selected_entity).unwrap() && scene.world.has::<Faces>(selected_entity).unwrap() {
+                if scene.world().has::<Verts>(selected_entity).unwrap() && scene.world().has::<Faces>(selected_entity).unwrap() {
                     let v = scene.get_comp::<&Verts>(&selected_entity).unwrap();
 
                     //transform vertices

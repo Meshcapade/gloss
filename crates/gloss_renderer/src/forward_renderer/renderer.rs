@@ -235,7 +235,7 @@ impl Renderer {
     fn end_frame(&self, scene: &mut Scene) {
         //if we do manual ecs without the bevy system, we need to call clear trackers
         // so that the changed flag gets cleared for the next frame
-        scene.world.clear_trackers();
+        scene.world_mut().clear_trackers();
     }
 
     /// # Panics

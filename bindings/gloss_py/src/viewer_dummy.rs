@@ -60,4 +60,16 @@ impl PyViewerDummy {
         let v = &mut self.0;
         v.run_manual_plugins();
     }
+
+    #[pyo3(text_signature = "($self) -> None")]
+    pub fn start_batch_net_sending(&mut self) {
+        let v = &mut self.0;
+        v.start_batch_net_sending();
+    }
+
+    #[pyo3(text_signature = "($self) -> None")]
+    pub fn end_batch_net_sending(&mut self) {
+        let v = &mut self.0;
+        v.end_batch_net_sending();
+    }
 }

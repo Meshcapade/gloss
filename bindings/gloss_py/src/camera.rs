@@ -143,7 +143,8 @@ impl PyCamera {
     #[pyo3(text_signature = "($self, fx: float, fy: float, cx: float, cy: float, near: Optional[float] = None, far: Optional[float] = None) -> None")]
     pub fn set_intrinsics(&mut self, fx: f32, fy: f32, cx: f32, cy: f32, near: Option<f32>, far: Option<f32>) {
         let ent = self.entity;
-        let _ = self.py_scene.world.insert_one(
+        let mut world = self.py_scene.world_mut();
+        let _ = world.insert_one(
             ent,
             Projection::WithIntrinsics(ProjectionWithIntrinsics {
                 fx,

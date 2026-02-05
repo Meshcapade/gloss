@@ -142,12 +142,18 @@ impl PyViewer {
         let obj_ptr: *mut Viewer = &mut self.0;
         obj_ptr as u64
     }
+    #[pyo3(text_signature = "($self) -> int")]
+    pub fn get_ptr_scene(&mut self) -> u64 {
+        // println!("get ptr_viewer addr {:p}", &self.0);
+        let obj_ptr: *mut Scene = self.0.scene_mut();
+        obj_ptr as u64
+    }
     #[pyo3(text_signature = "($self, plugin: Any) -> None")]
     pub fn insert_plugin(mut slf: PyRefMut<'_, Self>, pycomp: Py<PyAny>) {
         // let obj_ptr: *mut Camera = &mut self.0.camera;
         Python::with_gil(|py| {
             let pyany = pycomp.bind(py);
-            let args = (slf.get_plugin_list_ptr(),);
+            let args = (slf.get_plugin_list_ptr(), slf.get_ptr_scene());
             let _ = pyany.call_method("insert_plugin", args, None).unwrap();
         });
     }

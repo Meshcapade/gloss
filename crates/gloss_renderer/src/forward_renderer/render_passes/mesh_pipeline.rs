@@ -147,7 +147,7 @@ impl MeshPipeline {
         // let passthrough_tex2 = Texture::create_default_texture(gpu.device(),
         // gpu.queue());
         let passthrough_light = Light::new("compose_pass_passthrough_light", &mut local_scene);
-        let _ = local_scene.world.insert_one(
+        let _ = local_scene.world_mut().insert_one(
             passthrough_light.entity,
             ShadowMap {
                 tex_depth: passthrough_tex,
@@ -185,7 +185,7 @@ impl PipelineRunner for MeshPipeline {
     type QueryState<'a> = gloss_hecs::QueryBorrow<'a, gloss_hecs::With<Self::QueryItems<'a>, &'a Renderable>>;
 
     fn query_state(scene: &Scene) -> Self::QueryState<'_> {
-        scene.world.query::<Self::QueryItems<'_>>().with::<&Renderable>()
+        scene.world().query::<Self::QueryItems<'_>>().with::<&Renderable>()
     }
 
     fn prepare<'a>(&mut self, gpu: &Gpu, per_frame_uniforms: &PerFrameUniforms, scene: &'a Scene) -> Self::QueryState<'a> {
@@ -342,7 +342,7 @@ impl PipelineRunner for MeshPipeline {
         // actually in the scene and afterwards we will with dummy values
         for i in 0..MAX_NUM_SHADOWS {
             let is_within_valid_lights: bool = i < per_frame_uniforms.idx_ubo2light.len();
-            if is_within_valid_lights && scene.world.has::<ShadowCaster>(per_frame_uniforms.idx_ubo2light[i]).unwrap() {
+            if is_within_valid_lights && scene.world().has::<ShadowCaster>(per_frame_uniforms.idx_ubo2light[i]).unwrap() {
                 let entity = per_frame_uniforms.idx_ubo2light[i];
                 let shadow = scene
                     .get_comp::<&ShadowMap>(&entity)

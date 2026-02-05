@@ -95,7 +95,7 @@ impl PipelineRunner for PointPipeline {
     type QueryState<'a> = gloss_hecs::QueryBorrow<'a, gloss_hecs::With<Self::QueryItems<'a>, &'a Renderable>>;
 
     fn query_state(scene: &Scene) -> Self::QueryState<'_> {
-        scene.world.query::<Self::QueryItems<'_>>().with::<&Renderable>()
+        scene.world().query::<Self::QueryItems<'_>>().with::<&Renderable>()
     }
 
     fn prepare<'a>(&mut self, gpu: &Gpu, _per_frame_uniforms: &PerFrameUniforms, scene: &'a Scene) -> Self::QueryState<'a> {

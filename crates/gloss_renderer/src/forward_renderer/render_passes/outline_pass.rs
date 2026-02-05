@@ -118,7 +118,7 @@ impl PipelineRunner for OutlinePass {
     type QueryState<'a> = gloss_hecs::QueryBorrow<'a, gloss_hecs::With<Self::QueryItems<'a>, (&'a Renderable, &'a Selectable)>>;
 
     fn query_state(scene: &Scene) -> Self::QueryState<'_> {
-        scene.world.query::<Self::QueryItems<'_>>().with::<(&Renderable, &Selectable)>()
+        scene.world().query::<Self::QueryItems<'_>>().with::<(&Renderable, &Selectable)>()
     }
 
     fn prepare<'a>(&mut self, gpu: &Gpu, _per_frame_uniforms: &PerFrameUniforms, scene: &'a Scene) -> Self::QueryState<'a> {

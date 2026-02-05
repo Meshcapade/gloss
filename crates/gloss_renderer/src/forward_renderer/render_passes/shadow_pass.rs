@@ -79,15 +79,15 @@ impl ShadowPass {
             return; //nothing to do
         }
 
-        let mut query_all_renderables = scene.world.query::<&Renderable>();
-        let mut query_meshes_for_shadow = scene.world.query::<(&VertsGPU, &FacesGPU, &VisMesh)>().with::<&Renderable>();
+        let mut query_all_renderables = scene.world().query::<&Renderable>();
+        let mut query_meshes_for_shadow = scene.world().query::<(&VertsGPU, &FacesGPU, &VisMesh)>().with::<&Renderable>();
 
         //upload to gpu the local information for each mesh like model matrix
         self.update_locals(gpu, &mut query_all_renderables, scene);
 
         //check for every light if it needs update and if it does, render all the
         // meshes towards it's shadowmap
-        for (entity_light, shadow_map) in &mut scene.world.query::<&ShadowMap>().with::<(&LightEmit, &ShadowCaster)>() {
+        for (entity_light, shadow_map) in &mut scene.world().query::<&ShadowMap>().with::<(&LightEmit, &ShadowCaster)>() {
             //do the actual rendering now
             let mut encoder = gpu.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Shadow pass encoder"),
@@ -161,18 +161,18 @@ impl ShadowPass {
     fn end_pass(&mut self, scene: &mut Scene) {
         //remove all dirty components from entities
         {
-            let mut query_all_renderables = scene.world.query::<&Renderable>();
+            let mut query_all_renderables = scene.world().query::<&Renderable>();
             for (id, _comps) in query_all_renderables.iter() {
                 self.command_buffer.remove_one::<ShadowMapDirty>(id);
             }
         }
 
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn check_shadow_maps_dirty(&self, scene: &Scene) -> bool {
         let mut query_for_shadow = scene
-            .world
+            .world()
             .query::<(Option<&ShadowMapDirty>, Changed<VertsGPU>, Changed<ModelMatrix>)>()
             .with::<&Renderable>();
 
@@ -187,26 +187,26 @@ impl ShadowPass {
 
         //check if the light shadow casting component has changed, like it was disabled
         // or the resolution has changed
-        let mut query_for_lights = scene.world.query::<Changed<ShadowCaster>>();
+        let mut query_for_lights = scene.world().query::<Changed<ShadowCaster>>();
         for (_ent, changed_shadow_casting) in query_for_lights.iter() {
             shadow_map_requires_update |= changed_shadow_casting;
         }
 
         //check if the renderable component has been added or changed in which case we
         // need to update the shadows
-        let mut query_for_renderable = scene.world.query::<Changed<Renderable>>();
+        let mut query_for_renderable = scene.world().query::<Changed<Renderable>>();
         for (_entity_mesh, changed_renderable) in query_for_renderable.iter() {
             shadow_map_requires_update |= changed_renderable;
         }
 
         //if ANY entity has their renderable component removed, then we also update
         // shadows
-        if !scene.world.removed::<Renderable>().is_empty() {
+        if !scene.world().removed::<Renderable>().is_empty() {
             shadow_map_requires_update = true;
         }
 
         //if any light has moves we also update shadows
-        let mut query_for_lights = scene.world.query::<(Changed<PosLookat>,)>().with::<&LightEmit>();
+        let mut query_for_lights = scene.world().query::<(Changed<PosLookat>,)>().with::<&LightEmit>();
         for (_entity_mesh, (changed_poslookat,)) in query_for_lights.iter() {
             shadow_map_requires_update |= changed_poslookat;
         }

@@ -93,7 +93,7 @@ pub fn process_received_pixels(scene: &mut Scene, _runner: &mut RunnerState, _gp
         if let Ok(mut selector) = scene.get_resource::<&mut Selector>() {
             if let Some(current_selected) = &selector.current_selected {
                 if let Some(prev_entity) = scene.get_entity_with_name(current_selected) {
-                    if let Ok(mut vis_outline) = scene.world.get::<&mut VisOutline>(prev_entity) {
+                    if let Ok(mut vis_outline) = scene.world().get::<&mut VisOutline>(prev_entity) {
                         vis_outline.show_outline = false;
                     }
                 }

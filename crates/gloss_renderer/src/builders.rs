@@ -107,18 +107,10 @@ pub fn build_plane(center: na::Point3<f32>, normal: na::Vector3<f32>, size_x: f3
         4,
         3,
         &[
-            -1.0 * size_x,
-            0.0,
-            -1.0 * size_y, //
-            1.0 * size_x,
-            0.0,
-            -1.0 * size_y, //
-            1.0 * size_x,
-            0.0,
-            1.0 * size_y, //
-            -1.0 * size_x,
-            0.0,
-            1.0 * size_y, //
+            -size_x, 0.0, -size_y, //
+            size_x, 0.0, -size_y, //
+            size_x, 0.0, size_y, //
+            -size_x, 0.0, size_y, //
         ],
     );
     //make 2 faces

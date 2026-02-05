@@ -281,10 +281,8 @@ impl UploadPass {
 
     /// Functions for uploading each component of the mesh
     fn upload_v(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let query = scene
-            .world
-            .query_mut::<(&Verts, Option<&mut VertsGPU>, Changed<Verts>)>()
-            .with::<&Renderable>();
+        let mut world = scene.world_mut();
+        let query = world.query_mut::<(&Verts, Option<&mut VertsGPU>, Changed<Verts>)>().with::<&Renderable>();
         let usage = wgpu::BufferUsages::VERTEX;
 
         for (ent, (verts, mut verts_gpu, changed_verts)) in query {
@@ -292,12 +290,12 @@ impl UploadPass {
                 self.upload_vertex_atrib(ent, verts, verts_gpu.as_deref_mut(), gpu, usage, "verts");
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn upload_e(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let query = scene
-            .world
+        let mut world = scene.world_mut();
+        let query = world
             .query_mut::<(
                 &Verts,
                 &Edges,
@@ -321,36 +319,35 @@ impl UploadPass {
                 self.upload_vertex_atrib(ent, &edges_v2, edges_v2_gpu.as_deref_mut(), gpu, usage, "edges_v2");
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn upload_f(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let query = scene
-            .world
-            .query_mut::<(&Faces, Option<&mut FacesGPU>, Changed<Faces>)>()
-            .with::<&Renderable>();
+        let mut world = scene.world_mut();
+        let query = world.query_mut::<(&Faces, Option<&mut FacesGPU>, Changed<Faces>)>().with::<&Renderable>();
         let usage = wgpu::BufferUsages::INDEX;
         for (ent, (faces, mut faces_gpu, changed_faces)) in query {
             if changed_faces {
                 self.upload_vertex_atrib(ent, faces, faces_gpu.as_deref_mut(), gpu, usage, "faces");
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
     fn upload_uv(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let query = scene.world.query_mut::<(&UVs, Option<&mut UVsGPU>, Changed<UVs>)>().with::<&Renderable>();
+        let mut world = scene.world_mut();
+        let query = world.query_mut::<(&UVs, Option<&mut UVsGPU>, Changed<UVs>)>().with::<&Renderable>();
         let usage = wgpu::BufferUsages::VERTEX;
         for (ent, (uvs, mut uvs_gpu, changed_uvs)) in query {
             if changed_uvs {
                 self.upload_vertex_atrib(ent, uvs, uvs_gpu.as_deref_mut(), gpu, usage, "uv");
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn upload_nv(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let query = scene
-            .world
+        let mut world = scene.world_mut();
+        let query = world
             .query_mut::<(&Normals, Option<&mut NormalsGPU>, Changed<Normals>)>()
             .with::<&Renderable>();
         let usage = wgpu::BufferUsages::VERTEX;
@@ -359,12 +356,12 @@ impl UploadPass {
                 self.upload_vertex_atrib(ent, normals, normals_gpu.as_deref_mut(), gpu, usage, "normals");
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn upload_t(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let query = scene
-            .world
+        let mut world = scene.world_mut();
+        let query = world
             .query_mut::<(&Tangents, Option<&mut TangentsGPU>, Changed<Tangents>)>()
             .with::<&Renderable>();
         let usage = wgpu::BufferUsages::VERTEX;
@@ -373,12 +370,12 @@ impl UploadPass {
                 self.upload_vertex_atrib(ent, tangents, tangents_gpu.as_deref_mut(), gpu, usage, "tangents");
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn upload_c(&mut self, gpu: &Gpu, scene: &mut Scene) {
-        let query = scene
-            .world
+        let mut world = scene.world_mut();
+        let query = world
             .query_mut::<(&Colors, Option<&mut ColorsGPU>, Changed<Colors>)>()
             .with::<&Renderable>();
         let usage = wgpu::BufferUsages::VERTEX;
@@ -387,7 +384,7 @@ impl UploadPass {
                 self.upload_vertex_atrib(ent, colors, colors_gpu.as_deref_mut(), gpu, usage, "colors");
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -413,7 +410,7 @@ impl UploadPass {
         process_texture_receiver::<NormalUploadable>(&mut self.normal_receiver, &mut self.command_buffer);
         process_texture_receiver::<RoughnessUploadable>(&mut self.roughness_receiver, &mut self.command_buffer);
 
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     #[allow(clippy::too_many_lines)]
@@ -421,7 +418,7 @@ impl UploadPass {
         let mut modified_entities = Vec::new();
         {
             let mut query = scene
-                .world
+                .world()
                 .query::<(&mut T::Img, Option<&mut T::Tex>, Changed<T::Img>)>()
                 .with::<&Renderable>();
 
@@ -586,7 +583,7 @@ impl UploadPass {
                 }
             }
         }
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     // #[allow(clippy::too_many_lines)]
@@ -1141,7 +1138,8 @@ impl UploadPass {
 
     fn upload_environment_map(&mut self, gpu: &Gpu, scene: &mut Scene) {
         // if scene.has_resource::<EnvironmentMap>() {
-        let query = scene.world.query_mut::<(&EnvironmentMap, Changed<EnvironmentMap>)>();
+        let mut world = scene.world_mut();
+        let query = world.query_mut::<(&EnvironmentMap, Changed<EnvironmentMap>)>();
         for (entity, (env_map, changed_env)) in query {
             if changed_env {
                 let diffue_raw_data = std::fs::read(env_map.diffuse_path.clone()).unwrap();
@@ -1159,7 +1157,7 @@ impl UploadPass {
             }
         }
 
-        self.command_buffer.run_on(&mut scene.world);
+        scene.world_mut().run_command_buffer(&mut self.command_buffer);
     }
 
     fn upload_scene(&mut self, gpu: &Gpu, scene: &mut Scene) {
@@ -1180,7 +1178,7 @@ impl UploadPass {
     }
 
     fn upload_cam(&mut self, gpu: &Gpu, camera: &Camera, scene: &mut Scene) {
-        let pos_lookat = if let Ok(pos_lookat) = scene.world.get::<&mut PosLookat>(camera.entity) {
+        let pos_lookat = if let Ok(pos_lookat) = scene.world().get::<&mut PosLookat>(camera.entity) {
             pos_lookat.clone()
         } else {
             PosLookat::default()
@@ -1195,7 +1193,7 @@ impl UploadPass {
         let proj_matrix;
         let near;
         let far;
-        if scene.world.has::<Projection>(camera.entity).unwrap() {
+        if scene.world().has::<Projection>(camera.entity).unwrap() {
             proj_matrix = camera.proj_matrix_reverse_z(scene);
             (near, far) = camera.near_far(scene);
         } else {
@@ -1233,9 +1231,8 @@ impl UploadPass {
     fn upload_lights(&mut self, gpu: &Gpu, scene: &mut Scene) {
         self.per_frame_uniforms.idx_ubo2light.clear();
 
-        let query = scene
-            .world
-            .query_mut::<(&Name, &PosLookat, &Projection, &LightEmit, Option<&ShadowCaster>)>();
+        let mut world = scene.world_mut();
+        let query = world.query_mut::<(&Name, &PosLookat, &Projection, &LightEmit, Option<&ShadowCaster>)>();
         for (idx_light, (entity, (name, pos_lookat, proj, light_emit, shadow_caster))) in query.into_iter().enumerate() {
             let view_matrix = pos_lookat.view_matrix();
             let proj_matrix = match *proj {
