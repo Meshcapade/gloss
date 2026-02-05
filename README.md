@@ -151,6 +151,27 @@ Partially, this solution comes from "Solution 1" from `<https://stackoverflow.co
 
 Another solution might be: `conda install -c conda-forge libstdcxx-ng`
 
+### WSL2 GPU Rendering using Vulkan on NVIDIA GPUs
+
+WSL2 does not expose native Vulkan drivers for NVIDIA GPUs. Mesa's "Dozen" driver bridges this by
+translating Vulkan API calls into D3D12. To install Dozen on WSL2 you can do
+```
+sudo add-apt-repository ppa:kisak/kisak-mesa
+sudo apt update
+sudo apt upgrade
+```
+More info on the above can be found here - https://github.com/microsoft/WSL/issues/7790
+Since Dozen does Vulkan -> D3D12 -> NVIDIA GPU, there is additional overhead so performance is not as good as it would be on native Ubuntu using native Vulkan drivers and also it is not a conformant Vulkan implementation. Since its not a conformant implementation, wgpu hides it by default, falling back to `llvmpipe` (CPU software rendering).
+
+To enable GPU rendering in WSL2, run with:
+```sh
+$ WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER=1 cargo run --bin gloss_view_mesh
+```
+Or add it to your .bashrc or .zshrc to make it permanent:
+```sh
+export WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER=1
+```
+
 ## Acknowledgements and Credits
 * [Rerun](https://github.com/rerun-io/rerun)
 * [Bevy](https://github.com/bevyengine/bevy)

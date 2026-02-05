@@ -112,7 +112,8 @@ impl GpuResources {
     ) -> Self {
         let instance = wgpu::util::new_instance_with_webgpu_detection(&wgpu::InstanceDescriptor {
             backends: supported_backends(),
-            flags: wgpu::InstanceFlags::default(),
+            // flags: wgpu::InstanceFlags::default(),
+            flags: wgpu::InstanceFlags::from_env_or_default(),
             backend_options: BackendOptions::default(),
         })
         .await;

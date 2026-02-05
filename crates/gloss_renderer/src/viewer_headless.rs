@@ -130,7 +130,8 @@ impl ViewerHeadless {
 
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: supported_backends(),
-            flags: wgpu::InstanceFlags::default(),
+            // flags: wgpu::InstanceFlags::default(),
+            flags: wgpu::InstanceFlags::from_env_or_default(),
             backend_options: wgpu::BackendOptions::default(),
         });
 
