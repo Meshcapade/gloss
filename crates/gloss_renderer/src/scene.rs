@@ -11,8 +11,8 @@ use crate::{
     camera::Camera,
     components::{
         BoundingBox, CamController, ColorsGPU, DiffuseImg, DiffuseTex, EdgesGPU, EnvironmentMapGpu, FacesGPU, ImgConfig, LightEmit, MeshColorType,
-        MetalnessTex, ModelMatrix, Name, NormalTex, NormalsGPU, PosLookat, Projection, ProjectionWithFov, Renderable, RoughnessTex, ShadowCaster,
-        ShadowMap, TangentsGPU, UVsGPU, Verts, VertsGPU, VisLines, VisMesh, VisPoints,
+        MetalnessTex, ModelMatrix, Name, NormalTex, NormalsGPU, OnGui, PosLookat, Projection, ProjectionWithFov, Renderable, RoughnessTex,
+        ShadowCaster, ShadowMap, TangentsGPU, UVsGPU, Verts, VertsGPU, VisLines, VisMesh, VisPoints,
     },
     config::{Config, FloorTexture, FloorType, LightConfig},
     light::Light,
@@ -100,6 +100,25 @@ impl Scene {
             .name2entity
             .entry(r_name)
             .or_insert_with(|| self.world.spawn((Name(name.to_string()), Renderable, Selectable)));
+
+        //regardless of weather it exists or not we issue a spawn message
+        if let Ok(mut sender) = self.world.get::<&mut SceneSender>(self.entity_resource) {
+            sender.send_entity_spawn(name, true);
+        }
+
+        EntityMut::new(&mut self.world, *entity_ref)
+    }
+
+    /// Creates a entity that will have a Gui marker component indicating that it will only be visible in the Gui
+    /// This is mostly helpful when trying to visualize images in a window
+    /// in which case we will spawn a gui entity and add the DiffuseImg component
+    /// The upload pass will take care of uploading the Img to a Texture and then the gui will display it
+    pub fn get_or_create_gui_entity(&mut self, name: &str) -> EntityMut {
+        let r_name = RString::from(name.to_string());
+        let entity_ref = self
+            .name2entity
+            .entry(r_name)
+            .or_insert_with(|| self.world.spawn((Name(name.to_string()), OnGui)));
 
         //regardless of weather it exists or not we issue a spawn message
         if let Ok(mut sender) = self.world.get::<&mut SceneSender>(self.entity_resource) {

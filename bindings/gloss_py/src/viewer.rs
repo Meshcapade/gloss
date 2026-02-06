@@ -32,6 +32,12 @@ impl PyViewer {
         let entity = scene.get_or_create_entity(name).entity();
         PyActorMut::new(entity, scene)
     }
+    #[pyo3(text_signature = "($self, name: str) -> Entity")]
+    pub fn get_or_create_gui_entity(&mut self, name: &str) -> PyActorMut {
+        let scene: &mut Scene = self.0.scene_mut();
+        let entity = scene.get_or_create_gui_entity(name).entity();
+        PyActorMut::new(entity, scene)
+    }
     #[pyo3(text_signature = "($self, component: Any) -> None")]
     pub fn add_resource(&mut self, pycomp: Py<PyAny>) {
         let mut pyscene = self.get_scene();

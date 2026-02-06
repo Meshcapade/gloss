@@ -417,10 +417,7 @@ impl UploadPass {
     fn upload_texture<T: TextureUploadable>(&mut self, gpu: &Gpu, scene: &mut Scene) {
         let mut modified_entities = Vec::new();
         {
-            let mut query = scene
-                .world()
-                .query::<(&mut T::Img, Option<&mut T::Tex>, Changed<T::Img>)>()
-                .with::<&Renderable>();
+            let mut query = scene.world().query::<(&mut T::Img, Option<&mut T::Tex>, Changed<T::Img>)>();
 
             for (entity, (mut img, tex_opt, changed_img)) in query.iter() {
                 if changed_img && img.generic_img().cpu_img.is_some() {

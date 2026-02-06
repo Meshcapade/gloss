@@ -7,6 +7,7 @@ import os
 
 from gloss import Viewer
 from gloss.builders import builders
+from gloss.components import DiffuseImg
 from gloss.log import LogLevel, gloss_setup_logger as setup_logger
 
 # Set up the logger
@@ -21,9 +22,11 @@ if __name__ == "__main__":
         os.path.dirname(os.path.realpath(__file__)), "../../../data"
     )
     path_obj = os.path.join(path_data, "bust.obj")
+    path_texture = os.path.join(path_data, "bust_alb.jpg")
 
     mesh = viewer.get_or_create_entity(name="mesh")
 
     mesh.insert_builder(builders.build_from_file(path_obj))
+    mesh.insert(DiffuseImg(path_texture))
 
     viewer.run()

@@ -1,8 +1,8 @@
 use crate::{
     components::{
-        Colors, DiffuseImg, DiffuseTex, Faces, ImgConfig, LightEmit, MeshColorType, ModelMatrix, Name, NormalImg, NormalTex, Normals, PointColorType,
-        PosLookat, Projection, Renderable, RoughnessImg, RoughnessTex, ShadowCaster, ShadowMapDirty, UVs, Verts, VisLines, VisMesh, VisNormals,
-        VisOutline, VisPoints, VisWireframe,
+        Colors, DiffuseImg, DiffuseTex, Faces, ImgConfig, LightEmit, MeshColorType, ModelMatrix, Name, NormalImg, NormalTex, Normals, OnGui,
+        PointColorType, PosLookat, Projection, Renderable, RoughnessImg, RoughnessTex, ShadowCaster, ShadowMapDirty, UVs, Verts, VisLines, VisMesh,
+        VisNormals, VisOutline, VisPoints, VisWireframe,
     },
     config::Config,
     selector::Selector,
@@ -18,7 +18,7 @@ use crate::{
     scene::{Scene, GLOSS_FLOOR_NAME},
 };
 
-use egui::{style::TextCursorStyle, CornerRadius};
+use egui::{style::TextCursorStyle, CornerRadius, TextStyle};
 use gloss_geometry::geom;
 use gloss_utils::string::float2string;
 use log::debug;
@@ -391,7 +391,6 @@ impl GuiMainWidget {
                                     // Both selection methods are managed by the Selector resource.
                                     // Since the click2select supports the idea of deselection, so should the GUI.
                                     /* -------------------------------------------------------------------------- */
-
                                     // The selector may have been set by click2select, respect that selection instead of starting afresh
                                     let mut nothing_selected = true;
                                     if let Ok(selector) = scene.get_resource::<&mut Selector>() {
@@ -642,6 +641,48 @@ impl GuiMainWidget {
                 }
             });
         });
+
+        //draw floating windows for any entities that have the OnGui component
+        let mut query = scene.world().query::<(&Name, &DiffuseTex)>().with::<&OnGui>();
+        for (_ent, (name, texture)) in query.iter() {
+            //get the size of the texture and calculate an initial size of the window
+            let tex_w = texture.0.width();
+            let tex_h = texture.0.height();
+            let maximum_size_in_one_axis = 500;
+            //calculate an initial size of the window
+            let tex_max_dim = tex_w.max(tex_h);
+            #[allow(clippy::cast_precision_loss)]
+            let scale = if tex_max_dim > maximum_size_in_one_axis {
+                maximum_size_in_one_axis as f32 / tex_max_dim as f32
+            } else {
+                1.0
+            };
+            #[allow(clippy::cast_precision_loss)]
+            let initial_size = Vec2::new(tex_w as f32 * scale, tex_h as f32 * scale);
+
+            //we need to create a new texture view because egui_renderer expects.register_native_texture expects rgba8unorm but my diffuse img is rgba8unormsgb
+            let nr_mips = texture.0.texture.mip_level_count();
+            let new_view = texture.0.texture.create_view(&wgpu::TextureViewDescriptor {
+                mip_level_count: Some(nr_mips),
+                format: Some(wgpu::TextureFormat::Rgba8Unorm),
+                ..Default::default()
+            });
+
+            egui::Window::new(name.0.clone())
+                .resizable(true)
+                .vscroll(true)
+                .hscroll(true)
+                .default_size(initial_size)
+                .show(ctx, |ui| {
+                    //get egui textureid
+                    let diffuse_egui_tex_id = self
+                        .wgputex_2_eguitex
+                        .entry(texture.0.texture.clone())
+                        .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), &new_view, wgpu::FilterMode::Linear));
+                    //show img
+                    ui.add(egui::Image::from_texture((*diffuse_egui_tex_id, ui.available_size())));
+                });
+        }
     }
 
     // if no selected mesh is set yet, any query with the name will fail.
@@ -1129,11 +1170,18 @@ impl GuiMainWidget {
             .world()
             .get::<&DiffuseImg>(entity)
             .map_or_else(|_| self.default_texture.as_ref().unwrap(), |_| &diffuse_tex.0);
+        //we need to create a new texture view because egui_renderer expects.register_native_texture expects rgba8unorm but my diffuse img is rgba8unormsgb
+        let nr_mips = diffuse_tex.0.texture.mip_level_count();
+        let new_view = diffuse_tex.0.texture.create_view(&wgpu::TextureViewDescriptor {
+            mip_level_count: Some(nr_mips),
+            format: Some(wgpu::TextureFormat::Rgba8Unorm),
+            ..Default::default()
+        });
         //get egui textureid
         let diffuse_egui_tex_id = self
             .wgputex_2_eguitex
             .entry(tex.texture.clone())
-            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), &tex.view, wgpu::FilterMode::Linear));
+            .or_insert_with(|| egui_renderer.register_native_texture(gpu.device(), &new_view, wgpu::FilterMode::Linear));
         //show img
         let res = ui.add(egui::Image::from_texture((*diffuse_egui_tex_id, Vec2::new(120.0, 120.0))));
         self.hovered_diffuse_tex = res.hovered();
@@ -2107,6 +2155,14 @@ pub fn style() -> Style {
         },
         animation_time: 0.08333,
         explanation_tooltips: false,
+        text_styles: [
+            (TextStyle::Small, FontId::new(9.0, egui::FontFamily::Proportional)),
+            (TextStyle::Body, FontId::new(12.5, egui::FontFamily::Proportional)),
+            (TextStyle::Button, FontId::new(12.5, egui::FontFamily::Proportional)),
+            (TextStyle::Heading, FontId::new(14.0, egui::FontFamily::Proportional)),
+            (TextStyle::Monospace, FontId::new(12.0, egui::FontFamily::Monospace)),
+        ]
+        .into(),
         ..Default::default()
     }
 }
