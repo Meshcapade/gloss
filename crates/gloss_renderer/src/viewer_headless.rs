@@ -313,4 +313,15 @@ impl ViewerHeadless {
     pub fn set_size(&mut self, width: u32, height: u32) {
         self.camera.set_target_res(width, height, &mut self.scene);
     }
+
+    pub fn start_batch_net_sending(&mut self) {
+        if let Ok(mut sender) = self.scene.get_resource::<&mut crate::network::SceneSender>() {
+            sender.start_frame();
+        }
+    }
+    pub fn end_batch_net_sending(&mut self) {
+        if let Ok(mut sender) = self.scene.get_resource::<&mut crate::network::SceneSender>() {
+            sender.end_frame();
+        }
+    }
 }

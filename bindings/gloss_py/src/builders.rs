@@ -1,4 +1,9 @@
 use crate::entity_builder::PyEntityBuilder;
+use crate::PyEdges;
+use crate::PyFaces;
+use crate::PyVerts;
+use crate::PyVisLines;
+use crate::PyVisMesh;
 use gloss_renderer::builders;
 use nalgebra as na;
 use numpy::{AllowTypeChange, PyArrayLike1, PyArrayMethods, PyUntypedArrayMethods};
@@ -29,5 +34,22 @@ impl PyBuilders {
     #[pyo3(text_signature = "(path: str) -> EntityBuilder")]
     pub fn build_from_file(path: &str) -> PyEntityBuilder {
         PyEntityBuilder::new(builders::build_from_file(path))
+    }
+    #[staticmethod]
+    #[pyo3(text_signature = "(aspect_ratio: float, yfovy: float) -> EntityBuilder")]
+    pub fn build_camera_frustum(aspect_ratio: f32, yfovy: f32) -> PyEntityBuilder {
+        PyEntityBuilder::new(builders::build_camera_frustum(aspect_ratio, yfovy))
+    }
+    #[staticmethod]
+    #[pyo3(text_signature = "(aspect_ratio: float, yfovy: float) -> EntityBuilder")]
+    pub fn build_camera_frustum_comps(aspect_ratio: f32, yfovy: f32) -> (PyVerts, PyEdges, PyFaces, PyVisLines, PyVisMesh) {
+        let comps = builders::build_camera_frustum_comps(aspect_ratio, yfovy);
+        (
+            PyVerts { inner: comps.0 },
+            PyEdges { inner: comps.1 },
+            PyFaces { inner: comps.2 },
+            PyVisLines { inner: comps.3 },
+            PyVisMesh { inner: comps.4 },
+        )
     }
 }

@@ -7,7 +7,9 @@ use nalgebra::DMatrix;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 
-use crate::components::{Colors, Edges, Faces, Normals, UVs, Verts, VisLines, VisMesh, VisPoints};
+use crate::components::{
+    Colors, DiffuseImg, Edges, Faces, GenericImg, ImgConfig, Normals, ProjectionWithFov, UVs, Verts, VisLines, VisMesh, VisPoints,
+};
 
 /// Serializable version of Verts component
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -275,6 +277,198 @@ impl FromSerializable<SerializableVisLines> for VisLines {
     }
 }
 
+/// Serializable version of `VisLines` component
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SerializableProjectionWithFov {
+    pub aspect_ratio: f32,
+    pub fovy: f32,
+    pub near: f32,
+    pub far: f32,
+}
+
+impl ToSerializable<SerializableProjectionWithFov> for ProjectionWithFov {
+    fn to_serializable(&self) -> SerializableProjectionWithFov {
+        SerializableProjectionWithFov {
+            aspect_ratio: self.aspect_ratio,
+            fovy: self.fovy,
+            near: self.near,
+            far: self.far,
+        }
+    }
+}
+
+impl FromSerializable<SerializableProjectionWithFov> for ProjectionWithFov {
+    fn from_serializable(s: &SerializableProjectionWithFov) -> ProjectionWithFov {
+        ProjectionWithFov {
+            aspect_ratio: s.aspect_ratio,
+            fovy: s.fovy,
+            near: s.near,
+            far: s.far,
+        }
+    }
+}
+
+/// Serializable version of `ImgConfig` component
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SerializableImgConfig {
+    pub keep_on_cpu: bool,
+    pub fast_upload: bool,
+    pub generate_mipmaps: bool,
+    pub mipmap_generation_cpu: bool,
+}
+
+/// Serializable version of `GenericImg` component
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SerializableGenericImg {
+    pub path: Option<String>,
+    // Image data serialized as raw bytes with metadata
+    pub image_data: Option<SerializableImageData>,
+    pub config: SerializableImgConfig,
+}
+
+/// Serializable image data with format information
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SerializableImageData {
+    pub width: u32,
+    pub height: u32,
+    pub channels: u8, // 1=Luma, 2=LumaA, 3=RGB, 4=RGBA
+    pub data: Vec<u8>,
+}
+
+/// Serializable version of `DiffuseImg` component
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SerializableDiffuseImg {
+    pub generic_img: SerializableGenericImg,
+}
+
+impl ToSerializable<SerializableDiffuseImg> for DiffuseImg {
+    fn to_serializable(&self) -> SerializableDiffuseImg {
+        SerializableDiffuseImg {
+            generic_img: self.generic_img.to_serializable(),
+        }
+    }
+}
+
+impl FromSerializable<SerializableDiffuseImg> for DiffuseImg {
+    fn from_serializable(s: &SerializableDiffuseImg) -> DiffuseImg {
+        DiffuseImg {
+            generic_img: GenericImg::from_serializable(&s.generic_img),
+        }
+    }
+}
+
+impl ToSerializable<SerializableGenericImg> for GenericImg {
+    fn to_serializable(&self) -> SerializableGenericImg {
+        let image_data = if let Some(ref img) = self.cpu_img {
+            use gloss_img::DynImage;
+
+            // let (width, height) = img.dimensions();
+            let (width, height) = (img.width(), img.height());
+            let (channels, data) = match img {
+                DynImage::ImageLuma8(img) => (1, img.as_raw().clone()),
+                DynImage::ImageLumaA8(img) => (2, img.as_raw().clone()),
+                DynImage::ImageRgb8(img) => (3, img.as_raw().clone()),
+                DynImage::ImageRgba8(img) => (4, img.as_raw().clone()),
+                // Convert other formats to RGBA for simplicity
+                _ => {
+                    let rgba = img.to_rgba8();
+                    (4, rgba.as_raw().clone())
+                }
+            };
+
+            Some(SerializableImageData {
+                width,
+                height,
+                channels,
+                data,
+            })
+        } else {
+            None
+        };
+
+        SerializableGenericImg {
+            path: self.path.clone(),
+            image_data,
+            config: self.config.to_serializable(),
+        }
+    }
+}
+
+impl FromSerializable<SerializableGenericImg> for GenericImg {
+    fn from_serializable(s: &SerializableGenericImg) -> GenericImg {
+        let cpu_img = if let Some(ref img_data) = s.image_data {
+            use image::{GrayAlphaImage, GrayImage, RgbImage, RgbaImage};
+
+            let dynamic_img = match img_data.channels {
+                1 => {
+                    let gray_img = GrayImage::from_raw(img_data.width, img_data.height, img_data.data.clone())
+                        .expect("Failed to create grayscale image from serialized data");
+                    image::DynamicImage::ImageLuma8(gray_img)
+                }
+                2 => {
+                    let gray_alpha_img = GrayAlphaImage::from_raw(img_data.width, img_data.height, img_data.data.clone())
+                        .expect("Failed to create grayscale+alpha image from serialized data");
+                    image::DynamicImage::ImageLumaA8(gray_alpha_img)
+                }
+                3 => {
+                    let rgb_img = RgbImage::from_raw(img_data.width, img_data.height, img_data.data.clone())
+                        .expect("Failed to create RGB image from serialized data");
+                    image::DynamicImage::ImageRgb8(rgb_img)
+                }
+                4 => {
+                    let rgba_img = RgbaImage::from_raw(img_data.width, img_data.height, img_data.data.clone())
+                        .expect("Failed to create RGBA image from serialized data");
+                    image::DynamicImage::ImageRgba8(rgba_img)
+                }
+                _ => panic!(
+                    "Unsupported number of channels: {}. Supported: 1 (Luma), 2 (LumaA), 3 (RGB), 4 (RGBA)",
+                    img_data.channels
+                ),
+            };
+
+            Some(
+                dynamic_img
+                    .try_into()
+                    .expect("Failed to convert image::DynamicImage to gloss_img::DynImage"),
+            )
+        } else {
+            None
+        };
+
+        GenericImg {
+            path: s.path.clone(),
+            cpu_img,
+            config: ImgConfig::from_serializable(&s.config),
+        }
+    }
+}
+
+impl ToSerializable<SerializableImgConfig> for ImgConfig {
+    fn to_serializable(&self) -> SerializableImgConfig {
+        SerializableImgConfig {
+            keep_on_cpu: self.keep_on_cpu,
+            fast_upload: self.fast_upload,
+            generate_mipmaps: self.generate_mipmaps,
+            mipmap_generation_cpu: self.mipmap_generation_cpu,
+        }
+    }
+}
+
+impl FromSerializable<SerializableImgConfig> for ImgConfig {
+    fn from_serializable(s: &SerializableImgConfig) -> ImgConfig {
+        ImgConfig {
+            keep_on_cpu: s.keep_on_cpu,
+            fast_upload: s.fast_upload,
+            generate_mipmaps: s.generate_mipmaps,
+            mipmap_generation_cpu: s.mipmap_generation_cpu,
+        }
+    }
+}
+
+//TRAITS/////
+
 /// Trait for converting between original and serializable types
 pub trait ToSerializable<S> {
     fn to_serializable(&self) -> S;
@@ -296,5 +490,12 @@ crate::impl_network_sendable_and_receivable!(
     //vis components
     SerializableVisLines,
     SerializableVisPoints,
-    SerializableVisMesh
+    SerializableVisMesh,
+    //cam components
+    SerializableProjectionWithFov,
+    //imgs
+    SerializableDiffuseImg,
+    SerializableGenericImg,
+    SerializableImgConfig,
+    SerializableImageData,
 );

@@ -29,6 +29,12 @@ impl PyViewerHeadless {
         let entity = scene.get_or_create_entity(name).entity();
         PyActorMut::new(entity, &mut self.0.scene)
     }
+    #[pyo3(text_signature = "($self, name: str) -> Entity")]
+    pub fn get_or_create_gui_entity(&mut self, name: &str) -> PyActorMut {
+        let scene: &mut Scene = &mut self.0.scene;
+        let entity = scene.get_or_create_gui_entity(name).entity();
+        PyActorMut::new(entity, scene)
+    }
     #[pyo3(text_signature = "($self, component: Any) -> None")]
     pub fn add_resource(&mut self, pycomp: Py<PyAny>) {
         let mut pyscene = self.get_scene();
@@ -97,12 +103,18 @@ impl PyViewerHeadless {
         let obj_ptr: *mut Plugins = &mut self.0.plugins;
         obj_ptr as u64
     }
+    #[pyo3(text_signature = "($self) -> int")]
+    pub fn get_ptr_scene(&mut self) -> u64 {
+        // println!("get ptr_viewer addr {:p}", &self.0);
+        let obj_ptr: *mut Scene = &mut self.0.scene;
+        obj_ptr as u64
+    }
     #[pyo3(text_signature = "($self, plugin: Any) -> None")]
     pub fn insert_plugin(mut slf: PyRefMut<'_, Self>, pycomp: Py<PyAny>) {
         // let obj_ptr: *mut Camera = &mut self.0.camera;
         Python::with_gil(|py| {
             let pyany = pycomp.bind(py);
-            let args = (slf.get_plugin_list_ptr(),);
+            let args = (slf.get_plugin_list_ptr(), slf.get_ptr_scene());
             let _ = pyany.call_method("insert_plugin", args, None).unwrap();
         });
     }
@@ -110,5 +122,17 @@ impl PyViewerHeadless {
     pub fn run_manual_plugins(&mut self) {
         let v = &mut self.0;
         v.run_manual_plugins();
+    }
+
+    #[pyo3(text_signature = "($self) -> None")]
+    pub fn start_batch_net_sending(&mut self) {
+        let v = &mut self.0;
+        v.start_batch_net_sending();
+    }
+
+    #[pyo3(text_signature = "($self) -> None")]
+    pub fn end_batch_net_sending(&mut self) {
+        let v = &mut self.0;
+        v.end_batch_net_sending();
     }
 }

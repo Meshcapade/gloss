@@ -257,10 +257,11 @@ impl SceneSender {
     }
 
     /// Send an entity spawn notification
-    pub fn send_entity_spawn(&mut self, name: &str, is_renderable: bool) {
+    pub fn send_entity_spawn(&mut self, name: &str, is_renderable: bool, is_on_gui: bool) {
         let message = SceneMessage::EntitySpawn {
             entity_name: name.to_string(),
             is_renderable,
+            is_on_gui,
         };
         self.send_message(message);
     }

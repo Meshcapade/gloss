@@ -103,7 +103,7 @@ impl Scene {
 
         //regardless of weather it exists or not we issue a spawn message
         if let Ok(mut sender) = self.world.get::<&mut SceneSender>(self.entity_resource) {
-            sender.send_entity_spawn(name, true);
+            sender.send_entity_spawn(name, true, false);
         }
 
         EntityMut::new(&mut self.world, *entity_ref)
@@ -122,7 +122,7 @@ impl Scene {
 
         //regardless of weather it exists or not we issue a spawn message
         if let Ok(mut sender) = self.world.get::<&mut SceneSender>(self.entity_resource) {
-            sender.send_entity_spawn(name, true);
+            sender.send_entity_spawn(name, false, true);
         }
 
         EntityMut::new(&mut self.world, *entity_ref)

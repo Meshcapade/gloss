@@ -35,7 +35,7 @@
 /// - See the Python `scene_receiver.py` for an example workflow
 use super::messages::{MessageFrame, SceneMessage};
 use super::transport::{Transport, TransportConfig, TransportError};
-use crate::components::{Name, Renderable};
+use crate::components::{Name, OnGui, Renderable};
 use crate::network::component_registry::ReceivableComponentRegistry;
 use crate::scene::Scene;
 use gloss_hecs::{CommandBuffer, EntityBuilder};
@@ -209,7 +209,11 @@ impl SceneReceiver {
                 }
             }
 
-            SceneMessage::EntitySpawn { entity_name, is_renderable } => {
+            SceneMessage::EntitySpawn {
+                entity_name,
+                is_renderable,
+                is_on_gui,
+            } => {
                 // info!("Received EntitySpawn: {} ({})", entity_name, is_renderable);
 
                 //skip because we want the floor to be created by the local viewer
@@ -227,6 +231,9 @@ impl SceneReceiver {
                 if *is_renderable {
                     entity_builder = entity_builder.add(Renderable);
                 }
+                if *is_on_gui {
+                    entity_builder = entity_builder.add(OnGui);
+                }
 
                 command_buffer.spawn(entity_builder.build());
             }
@@ -236,7 +243,13 @@ impl SceneReceiver {
                 component_type,
                 data,
             } => {
-                if let Some(entity) = scene.get_entity_with_name(entity_name) {
+                let ent = if entity_name == "entity_resource" {
+                    Some(scene.get_entity_resource())
+                } else {
+                    scene.get_entity_with_name(entity_name)
+                };
+
+                if let Some(entity) = ent {
                     // Apply the component using the registry
                     if let Err(e) = self.registry.apply_component(command_buffer, entity, component_type, data) {
                         warn!("Failed to apply component {}: {}", component_type.0, e);

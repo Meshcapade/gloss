@@ -859,9 +859,10 @@ fn process_gltf_node(
     }
 }
 
-/// Creates a camera frustum for visualization
+/// Creates a camera frustum for visualization, creates only the components.
+/// If you need an entity builder, use `build_camera_frustum`
 #[must_use]
-pub fn build_camera_frustum(aspect_ratio: f32, yfov: f32) -> EntityBuilder {
+pub fn build_camera_frustum_comps(aspect_ratio: f32, yfov: f32) -> (Verts, Edges, Faces, VisLines, VisMesh) {
     let target_half_height = 0.5; // Fixed half-height for consistency with blender's camera visualization
     let display_distance = target_half_height / (yfov / 2.0).tan();
 
@@ -926,26 +927,34 @@ pub fn build_camera_frustum(aspect_ratio: f32, yfov: f32) -> EntityBuilder {
     //     ],
     // );
 
-    let mut builder = EntityBuilder::new();
-    builder.add(Verts(verts));
-    builder.add(Edges(edges));
-    builder.add(Faces(faces));
-
     // Explicitly set colors and thickness
     let line_color = Vector4::new(0.8, 0.8, 0.8, 1.0);
     let face_color = Vector4::new(0.8, 0.8, 0.8, 0.1);
 
-    builder.add(VisLines {
+    let vis_lines = VisLines {
         show_lines: true,
         line_color,
         line_width: 2.0,
         ..Default::default()
-    });
-    builder.add(VisMesh {
+    };
+
+    let vis_mesh = VisMesh {
         show_mesh: true,
         solid_color: face_color,
         ..Default::default()
-    });
+    };
 
+    (Verts(verts), Edges(edges), Faces(faces), vis_lines, vis_mesh)
+}
+
+#[must_use]
+pub fn build_camera_frustum(aspect_ratio: f32, yfov: f32) -> EntityBuilder {
+    let (verts, edges, faces, vis_lines, vis_mesh) = build_camera_frustum_comps(aspect_ratio, yfov);
+    let mut builder = EntityBuilder::new();
+    builder.add(verts);
+    builder.add(edges);
+    builder.add(faces);
+    builder.add(vis_lines);
+    builder.add(vis_mesh);
     builder
 }

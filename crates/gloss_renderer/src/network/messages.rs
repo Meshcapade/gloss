@@ -28,7 +28,11 @@ pub enum SceneMessage {
     },
 
     /// An entity was spawned with a name
-    EntitySpawn { entity_name: String, is_renderable: bool },
+    EntitySpawn {
+        entity_name: String,
+        is_renderable: bool,
+        is_on_gui: bool,
+    },
 
     /// Batch of messages which is usually the result of `sender.start_frame()` then sending messages and then finalizing with `sender.end_frame()`
     Batch(Vec<SceneMessage>),

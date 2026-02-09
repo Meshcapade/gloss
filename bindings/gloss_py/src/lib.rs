@@ -16,6 +16,7 @@ use components::{
     model_matrix::PyModelMatrix,
     normal_img::PyNormalImg,
     normals::PyNormals,
+    projection_with_fov::PyProjectionWithFov,
     tangents::PyTangents,
     transport_config::PyTransportConfig,
     uvs::PyUVs,
@@ -169,6 +170,7 @@ fn add_submod_components_sm(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()
     m.add_class::<PyDiffuseImg>()?;
     m.add_class::<PyDiffuseTex>()?;
     m.add_class::<PyNormalImg>()?;
+    m.add_class::<PyProjectionWithFov>()?;
     #[cfg(feature = "burn-torch")]
     {
         m.add_class::<PyColorsPyTensor>()?;

@@ -1,10 +1,10 @@
 use super::messages::ComponentTypeId;
-use crate::components::{Colors, Edges, Faces, Normals, UVs, Verts, VisLines, VisMesh, VisPoints};
+use crate::components::{Colors, DiffuseImg, Edges, Faces, Normals, ProjectionWithFov, UVs, Verts, VisLines, VisMesh, VisPoints};
 use crate::network::serializable_components::{
     SerializableColors, SerializableEdges, SerializableFaces, SerializableNormals, SerializableUVs, SerializableVerts, SerializableVisLines,
     SerializableVisMesh, SerializableVisPoints,
 };
-use crate::network::{FromSerializable, NetworkSendable};
+use crate::network::{FromSerializable, NetworkSendable, SerializableDiffuseImg, SerializableProjectionWithFov};
 use gloss_hecs::{CommandBuffer, Entity};
 use std::collections::HashMap;
 
@@ -76,6 +76,8 @@ impl SendableComponentRegistry {
         self.register_component_simple::<VisLines, SerializableVisLines>();
         self.register_component_simple::<VisPoints, SerializableVisPoints>();
         self.register_component_simple::<VisMesh, SerializableVisMesh>();
+        self.register_component_simple::<ProjectionWithFov, SerializableProjectionWithFov>();
+        self.register_component_simple::<DiffuseImg, SerializableDiffuseImg>();
     }
 }
 
@@ -173,6 +175,8 @@ impl ReceivableComponentRegistry {
         self.register_component_simple::<SerializableVisLines, VisLines>();
         self.register_component_simple::<SerializableVisPoints, VisPoints>();
         self.register_component_simple::<SerializableVisMesh, VisMesh>();
+        self.register_component_simple::<SerializableProjectionWithFov, ProjectionWithFov>();
+        self.register_component_simple::<SerializableDiffuseImg, DiffuseImg>();
     }
 }
 
