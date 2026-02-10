@@ -1,6 +1,8 @@
 #![allow(clippy::new_without_default)]
 
-use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, plugin::PyPluginList, queue::PyQueue, scene::PyScene, texture::PyTexture};
+use crate::{
+    actor::PyActorMut, camera::PyCamera, config::PyConfig, device::PyDevice, plugin::PyPluginList, queue::PyQueue, scene::PyScene, texture::PyTexture,
+};
 
 use gloss_renderer::{config::Config, plugin_manager::Plugins, scene::Scene, viewer::Viewer};
 
@@ -25,6 +27,11 @@ impl PyViewer {
     #[pyo3(text_signature = "(config_path: Optional[str] = None) -> Viewer")]
     pub fn new(config_path: Option<&str>) -> Self {
         Self(Viewer::new_with_config(&Config::new(config_path)))
+    }
+    #[staticmethod]
+    #[pyo3(text_signature = "(config: Config) -> Viewer")]
+    pub fn new_with_config(config: PyConfig) -> Self {
+        Self(Viewer::new_with_config(&config))
     }
     #[pyo3(text_signature = "($self, name: str) -> Entity")]
     pub fn get_or_create_entity(&mut self, name: &str) -> PyActorMut {

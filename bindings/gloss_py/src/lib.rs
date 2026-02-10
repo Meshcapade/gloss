@@ -38,6 +38,7 @@ pub mod actor;
 pub mod builders;
 pub mod camera;
 pub mod components;
+pub mod config;
 pub mod device;
 pub mod entity_builder;
 pub mod geom;
@@ -74,7 +75,7 @@ use viewer::PyViewer;
 use viewer_dummy::PyViewerDummy;
 use viewer_headless::PyViewerHeadless;
 
-use crate::{builders::PyBuilders, scene_receiver_plugin::PySceneReceiverPlugin};
+use crate::{builders::PyBuilders, config::PyConfig, scene_receiver_plugin::PySceneReceiverPlugin};
 
 use crate::global_backend::init_global_burn_backend;
 
@@ -106,6 +107,7 @@ pub fn extension(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyActorMut>()?;
     m.add_class::<PyDynImage>()?;
     m.add_class::<PyGeom>()?;
+    m.add_class::<PyConfig>()?;
     #[cfg(feature = "burn-torch")]
     m.add_class::<PyTorch2BurnTest>()?;
 

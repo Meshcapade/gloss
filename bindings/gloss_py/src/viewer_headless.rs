@@ -1,4 +1,4 @@
-use crate::{actor::PyActorMut, camera::PyCamera, device::PyDevice, queue::PyQueue, scene::PyScene, texture::PyTexture};
+use crate::{actor::PyActorMut, camera::PyCamera, config::PyConfig, device::PyDevice, queue::PyQueue, scene::PyScene, texture::PyTexture};
 
 use gloss_renderer::{config::Config, plugin_manager::Plugins, scene::Scene, viewer_headless::ViewerHeadless};
 
@@ -22,6 +22,11 @@ impl PyViewerHeadless {
     #[pyo3(text_signature = "(width: int, height: int, config_path: Optional[str] = None) -> ViewerHeadless")]
     pub fn new(width: u32, height: u32, config_path: Option<&str>) -> Self {
         Self(ViewerHeadless::new_with_config(width, height, &Config::new(config_path)))
+    }
+    #[staticmethod]
+    #[pyo3(text_signature = "(config: Config) -> Viewer")]
+    pub fn new_with_config(width: u32, height: u32, config: PyConfig) -> Self {
+        Self(ViewerHeadless::new_with_config(width, height, &config))
     }
     #[pyo3(text_signature = "($self, name: str) -> Entity")]
     pub fn get_or_create_entity(&mut self, name: &str) -> PyActorMut {

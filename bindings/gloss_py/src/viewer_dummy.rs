@@ -1,4 +1,4 @@
-use crate::{actor::PyActorMut, camera::PyCamera, scene::PyScene};
+use crate::{actor::PyActorMut, camera::PyCamera, config::PyConfig, scene::PyScene};
 
 use gloss_renderer::{config::Config, plugin_manager::Plugins, scene::Scene, viewer_dummy::ViewerDummy};
 
@@ -19,6 +19,11 @@ impl PyViewerDummy {
     #[pyo3(text_signature = "(config_path: Optional[str] = None) -> ViewerHeadless")]
     pub fn new(config_path: Option<&str>) -> Self {
         Self(ViewerDummy::new_with_config(&Config::new(config_path)))
+    }
+    #[staticmethod]
+    #[pyo3(text_signature = "(config: Config) -> Viewer")]
+    pub fn new_with_config(config: PyConfig) -> Self {
+        Self(ViewerDummy::new_with_config(&config))
     }
     #[pyo3(text_signature = "($self, name: str) -> Entity")]
     pub fn get_or_create_entity(&mut self, name: &str) -> PyActorMut {
