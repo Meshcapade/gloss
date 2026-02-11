@@ -661,12 +661,15 @@ impl GuiMainWidget {
             let initial_size = Vec2::new(tex_w as f32 * scale, tex_h as f32 * scale);
 
             //we need to create a new texture view because egui_renderer expects.register_native_texture expects rgba8unorm but my diffuse img is rgba8unormsgb
-            let nr_mips = texture.0.texture.mip_level_count();
+            #[cfg(not(target_arch = "wasm32"))]
             let new_view = texture.0.texture.create_view(&wgpu::TextureViewDescriptor {
-                mip_level_count: Some(nr_mips),
+                mip_level_count: Some(texture.0.texture.mip_level_count()),
                 format: Some(wgpu::TextureFormat::Rgba8Unorm),
                 ..Default::default()
             });
+
+            #[cfg(target_arch = "wasm32")]
+            let new_view = texture.0.view.clone();
 
             egui::Window::new(name.0.clone())
                 .resizable(true)

@@ -94,7 +94,11 @@ impl Texture {
             // usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
             usage,
             label: None,
-            view_formats: &[format.add_srgb_suffix(), format.remove_srgb_suffix()],
+            view_formats: if cfg!(target_arch = "wasm32") {
+                &[]
+            } else {
+                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
+            },
         };
         tex_params.apply(&mut texture_desc);
 
@@ -148,7 +152,11 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[format.add_srgb_suffix(), format.remove_srgb_suffix()],
+            view_formats: if cfg!(target_arch = "wasm32") {
+                &[]
+            } else {
+                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
+            },
         };
         let tex_params = TexParams::from_desc(&desc);
         let texture = device.create_texture(&desc);
@@ -270,7 +278,11 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format: tex_format,
             usage: usages,
-            view_formats: &[tex_format.add_srgb_suffix(), tex_format.remove_srgb_suffix()],
+            view_formats: if cfg!(target_arch = "wasm32") {
+                &[]
+            } else {
+                &[tex_format.add_srgb_suffix(), tex_format.remove_srgb_suffix()]
+            },
         };
         let tex_params = TexParams::from_desc(&desc);
 
@@ -373,7 +385,11 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format: tex_format,
             usage: usages,
-            view_formats: &[tex_format.add_srgb_suffix(), tex_format.remove_srgb_suffix()],
+            view_formats: if cfg!(target_arch = "wasm32") {
+                &[]
+            } else {
+                &[tex_format.add_srgb_suffix(), tex_format.remove_srgb_suffix()]
+            },
         };
 
         Self::upload_single_mip(&self.texture, device, queue, &desc, img_buf, staging_buffer, 0).await?;
@@ -1122,7 +1138,11 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[format.add_srgb_suffix(), format.remove_srgb_suffix()],
+            view_formats: if cfg!(target_arch = "wasm32") {
+                &[]
+            } else {
+                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
+            },
         };
         let tex_params = TexParams::from_desc(&desc);
         let texture = device.create_texture_with_data(queue, &desc, wgpu::util::TextureDataOrder::LayerMajor, img_data.as_slice());
@@ -1187,7 +1207,11 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[format.add_srgb_suffix(), format.remove_srgb_suffix()],
+            view_formats: if cfg!(target_arch = "wasm32") {
+                &[]
+            } else {
+                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
+            },
         };
         let tex_params = TexParams::from_desc(&desc);
         let texture = device.create_texture_with_data(queue, &desc, wgpu::util::TextureDataOrder::LayerMajor, img_data.as_slice());
