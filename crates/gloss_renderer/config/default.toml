@@ -30,6 +30,7 @@ enable_distance_fade = true
 distance_fade_center = "auto" # #can be either array like [1.0, 3.0, 0.3] or "auto"
 distance_fade_start = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
 distance_fade_end = "auto" #can be either a float or "auto" which means it will depend on the scale of the scene
+flip_light_position_y = false #sometimes when rendering things in camera coordinates, using cam.set_extrinsics, the camera is actually upside down so when placing the lights they look like they light the body from below. If you enable this the lights position in Y coordinates will be flipped
 apply_lighting = true
 saturation = 1.0 
 gamma = 1.0

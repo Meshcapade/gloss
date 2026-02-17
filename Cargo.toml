@@ -12,7 +12,7 @@ members = [
 authors = ["Radu Alexandru Rosu <alex@meshcapade.com>", "Aman Shenoy <aman@meshcapade.com>"]
 edition = "2021"
 rust-version = "1.85"
-version = "0.8.0"
+version = "0.9.0"
 description = "A light-weight Physically Based Renderer"
 license = "MIT"
 readme = "README.md"
@@ -24,16 +24,16 @@ features = ["doc"]
 
 # =====================================================================
 [workspace.dependencies]
-gloss-renderer = { path = "crates/gloss_renderer", version = "0.8", default-features = false }
-easy-wgpu = { path = "crates/easy_wgpu", version = "0.8"}
-gloss-utils = { path = "crates/gloss_utils", version = "0.8"}
-gloss-img = { path = "crates/gloss_img", version = "0.8"}
-gloss-hecs = { path = "crates/gloss_hecs", version = "0.8", features = ["macros"]}
-gloss-geometry = { path = "crates/gloss_geometry", version = "0.8"}
-gloss-burn-multibackend = { path = "crates/gloss_burn_multibackend", version = "0.8"}
-wgpu-burn-interop = { path = "crates/wgpu_burn_interop", version = "0.8"}
-wgpu-cuda-interop = { path = "crates/wgpu_cuda_interop", version = "0.8", default-features = false} #keep with default features =false because not all machines have cuda
-wgpu-burn-global-device = { path = "crates/wgpu_burn_global_device", version = "0.8"}
+gloss-renderer = { path = "crates/gloss_renderer", version = "0.9", default-features = false }
+easy-wgpu = { path = "crates/easy_wgpu", version = "0.9"}
+gloss-utils = { path = "crates/gloss_utils", version = "0.9"}
+gloss-img = { path = "crates/gloss_img", version = "0.9"}
+gloss-hecs = { path = "crates/gloss_hecs", version = "0.9", features = ["macros"]}
+gloss-geometry = { path = "crates/gloss_geometry", version = "0.9"}
+gloss-burn-multibackend = { path = "crates/gloss_burn_multibackend", version = "0.9"}
+wgpu-burn-interop = { path = "crates/wgpu_burn_interop", version = "0.9"}
+wgpu-cuda-interop = { path = "crates/wgpu_cuda_interop", version = "0.9", default-features = false} #keep with default features =false because not all machines have cuda
+wgpu-burn-global-device = { path = "crates/wgpu_burn_global_device", version = "0.9"}
 
 # =====================================================================
 # Third-Party crates

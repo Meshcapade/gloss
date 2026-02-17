@@ -434,7 +434,7 @@ impl Scene {
         min_point_global.lerp(&max_point_global, 0.5)
     }
 
-    pub fn init_3_point_light(&self, light_config: &mut LightConfig, idx: usize, scale: f32, centroid: &na::Point3<f32>) {
+    pub fn init_3_point_light(&self, light_config: &mut LightConfig, idx: usize, scale: f32, centroid: &na::Point3<f32>, flip_y: bool) {
         let (mut dir_movement, intensity_at_point) = match idx {
             0 => {
                 let dir_movement = na::Vector3::new(0.5, 0.6, 0.5);
@@ -458,6 +458,10 @@ impl Scene {
                 (dir_movement, intensity_at_point)
             }
         };
+
+        if flip_y {
+            dir_movement[1] *= -1.0;
+        }
 
         dir_movement = dir_movement.normalize();
         let lookat = centroid;
@@ -552,7 +556,7 @@ impl Scene {
         //lights
         // let three_point_lights = self.create_3_point_light_configs(scale, centroid);
         for (idx, light_config) in config.scene.lights.iter_mut().enumerate() {
-            self.init_3_point_light(light_config, idx, scale, &centroid);
+            self.init_3_point_light(light_config, idx, scale, &centroid, config.render.flip_light_position_y);
         }
 
         //specify that it is now concrete so we don't rerun this function

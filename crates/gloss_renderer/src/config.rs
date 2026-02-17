@@ -47,6 +47,7 @@ pub struct RenderConfig {
     pub distance_fade_center: Option<na::Point3<f32>>,
     pub distance_fade_start: Option<f32>,
     pub distance_fade_end: Option<f32>,
+    pub flip_light_position_y: bool,
     // Color grading, applied before tonemapping
     pub apply_lighting: bool,
     pub saturation: f32,

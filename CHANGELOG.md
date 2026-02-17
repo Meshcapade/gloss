@@ -11,6 +11,18 @@ Unreleased` header.
 
 # Unreleased
 
+# 0.9.0 
+### ⭐ Added
+- builder for camera frustum
+- Selectable component for not displaying selection outline
+- torch backend and interop and new crate wgpu-cuda-interop
+- Ability to send and receive components over a network
+- Floating windows with images
+### 🔧 Changed
+- Can flip the light y position for upside down cameras
+### 🐛 Fixed
+- Runtime issues on WASM regarding textures
+
 # 0.8.0 
 ### ⭐ Added
 - crates for burn multi-backend and for defining global wgpu device
