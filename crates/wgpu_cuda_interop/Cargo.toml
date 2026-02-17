@@ -15,7 +15,8 @@ repository.workspace = true
 
 
 [features]
-default = ["cuda"]
+# default = ["cuda"]
+default = []
 cuda = ["libloading", "lazy_static", "cust", "cuda_std", "cust_raw", "wgpu/vulkan"]
 
 
