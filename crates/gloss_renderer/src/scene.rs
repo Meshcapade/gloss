@@ -94,7 +94,7 @@ impl Scene {
     /// Creates a entity with a name or gets the one that already exists with
     /// that concrete name You can keep adding components to this entity
     /// with .insert() Also inserts a renderable component and a selectable component
-    pub fn get_or_create_entity(&mut self, name: &str) -> EntityMut {
+    pub fn get_or_create_entity(&mut self, name: &str) -> EntityMut<'_> {
         let r_name = RString::from(name.to_string());
         let entity_ref = self
             .name2entity
@@ -113,7 +113,7 @@ impl Scene {
     /// This is mostly helpful when trying to visualize images in a window
     /// in which case we will spawn a gui entity and add the DiffuseImg component
     /// The upload pass will take care of uploading the Img to a Texture and then the gui will display it
-    pub fn get_or_create_gui_entity(&mut self, name: &str) -> EntityMut {
+    pub fn get_or_create_gui_entity(&mut self, name: &str) -> EntityMut<'_> {
         let r_name = RString::from(name.to_string());
         let entity_ref = self
             .name2entity
@@ -763,7 +763,7 @@ impl Scene {
         &self.world
     }
 
-    pub fn world_mut(&mut self) -> WorldMut {
+    pub fn world_mut(&mut self) -> WorldMut<'_> {
         WorldMut {
             world: &mut self.world,
             entity_resource: self.entity_resource,
