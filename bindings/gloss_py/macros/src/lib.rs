@@ -118,7 +118,7 @@ pub fn ptr_deref_derive(input: TokenStream) -> TokenStream {
     let first_field_ty = &inners.first().unwrap().ty;
     let typeptr = match first_field_ty {
         syn::Type::Ptr(typeptr) => typeptr,
-        _ => panic!("Expected a type to be a ptr, it is {:?}", first_field_ty),
+        _ => panic!("Expected a type to be a ptr"),
     };
     let elem_type = &*typeptr.elem;
 
@@ -159,7 +159,7 @@ pub fn direct_deref_derive(input: TokenStream) -> TokenStream {
     let first_field_ty = &inners.first().unwrap().ty;
     let typeinner = match first_field_ty {
         syn::Type::Path(typeinner) => typeinner,
-        _ => panic!("Expected a type to be a ptr, it is {:?}", first_field_ty),
+        _ => panic!("Expected a type to be a ptr"),
     };
     let elem_type = &typeinner.path.segments.first().unwrap().ident;
 

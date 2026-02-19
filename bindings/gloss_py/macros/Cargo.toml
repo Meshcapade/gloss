@@ -4,7 +4,9 @@ authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 version.workspace = true
-publish = false
+publish = true
+description.workspace = true
+license.workspace = true
 
 [lib]
 proc-macro = true
