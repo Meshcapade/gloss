@@ -17,6 +17,7 @@ use crate::{
     plugin_manager::plugins::Plugins,
     scene::{Scene, GLOSS_FLOOR_NAME},
 };
+use easy_wgpu::texture::is_additional_view_formats_supported;
 
 use egui::{style::TextCursorStyle, CornerRadius, TextStyle};
 use gloss_geometry::geom;
@@ -107,7 +108,7 @@ impl GuiMainWidget {
     pub fn new(gpu: &Gpu) -> Self {
         let path_tex = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/uv_checker.png");
         debug!("path_tex {path_tex}");
-        let default_texture = easy_wgpu::texture::Texture::create_default_texture(gpu.device(), gpu.queue());
+        let default_texture = easy_wgpu::texture::Texture::create_default_texture(gpu.device(), gpu.queue(), gpu.adapter());
 
         Self {
             default_texture: Some(default_texture),
@@ -661,15 +662,15 @@ impl GuiMainWidget {
             let initial_size = Vec2::new(tex_w as f32 * scale, tex_h as f32 * scale);
 
             //we need to create a new texture view because egui_renderer expects.register_native_texture expects rgba8unorm but my diffuse img is rgba8unormsgb
-            #[cfg(not(target_arch = "wasm32"))]
-            let new_view = texture.0.texture.create_view(&wgpu::TextureViewDescriptor {
-                mip_level_count: Some(texture.0.texture.mip_level_count()),
-                format: Some(wgpu::TextureFormat::Rgba8Unorm),
-                ..Default::default()
-            });
-
-            #[cfg(target_arch = "wasm32")]
-            let new_view = texture.0.view.clone();
+            let new_view = if is_additional_view_formats_supported(gpu.adapter()) {
+                texture.0.texture.create_view(&wgpu::TextureViewDescriptor {
+                    mip_level_count: Some(texture.0.texture.mip_level_count()),
+                    format: Some(wgpu::TextureFormat::Rgba8Unorm),
+                    ..Default::default()
+                })
+            } else {
+                texture.0.view.clone()
+            };
 
             egui::Window::new(name.0.clone())
                 .resizable(true)

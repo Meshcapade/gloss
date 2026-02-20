@@ -408,7 +408,7 @@ impl PrePass {
     fn add_dummy_diffuse_tex(&mut self, scene: &mut Scene, gpu: &Gpu) {
         let mut query = scene.world().query::<()>().with::<&Renderable>().without::<&DiffuseTex>();
         for (entity, _comp) in query.iter() {
-            let tex = Texture::create_default_texture(gpu.device(), gpu.queue());
+            let tex = Texture::create_default_texture(gpu.device(), gpu.queue(), gpu.adapter());
             self.command_buffer.insert_one(entity, DiffuseTex(tex));
         }
     }
@@ -416,7 +416,7 @@ impl PrePass {
     fn add_dummy_normal_tex(&mut self, scene: &mut Scene, gpu: &Gpu) {
         let mut query = scene.world().query::<()>().with::<&Renderable>().without::<&NormalTex>();
         for (entity, _comp) in query.iter() {
-            let tex = Texture::create_default_texture(gpu.device(), gpu.queue());
+            let tex = Texture::create_default_texture(gpu.device(), gpu.queue(), gpu.adapter());
             self.command_buffer.insert_one(entity, NormalTex(tex));
         }
     }
@@ -424,7 +424,7 @@ impl PrePass {
     fn add_dummy_roughness_tex(&mut self, scene: &mut Scene, gpu: &Gpu) {
         let mut query = scene.world().query::<()>().with::<&Renderable>().without::<&RoughnessTex>();
         for (entity, _comp) in query.iter() {
-            let tex = Texture::create_default_texture(gpu.device(), gpu.queue());
+            let tex = Texture::create_default_texture(gpu.device(), gpu.queue(), gpu.adapter());
             self.command_buffer.insert_one(entity, RoughnessTex(tex));
         }
     }
@@ -432,7 +432,7 @@ impl PrePass {
     fn add_dummy_environment_map(&mut self, scene: &mut Scene, gpu: &Gpu) {
         //environment map
         if !scene.has_resource::<EnvironmentMapGpu>() {
-            let env = EnvironmentMapGpu::new_dummy(gpu.device(), gpu.queue());
+            let env = EnvironmentMapGpu::new_dummy(gpu.device(), gpu.queue(), gpu.adapter());
             scene.add_resource(env);
         }
     }
@@ -454,6 +454,7 @@ impl PrePass {
                 );
                 let tex_depth = easy_wgpu::texture::Texture::new(
                     gpu.device(),
+                    gpu.adapter(),
                     shadow_caster.shadow_res,
                     shadow_caster.shadow_res,
                     wgpu::TextureFormat::Depth32Float,

@@ -253,9 +253,9 @@ pub struct EnvironmentMapGpu {
     pub specular_tex: easy_wgpu::texture::Texture,
 }
 impl EnvironmentMapGpu {
-    pub fn new_dummy(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-        let diffuse_tex = easy_wgpu::texture::Texture::create_default_cubemap(device, queue);
-        let specular_tex = easy_wgpu::texture::Texture::create_default_cubemap(device, queue);
+    pub fn new_dummy(device: &wgpu::Device, queue: &wgpu::Queue, adapter: &wgpu::Adapter) -> Self {
+        let diffuse_tex = easy_wgpu::texture::Texture::create_default_cubemap(device, queue, adapter);
+        let specular_tex = easy_wgpu::texture::Texture::create_default_cubemap(device, queue, adapter);
         Self { diffuse_tex, specular_tex }
     }
 

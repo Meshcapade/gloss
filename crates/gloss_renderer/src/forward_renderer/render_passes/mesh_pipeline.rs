@@ -138,6 +138,7 @@ impl MeshPipeline {
         // gpu.queue());
         let passthrough_tex = Texture::new(
             gpu.device(),
+            gpu.adapter(),
             4,
             4,
             wgpu::TextureFormat::Depth32Float,

@@ -54,6 +54,7 @@ impl RenderData {
         let framebuffer = frambuffer_builder
             .add_render_target(
                 gpu.device(),
+                gpu.adapter(),
                 OffscreenTarget::Color,
                 surface_format.unwrap_or(offscreen_color_format),
                 wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC, /* because for headless rendering we want to download it
@@ -62,6 +63,7 @@ impl RenderData {
             )
             .add_render_target(
                 gpu.device(),
+                gpu.adapter(),
                 OffscreenTarget::MSAAColor,
                 surface_format.unwrap_or(wgpu::TextureFormat::Rgba8Unorm),
                 wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -72,6 +74,7 @@ impl RenderData {
             )
             .add_render_target(
                 gpu.device(),
+                gpu.adapter(),
                 OffscreenTarget::Depth,
                 wgpu::TextureFormat::Depth32FloatStencil8,
                 depth_texture_usage,
@@ -82,6 +85,7 @@ impl RenderData {
             )
             .add_render_target(
                 gpu.device(),
+                gpu.adapter(),
                 OffscreenTarget::SingleDepth,
                 wgpu::TextureFormat::Depth16Unorm,
                 depth_texture_usage,
@@ -92,6 +96,7 @@ impl RenderData {
             )
             .add_render_target(
                 gpu.device(),
+                gpu.adapter(),
                 OffscreenTarget::EntityID,
                 wgpu::TextureFormat::Rgba8Unorm,
                 wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
@@ -267,7 +272,7 @@ impl Renderer {
                 "resizing framebuffer because it is size {}, {}",
                 self.data.framebuffer.width, self.data.framebuffer.height
             );
-            self.data.framebuffer.resize(gpu.device(), width, height);
+            self.data.framebuffer.resize(gpu.device(), gpu.adapter(), width, height);
         }
     }
 }

@@ -29,6 +29,7 @@ use enum_map::EnumMap;
 /// let framebuffer = fb_builder
 ///     .add_render_target(
 ///         &device,
+///         &adapter,
 ///         Target::Albedo,
 ///         wgpu::TextureFormat::Rgba8Unorm,
 ///         wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -36,6 +37,7 @@ use enum_map::EnumMap;
 ///     )
 ///     .add_render_target(
 ///         &device,
+///         &adapter,
 ///         Target::Depth,
 ///         wgpu::TextureFormat::Depth32Float,
 ///         wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -116,7 +118,7 @@ impl<T: enum_map::EnumArray<Option<Texture>> + std::fmt::Debug> FrameBuffer<T> {
     }
 
     #[allow(clippy::missing_panics_doc)] //really should not panic
-    pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
+    pub fn resize(&mut self, device: &wgpu::Device, adapter: &wgpu::Adapter, width: u32, height: u32) {
         // resize all textures
         // recreate the bind_group
         for tex in self.targets.values_mut() {
@@ -125,7 +127,7 @@ impl<T: enum_map::EnumArray<Option<Texture>> + std::fmt::Debug> FrameBuffer<T> {
             let scale_factor = tex.tex_params.scale_factor;
             let scaled_width = (width / scale_factor).max(1);
             let scaled_height = (height / scale_factor).max(1);
-            tex.resize(device, scaled_width, scaled_height);
+            tex.resize(device, adapter, scaled_width, scaled_height);
         }
         self.width = width;
         self.height = height;
@@ -187,6 +189,7 @@ impl<T: enum_map::EnumArray<Option<Texture>> + std::fmt::Debug> FrameBufferBuild
     pub fn add_render_target(
         mut self,
         device: &wgpu::Device,
+        adapter: &wgpu::Adapter,
         target_type: T,
         format: wgpu::TextureFormat,
         usages: wgpu::TextureUsages,
@@ -197,7 +200,7 @@ impl<T: enum_map::EnumArray<Option<Texture>> + std::fmt::Debug> FrameBufferBuild
         let scaled_width = self.width / tex_params.scale_factor;
         let scaled_height = self.height / tex_params.scale_factor;
 
-        let tex = Texture::new(device, scaled_width, scaled_height, format, usages, tex_params);
+        let tex = Texture::new(device, adapter, scaled_width, scaled_height, format, usages, tex_params);
         self.targets[target_type] = Some(tex);
         self
     }

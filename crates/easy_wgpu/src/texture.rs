@@ -55,6 +55,26 @@ impl TexParams {
     }
 }
 
+pub fn is_additional_view_formats_supported(adapter: &wgpu::Adapter) -> bool {
+    //apparently GL backend doesn't support additional view formats
+    //https://docs.rs/wgpu/latest/wgpu/struct.DownlevelFlags.html#associatedconstant.VIEW_FORMATS
+    !(adapter.get_info().backend == wgpu::Backend::Gl || cfg!(target_arch = "wasm32"))
+}
+
+fn get_additional_view_formats(adapter: &wgpu::Adapter, format: wgpu::TextureFormat) -> Vec<wgpu::TextureFormat> {
+    let mut view_formats = Vec::new();
+
+    //apparently GL backend doesn't support additional view formats
+    //https://docs.rs/wgpu/latest/wgpu/struct.DownlevelFlags.html#associatedconstant.VIEW_FORMATS
+    if is_additional_view_formats_supported(adapter) {
+        view_formats.push(format.add_srgb_suffix());
+        view_formats.push(format.remove_srgb_suffix());
+    } else {
+        //nothing to return, since we cannot apply additional view formats
+    }
+    view_formats
+}
+
 #[derive(Clone)]
 pub struct Texture {
     pub texture: wgpu::Texture,
@@ -73,6 +93,7 @@ pub struct Texture {
 impl Texture {
     pub fn new(
         device: &wgpu::Device,
+        adapter: &wgpu::Adapter,
         width: u32,
         height: u32,
         format: wgpu::TextureFormat,
@@ -81,6 +102,7 @@ impl Texture {
     ) -> Self {
         debug!("New texture");
         // let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+        let additional_view_formats = get_additional_view_formats(adapter, format);
         let mut texture_desc = wgpu::TextureDescriptor {
             size: wgpu::Extent3d {
                 width,
@@ -94,11 +116,7 @@ impl Texture {
             // usage: wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::RENDER_ATTACHMENT,
             usage,
             label: None,
-            view_formats: if cfg!(target_arch = "wasm32") {
-                &[]
-            } else {
-                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
-            },
+            view_formats: additional_view_formats.as_slice(),
         };
         tex_params.apply(&mut texture_desc);
 
@@ -129,12 +147,12 @@ impl Texture {
 
     /// # Panics
     /// Will panic if bytes cannot be decoded into a image representation
-    pub fn from_bytes(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8], label: &str) -> Self {
+    pub fn from_bytes(device: &wgpu::Device, queue: &wgpu::Queue, adapter: &wgpu::Adapter, bytes: &[u8], label: &str) -> Self {
         let img = image::load_from_memory(bytes).unwrap();
-        Self::from_image(device, queue, &img, Some(label))
+        Self::from_image(device, queue, adapter, &img, Some(label))
     }
 
-    pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, img: &image::DynamicImage, label: Option<&str>) -> Self {
+    pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, adapter: &wgpu::Adapter, img: &image::DynamicImage, label: Option<&str>) -> Self {
         let rgba = img.to_rgba8();
         let dimensions = img.dimensions();
 
@@ -144,6 +162,7 @@ impl Texture {
             depth_or_array_layers: 1,
         };
         let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+        let additional_view_formats = get_additional_view_formats(adapter, format);
         let desc = wgpu::TextureDescriptor {
             label,
             size,
@@ -152,11 +171,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: if cfg!(target_arch = "wasm32") {
-                &[]
-            } else {
-                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
-            },
+            view_formats: additional_view_formats.as_slice(),
         };
         let tex_params = TexParams::from_desc(&desc);
         let texture = device.create_texture(&desc);
@@ -206,13 +221,14 @@ impl Texture {
     /// When writing to the texture, the opposite conversion takes place.
     /// # Panics
     /// Will panic if the path cannot be found
-    pub fn from_path(path: &str, device: &wgpu::Device, queue: &wgpu::Queue, is_srgb: bool) -> Self {
+    pub fn from_path(path: &str, device: &wgpu::Device, queue: &wgpu::Queue, adapter: &wgpu::Adapter, is_srgb: bool) -> Self {
         //read to cpu
         let img = image::ImageReader::open(path).unwrap().decode().unwrap();
         Self::from_img(
             &img.try_into().unwrap(),
             device,
             queue,
+            adapter,
             is_srgb,
             true,
             false, //TODO what do we set as default here?
@@ -233,6 +249,7 @@ impl Texture {
         img: &DynImage,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        adapter: &wgpu::Adapter,
         is_srgb: bool,
         generate_mipmaps: bool,
         mipmap_generation_cpu: bool,
@@ -270,6 +287,7 @@ impl Texture {
             usages |= RenderMipmapGenerator::required_usage();
         }
 
+        let additional_view_formats = get_additional_view_formats(adapter, tex_format);
         let desc = wgpu::TextureDescriptor {
             label: None,
             size,
@@ -278,11 +296,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format: tex_format,
             usage: usages,
-            view_formats: if cfg!(target_arch = "wasm32") {
-                &[]
-            } else {
-                &[tex_format.add_srgb_suffix(), tex_format.remove_srgb_suffix()]
-            },
+            view_formats: additional_view_formats.as_slice(),
         };
         let tex_params = TexParams::from_desc(&desc);
 
@@ -342,6 +356,7 @@ impl Texture {
         img: &DynImage,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        adapter: &wgpu::Adapter,
         is_srgb: bool,
         generate_mipmaps: bool,
         mipmap_generation_cpu: bool,
@@ -377,6 +392,7 @@ impl Texture {
             usages |= RenderMipmapGenerator::required_usage();
         }
 
+        let additional_view_formats = get_additional_view_formats(adapter, tex_format);
         let desc = wgpu::TextureDescriptor {
             label: None,
             size,
@@ -385,11 +401,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format: tex_format,
             usage: usages,
-            view_formats: if cfg!(target_arch = "wasm32") {
-                &[]
-            } else {
-                &[tex_format.add_srgb_suffix(), tex_format.remove_srgb_suffix()]
-            },
+            view_formats: additional_view_formats.as_slice(),
         };
 
         Self::upload_single_mip(&self.texture, device, queue, &desc, img_buf, staging_buffer, 0).await?;
@@ -1090,16 +1102,16 @@ impl Texture {
         bind_group
     }
 
-    pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
+    pub fn resize(&mut self, device: &wgpu::Device, adapter: &wgpu::Adapter, width: u32, height: u32) {
         //essentially creates a whole new texture with the same format and usage
         let format = self.texture.format();
         let usage = self.texture.usage();
-        let mut new = Self::new(device, width, height, format, usage, self.tex_params);
+        let mut new = Self::new(device, adapter, width, height, format, usage, self.tex_params);
         std::mem::swap(self, &mut new);
     }
 
     //make a default 4x4 texture that can be used as a dummy texture
-    pub fn create_default_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+    pub fn create_default_texture(device: &wgpu::Device, queue: &wgpu::Queue, adapter: &wgpu::Adapter) -> Self {
         // //read to cpu
         // let img = ImageReader::open(path).unwrap().decode().unwrap();
         // let rgba = img.to_rgba8();
@@ -1130,6 +1142,7 @@ impl Texture {
         };
         // let format = wgpu::TextureFormat::Rgba8UnormSrgb;
         let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+        let additional_view_formats = get_additional_view_formats(adapter, format);
         let desc = wgpu::TextureDescriptor {
             label: None,
             size,
@@ -1138,11 +1151,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: if cfg!(target_arch = "wasm32") {
-                &[]
-            } else {
-                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
-            },
+            view_formats: additional_view_formats.as_slice(),
         };
         let tex_params = TexParams::from_desc(&desc);
         let texture = device.create_texture_with_data(queue, &desc, wgpu::util::TextureDataOrder::LayerMajor, img_data.as_slice());
@@ -1169,7 +1178,7 @@ impl Texture {
         }
     }
 
-    pub fn create_default_cubemap(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+    pub fn create_default_cubemap(device: &wgpu::Device, queue: &wgpu::Queue, adapter: &wgpu::Adapter) -> Self {
         // //read to cpu
         // let img = ImageReader::open(path).unwrap().decode().unwrap();
         // let rgba = img.to_rgba8();
@@ -1199,6 +1208,7 @@ impl Texture {
         };
         // let format = wgpu::TextureFormat::Rgba8UnormSrgb;
         let format = wgpu::TextureFormat::Rgba8UnormSrgb;
+        let additional_view_formats = get_additional_view_formats(adapter, format);
         let desc = wgpu::TextureDescriptor {
             label: None,
             size,
@@ -1207,11 +1217,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: if cfg!(target_arch = "wasm32") {
-                &[]
-            } else {
-                &[format.add_srgb_suffix(), format.remove_srgb_suffix()]
-            },
+            view_formats: additional_view_formats.as_slice(),
         };
         let tex_params = TexParams::from_desc(&desc);
         let texture = device.create_texture_with_data(queue, &desc, wgpu::util::TextureDataOrder::LayerMajor, img_data.as_slice());
